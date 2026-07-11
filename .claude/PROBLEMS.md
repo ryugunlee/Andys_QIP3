@@ -50,16 +50,42 @@ percentile 적용이 share → original 순서로 실행되므로, 나중에 실
 "일단 모든 데이터를 표에 남긴다"는 이번 작업 목적에 맞게 지금은 손대지 않았지만, `main()`/이메일
 리포트가 어떤 컬럼만 보여줄지 고르는 표현 계층 작업이 필요하다 (이번 작업 범위 밖).
 
-## 7. `get_tickers`는 아직 `collection/`으로 옮기지 않음
+## 7. (수정 완료) `get_tickers`는 아직 `collection/`으로 옮기지 않음
 
-`Stock` 클래스와 `get_stock_basic_infomation`은 `collection/` 패키지로 옮겼지만, 티커 목록을
-가져오는 `get_tickers`는 여전히 `Andys_QIP2.py`에 남아있다. 데이터 수집 계층을 완전히 분리하려면
-이것도 옮겨야 하지만, 이번 요청 범위(Stock 클래스 도입)에 포함되지 않아 그대로 두었다.
+`get_tickers`를 `collection/tickers.py`로 옮기고, 한국 시장은 네이버가 쓰는 6자리 코드를
+접미사 없이 반환하도록 함께 수정했다 (`is_korean_market`도 같은 파일에 추가).
 
 ## 8. yfinance `.info`의 필드 구성은 종목/시장마다 다를 수 있음
 
-`Stock._raw_info_row()`는 `self.info`에 있는 키를 그대로 다 담는데, 시장(NASDAQ vs KRX 등)이나
+`YahooStock._raw_info_row()`는 `self.info`에 있는 키를 그대로 다 담는데, 시장(NASDAQ vs KRX 등)이나
 종목 종류(일반주 vs ETF)에 따라 실제로 제공되는 키 집합이 다르다. 여러 시장을 한 표에 모으면
 `raw_info__*` 컬럼 중 상당수가 특정 시장/종목에서만 값이 있고 나머지는 NaN이 되는 구조적 특성이
-있다 — 버그는 아니지만, 나중에 한국 주식(네이버 크롤링 등 다른 소스)을 같은 표에 합칠 때
-`raw_info__*` 계열 컬럼은 소스별로 필드 이름 자체가 다를 수 있다는 점을 감안해야 한다.
+있다 — 버그는 아니다. 네이버 경로는 아예 다른 접두사(`raw_naver_basic__`, `raw_naver_integration_total__`)를
+쓰므로 이 문제가 그대로 이어지지는 않지만, DuckDB의 `raw_latest` 테이블은 payload를 JSON 하나로
+저장해 소스별 필드 이름 차이를 흡수하도록 설계했다 (자세한 내용은 `.claude/STRUCTURE.md`의
+storage 섹션 참고).
+
+## 9. 네이버 경로는 야후 대비 결측 컬럼이 많아 `reliablity`/percentile 점수를 시장 간에 직접 비교하면 안 됨
+
+한국 주식(네이버)은 현금흐름표/내부자거래/기관투자자 비중 데이터를 제공하지 않아 PCR/PFCR/
+Coverage Ratio/ARP/Depreciation Capex Ratio/NCAV/Current Ratio/ROC/GPTOA/Asset Turnover/
+Interest Ratio/Debt Growth/EV 계열/Buyback 계열/Insider Buy Ratio/Institutionpercent/
+Insiderpercent가 항상 결측(None)이다. `reliablity`(18개 팩터의 TF 플래그 합)는 구조적으로
+네이버 종목에서 낮게 나오므로, 같은 시장 내 상대 비교(현재 `main()`의 사용 방식)에는 문제가
+없지만, 만약 나중에 한국·미국 주식을 하나의 표로 합쳐 percentile을 계산하면 소스 차이 때문에
+한국 주식이 실제 신뢰도와 무관하게 불리하게 나올 수 있다. 결합 분석을 하게 되면 소스별로
+percentile을 따로 내거나 reliablity 분모를 소스별로 다르게 하는 등의 보정이 필요하다.
+
+## 10. 네이버 재무제표는 연간(annual) 실적만 수집하고 분기(quarter)는 수집하지 않음
+
+`collection/naver`는 `finance/annual` 엔드포인트만 쓴다. `finance/quarter`도 검증된 엔드포인트지만
+(`.claude/STRUCTURE.md` 참고) 이번 작업 범위에서는 쓰지 않았다. 최신 분기 실적 기반으로 팩터를
+더 자주 갱신하고 싶다면 이 엔드포인트를 추가로 연동하는 작업이 필요하다.
+
+## 11. `NaverStock`의 PSR/PEGR/ROA/Asset to Equity는 직접 제공되지 않아 근사치로 계산됨
+
+야후는 이 값들을 `.info`에서 바로 제공하지만, 네이버는 원본 데이터가 없어 다음과 같이
+간접적으로 유도한다: `Asset to Equity = 1 + 부채비율/100`, `ROA = ROE / Asset to Equity`,
+`PSR = 시가총액 / 매출액`, `PEGR = PER / EPS성장률`. 회계적으로 합리적인 근사치이지만 야후가
+제공하는 값과 계산 방법이 다르므로, 두 소스의 같은 컬럼이라도 계산 방식이 다를 수 있다는 점을
+투자 판단 시 감안해야 한다.

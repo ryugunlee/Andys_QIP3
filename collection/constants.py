@@ -4,6 +4,10 @@
 REQUEST_THROTTLE_SECONDS: float = 0.5
 TOO_MANY_REQUESTS_WAIT_SECONDS: int = 300
 
+# yfinance/네이버에 요청할 일봉 조회 기간 (년)
+HISTORY_PERIOD_YEARS: int = 5
+HISTORY_PERIOD: str = f"{HISTORY_PERIOD_YEARS}y"  # yfinance period 파라미터 형식
+
 # 최소 1년치 거래일 수 (이보다 적으면 기술적 지표 계산 불가로 판단)
 MIN_HISTORY_TRADING_DAYS: int = 130
 
@@ -32,3 +36,14 @@ EPS_ZERO_SUBSTITUTE: float = 0.0001
 
 # yfinance의 earningsGrowth/revenueGrowth는 비율(0.1)로 오므로 %로 환산
 GROWTH_RATE_PERCENT_SCALE: float = 100
+
+# --- 네이버증권(collection/naver) 전용 상수 ---
+NAVER_USER_AGENT: str = "Mozilla/5.0"
+NAVER_MAX_RETRIES: int = 3
+
+# 네이버 ROE/부채비율 등은 이미 %(예: 10.85)로 오지만, yfinance의 returnOnEquity는
+# 비율(예: 0.1085)이다. 두 소스의 ROE 스케일을 맞추기 위한 환산 상수.
+NAVER_ROE_PERCENT_TO_FRACTION: float = 100
+
+# 네이버 재무제표의 매출액/영업이익/당기순이익은 "억원" 단위 숫자로 온다 (1억 = 1e8원).
+NAVER_EOK_TO_WON: float = 1e8

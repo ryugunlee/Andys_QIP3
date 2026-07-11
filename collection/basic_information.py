@@ -2,19 +2,27 @@
 
 import time
 import traceback
+from typing import Callable, Optional
 
 import pandas as pd
 from tqdm import tqdm
 
 from collection.constants import TOO_MANY_REQUESTS_WAIT_SECONDS
-from collection.stock import Stock
+from collection.stock import Stock, YahooStock
 
 
-def get_stock_basic_infomation(tickers: list[str]) -> tuple[pd.DataFrame, list[str]]:
+def get_stock_basic_infomation(
+    tickers: list[str],
+    on_ticker_collected: Optional[Callable[[YahooStock], None]] = None,
+) -> tuple[pd.DataFrame, list[str]]:
     """티커마다 Stock을 만들어 raw+curated 데이터를 모두 담은 표를 반환한다.
 
     티커별로 존재하는 raw 필드가 달라도(예: 시장마다 info 키가 다름) pandas가
     합집합 컬럼을 자동으로 만들고 없는 값은 NaN으로 채운다.
+
+    `on_ticker_collected`가 주어지면 팩터 계산이 끝난 직후 Stock 인스턴스로 호출한다
+    (예: 일봉/재무제표를 DuckDB에 저장). 이 모듈은 저장 계층을 모르므로 콜백으로
+    위임한다 — 데이터 수집과 저장의 책임을 분리하기 위함이다.
     """
     rows: list[dict] = []
     errortickers: list[str] = []
@@ -27,6 +35,8 @@ def get_stock_basic_infomation(tickers: list[str]) -> tuple[pd.DataFrame, list[s
                 if not stock.is_valid:
                     break
                 stock.compute_curated_factors()
+                if on_ticker_collected is not None:
+                    on_ticker_collected(stock)
                 rows.append(stock.to_row())
                 break
             except Exception as e:
