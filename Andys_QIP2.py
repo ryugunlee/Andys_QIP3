@@ -85,11 +85,18 @@ def get_tickers(stockmarket):
 def email_report(title, text, folder_path):
     """
     이 함수는 이메일로 보고서를 보내는 함수이다.
+    발신/수신 계정 정보는 환경변수 GMAIL_ADDRESS, GMAIL_APP_PASSWORD에서 읽는다.
     """
-    # Implement email sending functionality here
+    gmail_address = os.environ.get("GMAIL_ADDRESS")
+    gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD")
+    if not gmail_address or not gmail_app_password:
+        raise RuntimeError(
+            "이메일 발송에 필요한 환경변수가 설정되지 않았습니다. "
+            "GMAIL_ADDRESS(지메일 주소)와 GMAIL_APP_PASSWORD(지메일 앱 비밀번호)를 설정해 주세요."
+        )
     msg = MIMEMultipart()
-    msg["From"] = "ryugunlee@gmail.com"
-    msg["To"] = "ryugunlee@gmail.com"
+    msg["From"] = gmail_address
+    msg["To"] = gmail_address
     msg["Subject"] = title
     msg.attach(MIMEText(text, "plain"))
     filepaths = [
@@ -117,7 +124,7 @@ def email_report(title, text, folder_path):
 
     with smtplib.SMTP("smtp.gmail.com", 587) as server:
         server.starttls()
-        server.login("ryugunlee@gmail.com", "wzfa elxq pzuc xdrz")
+        server.login(gmail_address, gmail_app_password)
         server.sendmail(msg["From"], msg["To"], msg.as_string())
 
 
