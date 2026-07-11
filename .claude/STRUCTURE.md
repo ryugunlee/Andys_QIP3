@@ -57,19 +57,41 @@
     long format(ticker, source, statement_type, period, item, value, is_consensus)으로 변환.
 
 ## collection/naver/ (한국 경로)
-- `endpoints.py`: 네이버증권 API URL 템플릿 (siseJson 일봉, basic/integration/finance-annual).
+재무 데이터를 두 소스에서 가져온다: 모바일 API(`finance/annual`, 이미 계산된 비율)와
+WiseFn(`navercomp.wisereport.co.kr`, 네이버 coinfo 페이지의 "재무분석" 탭이 iframe으로 불러오는
+실제 소스 — 손익계산서/재무상태표/**현금흐름표** 원본 계정 금액). 후자 덕분에 Buyback Yield/
+PFCR/Coverage Ratio/NCAV/Current Ratio/ROC/GPTOA/ARP/Interest Ratio/Debt Growth/EV 계열까지
+계산할 수 있다. 자세한 배경과 리스크는 `.claude/PROBLEMS.md` #9~#12 참고.
+
+- `endpoints.py`: URL 템플릿. siseJson(일봉), basic/integration/finance-annual(모바일 API),
+  `WISE_COMPANY_PAGE_URL_TEMPLATE`(`c1030001.aspx`, encparam 토큰 추출용)와
+  `WISE_FINANCIAL_STATEMENT_URL`(`cF3002.aspx`, 실제 재무제표 JSON).
 - `client.py`: User-Agent 헤더 + 요청 간 스로틀 + 429 재시도 HTTP 클라이언트. 404/409(잘못된
   티커 코드)는 예외 대신 None을 반환해 `fetch()`가 yfinance와 동일한 패턴으로 처리하게 한다.
+  `_get()`는 `extra_headers`를 받을 수 있다 — WiseFn 호출에 `Referer` 헤더가 반드시 필요하기 때문
+  (없으면 빈 응답). `fetch_wise_encparam(code)`: `c1030001.aspx` HTML에서 정규식으로 encparam
+  토큰을 추출 (종목마다 다름, 삼성전자/SK하이닉스로 교차 검증). `fetch_wise_financial_statement(code,
+  encparam, rpt)`: rpt=0(손익계산서)/1(재무상태표)/2(현금흐름표) JSON을 가져온다.
 - `parsers.py`: `parse_number`/`parse_won_amount`(한글 숫자 표기 "23.04배"/"1,666조 1,894억" 파싱),
   `parse_price_history`(siseJson 응답 → OHLCV DataFrame), `parse_financial_statements`(finance/annual
   응답 → long format DataFrame), `latest_actual_periods`/`get_statement_value`(컨센서스 제외 최신
-  회계기간 조회 헬퍼).
-- `naver_stock.py`: `NaverStock(BaseStock)`. `fetch()`가 basic/일봉(5년)/integration/finance-annual을
-  순서대로 가져오고, `_compute_valuation_factors`(현재 스냅샷: PER/PBR/EPS/시총/배당수익률)와
-  `_compute_financial_statement_factors`(최신 실적: 매출액/순이익/ROE/부채비율/EPS성장/매출성장/
-  PSR/PEGR/Asset to Equity/ROA)로 curated 팩터를 계산한다. 야후에 있는 현금흐름표/내부자거래/
-  기관투자자 비중 데이터가 없어 관련 컬럼은 결측(None) — 자세한 목록은 `.claude/PROBLEMS.md` 참고.
-  업종(Sector/Industry)은 한글 업종명 API를 찾지 못해 숫자 업종 코드를 임시로 사용한다.
+  회계기간 조회 헬퍼). `parse_wise_financial_statement(payload, statement_type)`: WiseFn 응답(5개년
+  실적 + 1개년 컨센서스 추정치)을 long format으로 변환 — item은 `"ACCODE:계정명"` 형태로 저장한다
+  (같은 계정명이 트리의 여러 위치에 나타날 수 있어 ACCODE로 구분해야 함). `get_wise_value`/
+  `latest_period_wise_values`: ACCODE 접두사로 값을 찾는 헬퍼, 최신 기간만 raw 보관용으로 추출.
+- `naver_stock.py`: `NaverStock(BaseStock)`. `fetch()`가 basic/일봉(5년)/integration/finance-annual/
+  WiseFn 손익계산서·재무상태표·현금흐름표를 순서대로 가져온다 (`_fetch_wise_statements` — 실패해도
+  종목은 유효하게 남고 관련 팩터만 결측이 됨).
+  - `_compute_valuation_factors`: 현재 스냅샷(PER/PBR/EPS/시총/배당수익률).
+  - `_compute_financial_statement_factors`: 모바일 API 기반 최신 실적(매출액/순이익/ROE/부채비율/
+    EPS성장/매출성장/PSR/PEGR). Asset to Equity/ROA는 여기서 부채비율 근사치로 우선 채워진다.
+  - `_compute_wise_factors`: WiseFn 원본 계정 금액(억원)으로 Operating Cashflow/PCR/PFCR/
+    Buyback Yield/Depreciation Capex Ratio/Coverage Ratio/NCAV/Current Ratio/ROC/GPTOA/
+    Asset Turnover/ARP/Interest Ratio/Debt Growth/EV·EBITDA/EV·Revenue를 계산하고, 가능하면
+    Asset to Equity/ROA를 자산총계/자본총계 기반 정확한 값으로 덮어쓴다. 계정과목 코드(ACCODE)는
+    `collection/constants.py`의 `NAVER_WISE_ACCODE_*` 상수로 고정.
+  - 여전히 없는 것: 내부자거래/기관투자자 비중(Insider Buy Ratio/Institutionpercent/Insiderpercent).
+  - 업종(Sector/Industry)은 한글 업종명 API를 찾지 못해 숫자 업종 코드를 임시로 사용한다.
 - `basic_information.py`: `get_naver_stock_information(tickers, on_ticker_collected=None)` — 야후 경로와
   동일한 인터페이스(표 반환 + errortickers, `on_ticker_collected` 콜백으로 저장 위임).
 - `__init__.py`: `get_naver_stock_information`을 공개 API로 재노출.

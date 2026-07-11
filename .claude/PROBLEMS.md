@@ -65,27 +65,41 @@ percentile 적용이 share → original 순서로 실행되므로, 나중에 실
 저장해 소스별 필드 이름 차이를 흡수하도록 설계했다 (자세한 내용은 `.claude/STRUCTURE.md`의
 storage 섹션 참고).
 
-## 9. 네이버 경로는 야후 대비 결측 컬럼이 많아 `reliablity`/percentile 점수를 시장 간에 직접 비교하면 안 됨
+## 9. (대부분 해결) 네이버 경로는 야후 대비 결측 컬럼이 많아 `reliablity`/percentile 점수를 시장 간에 직접 비교하면 안 됨
 
-한국 주식(네이버)은 현금흐름표/내부자거래/기관투자자 비중 데이터를 제공하지 않아 PCR/PFCR/
-Coverage Ratio/ARP/Depreciation Capex Ratio/NCAV/Current Ratio/ROC/GPTOA/Asset Turnover/
-Interest Ratio/Debt Growth/EV 계열/Buyback 계열/Insider Buy Ratio/Institutionpercent/
-Insiderpercent가 항상 결측(None)이다. `reliablity`(18개 팩터의 TF 플래그 합)는 구조적으로
-네이버 종목에서 낮게 나오므로, 같은 시장 내 상대 비교(현재 `main()`의 사용 방식)에는 문제가
-없지만, 만약 나중에 한국·미국 주식을 하나의 표로 합쳐 percentile을 계산하면 소스 차이 때문에
-한국 주식이 실제 신뢰도와 무관하게 불리하게 나올 수 있다. 결합 분석을 하게 되면 소스별로
-percentile을 따로 내거나 reliablity 분모를 소스별로 다르게 하는 등의 보정이 필요하다.
+처음에는 한국 주식(네이버)에 현금흐름표 데이터가 없어 PCR/PFCR/Coverage Ratio/ARP/
+Depreciation Capex Ratio/NCAV/Current Ratio/ROC/GPTOA/Asset Turnover/Interest Ratio/
+Debt Growth/EV 계열/Buyback 계열이 전부 결측이었으나, WiseFn(`navercomp.wisereport.co.kr`)
+연동 이후 이 팩터들은 모두 실제 값으로 채워진다 (아래 #12 참고). 여전히 결측인 것은
+Insider Buy Ratio/Institutionpercent/Insiderpercent(내부자거래·기관투자자 비중) 뿐이다.
+이 셋 때문에 네이버 종목의 `reliablity`는 야후 종목보다 구조적으로 조금 낮게 나올 수 있으므로,
+같은 시장 내 상대 비교에는 문제가 없지만 한국·미국 주식을 하나의 표로 합쳐 percentile을
+계산할 때는 이 차이를 감안해야 한다.
 
 ## 10. 네이버 재무제표는 연간(annual) 실적만 수집하고 분기(quarter)는 수집하지 않음
 
-`collection/naver`는 `finance/annual` 엔드포인트만 쓴다. `finance/quarter`도 검증된 엔드포인트지만
+`collection/naver`는 모바일 API의 `finance/annual`과 WiseFn의 `cF3002.aspx`(frq=0, 연간) 둘 다
+연간 데이터만 쓴다. 두 소스 모두 분기(quarter) 파라미터가 존재하는 것을 확인했지만
 (`.claude/STRUCTURE.md` 참고) 이번 작업 범위에서는 쓰지 않았다. 최신 분기 실적 기반으로 팩터를
-더 자주 갱신하고 싶다면 이 엔드포인트를 추가로 연동하는 작업이 필요하다.
+더 자주 갱신하고 싶다면 이 파라미터를 추가로 연동하는 작업이 필요하다.
 
-## 11. `NaverStock`의 PSR/PEGR/ROA/Asset to Equity는 직접 제공되지 않아 근사치로 계산됨
+## 11. `NaverStock`의 PSR/PEGR은 여전히 근사치로 계산되고, Asset to Equity/ROA는 WiseFn 성공 시에만 정확한 값을 씀
 
-야후는 이 값들을 `.info`에서 바로 제공하지만, 네이버는 원본 데이터가 없어 다음과 같이
-간접적으로 유도한다: `Asset to Equity = 1 + 부채비율/100`, `ROA = ROE / Asset to Equity`,
-`PSR = 시가총액 / 매출액`, `PEGR = PER / EPS성장률`. 회계적으로 합리적인 근사치이지만 야후가
-제공하는 값과 계산 방법이 다르므로, 두 소스의 같은 컬럼이라도 계산 방식이 다를 수 있다는 점을
-투자 판단 시 감안해야 한다.
+`PSR = 시가총액 / 매출액`, `PEGR = PER / EPS성장률`은 야후처럼 직접 제공되는 값이 없어 계속
+간접 계산한다. `Asset to Equity`/`ROA`는 원래 `부채비율`로부터 근사(`1 + 부채비율/100`)했으나,
+WiseFn 재무상태표에서 자산총계/자본총계를 직접 얻을 수 있어 이제 그 값으로 덮어쓴다
+(`NaverStock._compute_wise_factors`). WiseFn 조회가 실패하면(아래 #12) 근사치로 남는다 —
+같은 컬럼이라도 종목마다 계산 방법이 다를 수 있다는 점을 투자 판단 시 감안해야 한다.
+
+## 12. WiseFn 재무제표 연동은 문서화되지 않은 내부 API에 의존함 (encparam + Referer)
+
+`collection/naver`가 현금흐름표 등을 가져오는 `navercomp.wisereport.co.kr/company/cF3002.aspx`는
+네이버 공식 문서가 없는 내부 API다. `c1030001.aspx` 페이지의 HTML에서 정규식으로 `encparam`
+토큰을 추출한 뒤(`client.fetch_wise_encparam`), 그 값과 `Referer` 헤더를 함께 보내야 응답이
+온다 (Referer 없이는 빈 응답). `encparam`은 종목마다 다르며(삼성전자/SK하이닉스로 교차 검증),
+계정과목 코드(ACCODE, `collection/constants.py`의 `NAVER_WISE_ACCODE_*`)는 두 종목에서 동일함을
+확인해 고정 상수로 삼았다. 다만 이 모든 것은 WiseFn이 페이지 구조를 바꾸면 (정규식이 encparam을
+못 찾거나, ACCODE 체계가 바뀌면) 예고 없이 깨질 수 있는 리버스 엔지니어링 기반 연동이다.
+`_fetch_wise_statements`는 실패해도 종목 자체를 무효화하지 않고 관련 팩터만 결측으로 남기도록
+방어적으로 설계했지만, 이 엔드포인트가 막히면 #9에서 해결했다고 적은 팩터들이 다시 결측으로
+돌아간다는 점을 유지보수 시 알고 있어야 한다.
