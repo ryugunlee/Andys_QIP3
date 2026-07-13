@@ -1,0 +1,31 @@
+"""표현 계층 전반에서 쓰는 상수 정의.
+
+시장 목록, 기본 경로, 화면에 노출하는 종목 개수 등 매직 넘버를 한곳에 모은다.
+"""
+
+from pathlib import Path
+
+# 파이프라인(Andys_QIP2.py)이 시장 단위로 CSV를 만들기 때문에, 사이트는 이 목록을
+# 순회하며 존재하는 시장 데이터만 통합한다.
+MARKETS: tuple[str, ...] = ("KOSPI", "KOSDAQ", "NASDAQ", "NYSE")
+KR_MARKETS: tuple[str, ...] = ("KOSPI", "KOSDAQ")
+US_MARKETS: tuple[str, ...] = ("NASDAQ", "NYSE")
+
+# 한국/미국 구분자. 통화 포맷(₩/$)과 시총 단위(조/T) 선택에 쓰인다.
+REGION_KR: str = "KR"
+REGION_US: str = "US"
+
+DEFAULT_DATA_DIR: Path = Path("./qipinfos")
+DEFAULT_OUTPUT_DIR: Path = Path("./docs")
+
+SITE_TITLE: str = "Andy's QIP"
+SITE_DESCRIPTION: str = "투자자가 스스로 판단할 수 있도록 정보를 제공하는 정량 분석 리포트"
+DISCLAIMER: str = (
+    "본 사이트의 모든 정보는 투자 판단을 돕기 위한 자료이며, "
+    "매수·매도를 권유하지 않습니다."
+)
+
+# 목록 화면에 노출하는 종목 개수
+TOP_MARKET_CAP_LIMIT: int = 10  # 시가총액 상위 표
+RECOMMENDED_DISPLAY_LIMIT: int = 12  # 주식 분석 페이지의 추천 종목 카드
+INDEX_RECOMMENDED_PREVIEW_LIMIT: int = 6  # 메인 페이지의 추천 종목 미리보기
