@@ -1,0 +1,12 @@
+{# 지표 그룹 표. 컨텍스트: group ({title, rows: [{label, text}]}) #}
+<div class="metric-section">
+  <h3>{{ group.title }}</h3>
+  <dl class="metric-table">
+    {% for row in group.rows %}
+    <div class="metric-row">
+      <dt>{{ row.label }}</dt>
+      <dd>{{ row.text }}</dd>
+    </div>
+    {% endfor %}
+  </dl>
+</div>

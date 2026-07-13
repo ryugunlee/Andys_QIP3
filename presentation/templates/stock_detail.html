@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ detail.name or detail.ticker }} — {{ site_title }}{% endblock %}
+{% block content %}
+<div class="detail-head">
+  <div class="detail-badges">
+    <span class="badge accent">{{ detail.market }}</span>
+    {% if detail.sector %}<span class="badge">{{ detail.sector }}</span>{% endif %}
+    {% if detail.industry %}<span class="badge">{{ detail.industry }}</span>{% endif %}
+    {% if detail.country %}<span class="badge">{{ detail.country }}</span>{% endif %}
+  </div>
+  <h1>{{ detail.name or detail.ticker }} <span class="detail-ticker">{{ detail.ticker }}</span></h1>
+  <div class="detail-price">
+    <span class="price">{{ detail.close | price(detail.market) }}</span>
+    <span class="cap">시가총액 {{ detail.market_cap | money(detail.market) }}</span>
+  </div>
+</div>
+
+<section class="page-section">
+  <div class="headline-scores">
+    {% for score in headline_scores %}
+    {% include "partials/_score_bar.html" %}
+    {% endfor %}
+  </div>
+</section>
+
+{% if detail.qualitative %}
+<section class="page-section">
+  <div class="section-head">
+    <h2>정성 평가</h2>
+  </div>
+  <div class="qualitative-card">{{ detail.qualitative }}</div>
+</section>
+{% endif %}
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>상세 지표</h2>
+    <span class="section-sub">값이 없는 지표는 {{ missing }} 로 표시됩니다</span>
+  </div>
+  {% for group in metric_groups %}
+  {% include "partials/_metric_table.html" %}
+  {% endfor %}
+</section>
+{% endblock %}

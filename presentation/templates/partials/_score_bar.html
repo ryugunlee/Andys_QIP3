@@ -1,0 +1,10 @@
+{# 대표 점수 타일(0~100 미터). 컨텍스트: score ({label, value}) #}
+<div class="score-tile">
+  <div class="tile-label">{{ score.label }}</div>
+  <div class="tile-value">{{ score.value | score }}<span class="tile-max"> / 100</span></div>
+  <div class="score-meter">
+    <div class="meter-track">
+      <div class="meter-fill" style="width: {{ score.value | meter_width }}%"></div>
+    </div>
+  </div>
+</div>
