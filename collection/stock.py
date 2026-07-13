@@ -243,7 +243,11 @@ class Stock:
         self._compute_financials_factors()
         self._compute_balance_sheet_factors()
         self._compute_insider_factors()
-        self.buyback_to_income = ((self.buyback_yield * self.close) / self.eps) / 100
+        self.buyback_to_income = (
+            ((self.buyback_yield * self.close) / self.eps) / 100
+            if self.buyback_yield is not None and self.eps is not None
+            else None
+        )
 
     def _compute_valuation_factors(self) -> None:
         info = self.info
@@ -282,7 +286,11 @@ class Stock:
         self.institution_percent = info.get("heldPercentInstitutions", 0)
         self.pegr = info.get("trailingPegRatio", None)
         self.debt_to_equity = info.get("debtToEquity", None)
-        self.dividend_to_income = (self.dividend_yield * self.close / eps) / 100
+        self.dividend_to_income = (
+            (self.dividend_yield * self.close / eps) / 100
+            if self.dividend_yield is not None and eps is not None
+            else None
+        )
 
     def _compute_technical_factors(self) -> None:
         history = _add_moving_averages(self.history)
