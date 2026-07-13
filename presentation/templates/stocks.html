@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}주식 분석 — {{ site_title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">주식 분석</h1>
+<p class="page-lead">
+  정량 분석으로 선별한 종목과 시가총액 상위 종목을 보여줍니다.
+  상단 검색창에서 전체 종목을 찾을 수 있습니다.
+</p>
+{% if market_counts %}
+<p class="page-lead">
+  분석 종목:
+  {% for market, count in market_counts.items() %}
+  {{ market }} {{ "{:,}".format(count) }}개{% if not loop.last %} · {% endif %}
+  {% endfor %}
+</p>
+{% endif %}
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>추천 종목</h2>
+    <span class="section-sub">종합 점수 상위 10% 중 신뢰도·펀더멘털 조건을 통과한 종목</span>
+  </div>
+  {% if recommended %}
+  <div class="card-grid">
+    {% for stock in recommended %}
+    {% include "partials/_stock_card.html" %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="placeholder-card">추천 종목 데이터가 아직 없습니다. 분석 파이프라인 실행 후 다시 생성해 주세요.</div>
+  {% endif %}
+</section>
+
+<section class="page-section tabs">
+  <div class="section-head">
+    <h2>시가총액 상위</h2>
+  </div>
+  <input type="radio" name="cap-tab" id="tab-kr" checked>
+  <input type="radio" name="cap-tab" id="tab-us">
+  <div class="tab-labels">
+    <label for="tab-kr">한국</label>
+    <label for="tab-us">미국</label>
+  </div>
+  <div class="tab-panel panel-kr">
+    {% with rows = top_kr %}{% include "partials/_top_cap_table.html" %}{% endwith %}
+  </div>
+  <div class="tab-panel panel-us">
+    {% with rows = top_us %}{% include "partials/_top_cap_table.html" %}{% endwith %}
+  </div>
+</section>
+
+{% include "partials/_news_section.html" %}
+{% endblock %}

@@ -1,0 +1,36 @@
+{# 시가총액 상위 표. 컨텍스트: rows (list[StockSummary]), root #}
+{% if rows %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>종목</th>
+        <th>시가총액</th>
+        <th>주가</th>
+        <th>3개월 수익률</th>
+        <th>종합 점수</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for stock in rows %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <a href="{{ root }}/stocks/{{ stock.ticker | urlencode }}.html">
+            <span class="cell-name">{{ stock.name or stock.ticker }}</span>
+            <div class="cell-sub">{{ stock.ticker }} · {{ stock.market }}</div>
+          </a>
+        </td>
+        <td>{{ stock.market_cap | money(stock.market) }}</td>
+        <td>{{ stock.close | price(stock.market) }}</td>
+        <td class="{{ stock.ratio_3m | change_class }}">{{ stock.ratio_3m | signed_percent }}</td>
+        <td>{{ stock.final_score | score }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="placeholder-card">해당 시장의 데이터가 아직 없습니다.</div>
+{% endif %}
