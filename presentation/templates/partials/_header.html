@@ -1,0 +1,14 @@
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="{{ root }}/index.html">Andy's <span>QIP</span></a>
+    <nav class="main-nav" aria-label="주요 메뉴">
+      <a href="{{ root }}/index.html"{% if active_page == "home" %} class="active" aria-current="page"{% endif %}>홈</a>
+      <a href="{{ root }}/stocks/index.html"{% if active_page == "stocks" %} class="active" aria-current="page"{% endif %}>주식 분석</a>
+    </nav>
+    <div class="search-box" data-root="{{ root }}">
+      <input type="search" id="stock-search" placeholder="종목명·티커 검색"
+             autocomplete="off" aria-label="종목 검색">
+      <ul id="search-results" class="search-results" hidden></ul>
+    </div>
+  </div>
+</header>

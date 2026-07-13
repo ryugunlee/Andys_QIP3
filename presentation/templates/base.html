@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ site_title }}{% endblock %}</title>
+  <meta name="description" content="{{ site_description }}">
+  <link rel="stylesheet" href="{{ root }}/static/style.css">
+</head>
+<body>
+{% include "partials/_header.html" %}
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <div class="container">
+    <p>{{ disclaimer }}</p>
+    {% if updated_date %}
+    <p class="footer-meta">데이터 기준일: {{ updated_date }}</p>
+    {% endif %}
+  </div>
+</footer>
+<script src="{{ root }}/static/search.js" defer></script>
+</body>
+</html>
