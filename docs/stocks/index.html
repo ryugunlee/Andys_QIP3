@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>주식 분석 — Andy&#39;s QIP</title>
+  <meta name="description" content="투자자가 스스로 판단할 수 있도록 정보를 제공하는 정량 분석 리포트">
+  <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="../index.html">Andy's <span>QIP</span></a>
+    <nav class="main-nav" aria-label="주요 메뉴">
+      <a href="../index.html">홈</a>
+      <a href="../stocks/index.html" class="active" aria-current="page">주식 분석</a>
+    </nav>
+    <div class="search-box" data-root="..">
+      <input type="search" id="stock-search" placeholder="종목명·티커 검색"
+             autocomplete="off" aria-label="종목 검색">
+      <ul id="search-results" class="search-results" hidden></ul>
+    </div>
+  </div>
+</header><main class="container">
+<h1 class="page-title">주식 분석</h1>
+<p class="page-lead">
+  정량 분석으로 선별한 종목과 시가총액 상위 종목을 보여줍니다.
+  상단 검색창에서 전체 종목을 찾을 수 있습니다.
+</p>
+<p class="page-lead">
+  분석 종목:
+  KOSPI 6개 ·   NASDAQ 12개</p>
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>추천 종목</h2>
+    <span class="section-sub">종합 점수 상위 10% 중 신뢰도·펀더멘털 조건을 통과한 종목</span>
+  </div>
+  <div class="card-grid">
+<a class="stock-card" href="../stocks/META.html">
+  <div class="card-top">
+    <span class="stock-name">Meta Platforms, Inc.</span>
+    <span class="badge">NASDAQ</span>
+  </div>
+  <div class="card-body">
+    <div>
+      <div class="stock-price">$631.48</div>
+      <div class="stock-cap">시총 $1.70T</div>
+    </div>
+    <div class="stock-change up">
+      +6.3%
+      <span class="stock-cap">3개월</span>
+    </div>
+  </div>
+  <div class="card-score score-meter">
+    <span class="meter-label">종합 점수</span>
+    <div class="meter-track">
+      <div class="meter-fill" style="width: 66.99942583732057%"></div>
+    </div>
+    <span class="meter-value">67.0</span>
+  </div>
+</a><a class="stock-card" href="../stocks/005490.KS.html">
+  <div class="card-top">
+    <span class="stock-name">POSCO Holdings</span>
+    <span class="badge">KOSPI</span>
+  </div>
+  <div class="card-body">
+    <div>
+      <div class="stock-price">₩313,500</div>
+      <div class="stock-cap">시총 23.9조</div>
+    </div>
+    <div class="stock-change down">
+      -14.0%
+      <span class="stock-cap">3개월</span>
+    </div>
+  </div>
+  <div class="card-score score-meter">
+    <span class="meter-label">종합 점수</span>
+    <div class="meter-track">
+      <div class="meter-fill" style="width: 66.48986602870814%"></div>
+    </div>
+    <span class="meter-value">66.5</span>
+  </div>
+</a>  </div>
+</section>
+
+<section class="page-section tabs">
+  <div class="section-head">
+    <h2>시가총액 상위</h2>
+  </div>
+  <input type="radio" name="cap-tab" id="tab-kr" checked>
+  <input type="radio" name="cap-tab" id="tab-us">
+  <div class="tab-labels">
+    <label for="tab-kr">한국</label>
+    <label for="tab-us">미국</label>
+  </div>
+  <div class="tab-panel panel-kr">
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>종목</th>
+        <th>시가총액</th>
+        <th>주가</th>
+        <th>3개월 수익률</th>
+        <th>종합 점수</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>
+          <a href="../stocks/005930.KS.html">
+            <span class="cell-name">SamsungElec</span>
+            <div class="cell-sub">005930.KS · KOSPI</div>
+          </a>
+        </td>
+        <td>1,753.3조</td>
+        <td>₩285,000</td>
+        <td class="up">+29.6%</td>
+        <td>64.6</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>
+          <a href="../stocks/000660.KS.html">
+            <span class="cell-name">SK hynix</span>
+            <div class="cell-sub">000660.KS · KOSPI</div>
+          </a>
+        </td>
+        <td>1,388.5조</td>
+        <td>₩2,180,000</td>
+        <td class="up">+90.5%</td>
+        <td>56.5</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>
+          <a href="../stocks/005380.KS.html">
+            <span class="cell-name">HyundaiMtr</span>
+            <div class="cell-sub">005380.KS · KOSPI</div>
+          </a>
+        </td>
+        <td>118.3조</td>
+        <td>₩457,500</td>
+        <td class="down">-7.3%</td>
+        <td>54.0</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>
+          <a href="../stocks/035420.KS.html">
+            <span class="cell-name">NAVER</span>
+            <div class="cell-sub">035420.KS · KOSPI</div>
+          </a>
+        </td>
+        <td>28.3조</td>
+        <td>₩191,300</td>
+        <td class="down">-6.4%</td>
+        <td>51.1</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>
+          <a href="../stocks/005490.KS.html">
+            <span class="cell-name">POSCO Holdings</span>
+            <div class="cell-sub">005490.KS · KOSPI</div>
+          </a>
+        </td>
+        <td>23.9조</td>
+        <td>₩313,500</td>
+        <td class="down">-14.0%</td>
+        <td>66.5</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>
+          <a href="../stocks/051910.KS.html">
+            <span class="cell-name">LGCHEM</span>
+            <div class="cell-sub">051910.KS · KOSPI</div>
+          </a>
+        </td>
+        <td>21.0조</td>
+        <td>₩264,000</td>
+        <td class="down">-24.7%</td>
+        <td>51.5</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+  </div>
+  <div class="tab-panel panel-us">
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>종목</th>
+        <th>시가총액</th>
+        <th>주가</th>
+        <th>3개월 수익률</th>
+        <th>종합 점수</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>
+          <a href="../stocks/NVDA.html">
+            <span class="cell-name">NVIDIA Corporation</span>
+            <div class="cell-sub">NVDA · NASDAQ</div>
+          </a>
+        </td>
+        <td>$5.11T</td>
+        <td>$202.78</td>
+        <td class="up">+12.0%</td>
+        <td>48.2</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>
+          <a href="../stocks/AAPL.html">
+            <span class="cell-name">Apple Inc.</span>
+            <div class="cell-sub">AAPL · NASDAQ</div>
+          </a>
+        </td>
+        <td>$4.63T</td>
+        <td>$316.22</td>
+        <td class="up">+21.2%</td>
+        <td>59.6</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>
+          <a href="../stocks/GOOGL.html">
+            <span class="cell-name">Alphabet Inc.</span>
+            <div class="cell-sub">GOOGL · NASDAQ</div>
+          </a>
+        </td>
+        <td>$4.36T</td>
+        <td>$358.89</td>
+        <td class="up">+12.7%</td>
+        <td>62.9</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>
+          <a href="../stocks/MSFT.html">
+            <span class="cell-name">Microsoft Corporation</span>
+            <div class="cell-sub">MSFT · NASDAQ</div>
+          </a>
+        </td>
+        <td>$2.86T</td>
+        <td>$384.36</td>
+        <td class="up">+4.1%</td>
+        <td>53.8</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td>
+          <a href="../stocks/AMZN.html">
+            <span class="cell-name">Amazon.com, Inc.</span>
+            <div class="cell-sub">AMZN · NASDAQ</div>
+          </a>
+        </td>
+        <td>$2.64T</td>
+        <td>$247.04</td>
+        <td class="up">+2.9%</td>
+        <td>51.6</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td>
+          <a href="../stocks/AVGO.html">
+            <span class="cell-name">Broadcom Inc.</span>
+            <div class="cell-sub">AVGO · NASDAQ</div>
+          </a>
+        </td>
+        <td>$1.90T</td>
+        <td>$401.11</td>
+        <td class="up">+7.8%</td>
+        <td>36.9</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td>
+          <a href="../stocks/META.html">
+            <span class="cell-name">Meta Platforms, Inc.</span>
+            <div class="cell-sub">META · NASDAQ</div>
+          </a>
+        </td>
+        <td>$1.70T</td>
+        <td>$631.48</td>
+        <td class="up">+6.3%</td>
+        <td>67.0</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>
+          <a href="../stocks/AMD.html">
+            <span class="cell-name">Advanced Micro Devices, Inc.</span>
+            <div class="cell-sub">AMD · NASDAQ</div>
+          </a>
+        </td>
+        <td>$909.7B</td>
+        <td>$546.72</td>
+        <td class="up">+127.7%</td>
+        <td>43.9</td>
+      </tr>
+      <tr>
+        <td>9</td>
+        <td>
+          <a href="../stocks/INTC.html">
+            <span class="cell-name">Intel Corporation</span>
+            <div class="cell-sub">INTC · NASDAQ</div>
+          </a>
+        </td>
+        <td>$552.1B</td>
+        <td>$112.54</td>
+        <td class="up">+76.1%</td>
+        <td>52.6</td>
+      </tr>
+      <tr>
+        <td>10</td>
+        <td>
+          <a href="../stocks/CSCO.html">
+            <span class="cell-name">Cisco Systems, Inc.</span>
+            <div class="cell-sub">CSCO · NASDAQ</div>
+          </a>
+        </td>
+        <td>$478.1B</td>
+        <td>$118.31</td>
+        <td class="up">+48.1%</td>
+        <td>68.0</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+  </div>
+</section>
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>뉴스</h2>
+  </div>
+  <div class="placeholder-card">
+    뉴스는 준비 중입니다. 데이터 수집이 연결되면 이곳에 표시됩니다.
+  </div>
+</section></main>
+<footer class="site-footer">
+  <div class="container">
+    <p>본 사이트의 모든 정보는 투자 판단을 돕기 위한 자료이며, 매수·매도를 권유하지 않습니다.</p>
+    <p class="footer-meta">데이터 기준일: 2026-07-13</p>
+  </div>
+</footer>
+<script src="../static/search.js" defer></script>
+</body>
+</html>

@@ -7,3 +7,7 @@
 
 진입점은 최상위 build_site.py 스크립트다.
 """
+
+from presentation.builders.site_builder import build_site
+
+__all__ = ["build_site"]
