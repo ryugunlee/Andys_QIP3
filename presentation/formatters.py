@@ -145,6 +145,13 @@ def format_metric(value: object, metric_format: MetricFormat, market: str | None
     return format_number(number)
 
 
+def meter_width(value: float | None) -> float:
+    """0~100 점수 미터의 채움 폭(%). 범위를 벗어난 값은 잘라낸다."""
+    if value is None:
+        return 0.0
+    return min(max(float(value), 0.0), 100.0)
+
+
 def change_class(value: float | None) -> str:
     """등락 색상용 CSS 클래스. 상승 빨강/하락 파랑은 style.css가 정의한다."""
     if value is None:
@@ -165,4 +172,6 @@ def register_filters(env: Environment) -> None:
     env.filters["multiple"] = format_multiple
     env.filters["score"] = format_score
     env.filters["metric"] = format_metric
+    env.filters["number"] = format_number
+    env.filters["meter_width"] = meter_width
     env.filters["change_class"] = change_class

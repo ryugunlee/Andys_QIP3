@@ -1,0 +1,32 @@
+{# 세계 경제 지표 섹션. 컨텍스트: indicators (list[EconomicIndicator] | None) #}
+<section class="page-section">
+  <div class="section-head">
+    <h2>세계 경제 지표</h2>
+    {% if indicators %}
+    <span class="section-sub">기준일 {{ indicators[0].as_of }}</span>
+    {% endif %}
+  </div>
+  {% if indicators %}
+  <div class="card-grid">
+    {% for indicator in indicators %}
+    <div class="indicator-card">
+      <div class="indicator-name">{{ indicator.name }}</div>
+      <div class="indicator-value">
+        {{ indicator.value | number }}
+        <span class="indicator-unit">{{ indicator.unit }}</span>
+      </div>
+      {% if indicator.change_pct is not none %}
+      <div class="indicator-change {{ indicator.change_pct | change_class }}">
+        {{ indicator.change_pct | signed_percent }}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="placeholder-card">
+    세계 경제 지표(금값·유가·금리·환율)는 준비 중입니다.<br>
+    데이터 수집이 연결되면 이곳에 표시됩니다.
+  </div>
+  {% endif %}
+</section>

@@ -1,0 +1,23 @@
+{# 뉴스 섹션. 컨텍스트: news (list[NewsItem] | None) #}
+<section class="page-section">
+  <div class="section-head">
+    <h2>뉴스</h2>
+  </div>
+  {% if news %}
+  <ul class="news-list">
+    {% for item in news %}
+    <li>
+      <a class="news-title" href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+      <div class="news-meta">{{ item.source }} · {{ item.published_at }}</div>
+      {% if item.summary %}
+      <p class="news-summary">{{ item.summary }}</p>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="placeholder-card">
+    뉴스는 준비 중입니다. 데이터 수집이 연결되면 이곳에 표시됩니다.
+  </div>
+  {% endif %}
+</section>

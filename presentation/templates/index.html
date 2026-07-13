@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}{{ site_title }} — 시장 한눈에 보기{% endblock %}
+{% block content %}
+<h1 class="page-title">시장 한눈에 보기</h1>
+<p class="page-lead">{{ site_description }}</p>
+
+{% include "partials/_indicators_section.html" %}
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>추천 종목</h2>
+    <span class="section-sub">정량 분석 상위 종목</span>
+    <a class="section-link" href="{{ root }}/stocks/index.html">전체 보기 →</a>
+  </div>
+  {% if recommended %}
+  <div class="card-grid">
+    {% for stock in recommended %}
+    {% include "partials/_stock_card.html" %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="placeholder-card">추천 종목 데이터가 아직 없습니다. 분석 파이프라인 실행 후 다시 생성해 주세요.</div>
+  {% endif %}
+</section>
+
+{% include "partials/_news_section.html" %}
+{% endblock %}

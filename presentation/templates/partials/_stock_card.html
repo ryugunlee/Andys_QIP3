@@ -1,0 +1,28 @@
+{# 종목 카드. 컨텍스트: stock (StockSummary), root #}
+<a class="stock-card" href="{{ root }}/stocks/{{ stock.ticker | urlencode }}.html">
+  <div class="card-top">
+    <span class="stock-name">{{ stock.name or stock.ticker }}</span>
+    <span class="badge">{{ stock.market }}</span>
+  </div>
+  <div class="card-body">
+    <div>
+      <div class="stock-price">{{ stock.close | price(stock.market) }}</div>
+      <div class="stock-cap">시총 {{ stock.market_cap | money(stock.market) }}</div>
+    </div>
+    {% if stock.ratio_3m is not none %}
+    <div class="stock-change {{ stock.ratio_3m | change_class }}">
+      {{ stock.ratio_3m | signed_percent }}
+      <span class="stock-cap">3개월</span>
+    </div>
+    {% endif %}
+  </div>
+  {% if stock.final_score is not none %}
+  <div class="card-score score-meter">
+    <span class="meter-label">종합 점수</span>
+    <div class="meter-track">
+      <div class="meter-fill" style="width: {{ stock.final_score | meter_width }}%"></div>
+    </div>
+    <span class="meter-value">{{ stock.final_score | score }}</span>
+  </div>
+  {% endif %}
+</a>
