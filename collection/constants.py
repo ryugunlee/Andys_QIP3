@@ -4,6 +4,10 @@
 REQUEST_THROTTLE_SECONDS: float = 0.5
 TOO_MANY_REQUESTS_WAIT_SECONDS: int = 300
 
+# yfinance/네이버에 요청할 일봉 조회 기간 (년)
+HISTORY_PERIOD_YEARS: int = 5
+HISTORY_PERIOD: str = f"{HISTORY_PERIOD_YEARS}y"  # yfinance period 파라미터 형식
+
 # 최소 1년치 거래일 수 (이보다 적으면 기술적 지표 계산 불가로 판단)
 MIN_HISTORY_TRADING_DAYS: int = 130
 
@@ -32,3 +36,42 @@ EPS_ZERO_SUBSTITUTE: float = 0.0001
 
 # yfinance의 earningsGrowth/revenueGrowth는 비율(0.1)로 오므로 %로 환산
 GROWTH_RATE_PERCENT_SCALE: float = 100
+
+# --- 네이버증권(collection/naver) 전용 상수 ---
+NAVER_USER_AGENT: str = "Mozilla/5.0"
+NAVER_MAX_RETRIES: int = 3
+
+# 네이버 ROE/부채비율 등은 이미 %(예: 10.85)로 오지만, yfinance의 returnOnEquity는
+# 비율(예: 0.1085)이다. 두 소스의 ROE 스케일을 맞추기 위한 환산 상수.
+NAVER_ROE_PERCENT_TO_FRACTION: float = 100
+
+# 네이버 재무제표의 매출액/영업이익/당기순이익은 "억원" 단위 숫자로 온다 (1억 = 1e8원).
+NAVER_EOK_TO_WON: float = 1e8
+
+# --- WiseFn(navercomp.wisereport.co.kr) 재무제표 API 전용 상수 ---
+# 네이버 coinfo 페이지의 "재무분석" 탭이 iframe으로 불러오는 실제 소스. 손익계산서/
+# 재무상태표/현금흐름표(현금흐름표 포함)를 여기서 얻는다. cF3002.aspx 호출 파라미터.
+NAVER_WISE_RPT_INCOME_STATEMENT: int = 0
+NAVER_WISE_RPT_BALANCE_SHEET: int = 1
+NAVER_WISE_RPT_CASH_FLOW: int = 2
+NAVER_WISE_FRQ_ANNUAL: int = 0  # frq/frqTyp 공통: 0=연간, 1=분기
+
+# WiseFn 계정과목 코드(ACCODE). 삼성전자(005930)와 SK하이닉스(000660) 두 종목으로
+# 교차 검증해 종목·기간과 무관하게 고정된 값임을 확인했다 (표준 IFRS 계정 코드 체계로 보임).
+NAVER_WISE_ACCODE_REVENUE: str = "200000"  # 매출액(수익)
+NAVER_WISE_ACCODE_GROSS_PROFIT: str = "200810"  # 매출총이익
+NAVER_WISE_ACCODE_OPERATING_INCOME: str = "201370"  # 영업이익
+NAVER_WISE_ACCODE_INTEREST_EXPENSE: str = "202560"  # 이자비용 (금융원가 하위)
+NAVER_WISE_ACCODE_NET_INCOME: str = "203170"  # 당기순이익
+NAVER_WISE_ACCODE_TOTAL_ASSETS: str = "110000"  # 자산총계
+NAVER_WISE_ACCODE_CURRENT_ASSETS: str = "112830"  # 유동자산
+NAVER_WISE_ACCODE_CASH_AND_EQUIVALENTS: str = "190650"  # 현금및현금성자산
+NAVER_WISE_ACCODE_TOTAL_LIABILITIES: str = "130000"  # 부채총계
+NAVER_WISE_ACCODE_CURRENT_LIABILITIES: str = "131580"  # 유동부채
+NAVER_WISE_ACCODE_TOTAL_DEBT: str = "190980"  # *이자발생부채 (Yahoo의 Total Debt에 해당)
+NAVER_WISE_ACCODE_CAPEX: str = "191000"  # *CAPEX (양수, Yahoo의 Capital Expenditure는 음수라 부호 반대)
+NAVER_WISE_ACCODE_TOTAL_EQUITY: str = "120000"  # 자본총계
+NAVER_WISE_ACCODE_OPERATING_CASH_FLOW: str = "400000"  # 영업활동으로인한현금흐름
+NAVER_WISE_ACCODE_DEPRECIATION: str = "400140"  # 유형자산감가상각비 (영업CF 가산 항목)
+NAVER_WISE_ACCODE_TREASURY_STOCK_DISPOSAL: str = "403890"  # 자기주식의처분 (재무활동 현금유입)
+NAVER_WISE_ACCODE_TREASURY_STOCK_ACQUISITION: str = "404220"  # 자기주식의취득 (재무활동 현금유출)
