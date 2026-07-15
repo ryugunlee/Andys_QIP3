@@ -215,3 +215,66 @@ git에 커밋하지 않는다.
 
 # 데이터 표현 함수 및 영역
 웹페이지를 통하여 데이터를 보여주는 함수 및 영역이다.
+
+`presentation/` 폴더 안에 있으며, 진입점은 최상위 `build_site.py`다
+(`python build_site.py` → `docs/`에 정적 사이트 생성, GitHub Pages는 main/docs 설정).
+3층 분리: **repository(어디서 읽나) / models·metrics(무엇을 보여주나) /
+builders·templates(어떻게 보여주나)**. JS는 검색용 `search.js` 하나뿐이다.
+
+## build_site.py (진입점)
+- `select_repository(db_path, data_dir)`: DuckDB 파일이 있으면 `DuckDbStockRepository`,
+  없으면 `CsvStockRepository`(과거 CSV 산출물) 폴백.
+- `main()`: `--db-path`/`--data-dir`/`--output` 인자 파싱 후 `build_site()` 실행.
+
+## presentation/config.py
+- 시장 목록(`MARKETS`), `REGION_KR`/`REGION_US`, 기본 경로, 사이트 제목/면책 문구,
+  노출 종목 개수 상수. `is_korean_market_name(market)`: 시장명이 K로 시작하면 한국
+  (collection.tickers.is_korean_market과 같은 규칙 — 계층 분리를 위해 별도 정의).
+
+## presentation/models.py
+- 표현용 dataclass: `StockSummary`(카드/표), `StockDetail`(상세 — `values`는 컬럼명→값,
+  `qualitative`는 정성 평가로 없으면 미표시), `SearchEntry`, `EconomicIndicator`, `NewsItem`.
+
+## presentation/metrics.py
+- 지표 메타데이터 단일 소스: `MetricSpec(column, label, format, group)` 63개,
+  `MetricFormat`(MONEY/PRICE/MULTIPLE/PERCENT/FRACTION_PERCENT/SCORE/TEXT/NUMBER),
+  `MetricGroup`(밸류에이션~종합 점수, 선언 순서=표시 순서), `HEADLINE_SCORE_COLUMNS`,
+  `specs_by_group()`. **분석에서 지표가 추가되면 여기 한 줄 추가로 상세 페이지 자동 반영.**
+
+## presentation/formatters.py
+- `format_money`(조/억·$T/$B), `format_price`(₩/$), `format_percent`/`format_fraction_percent`,
+  `format_multiple`, `format_score`, `format_text`(영문 신호→한국어: Heating→상승 흐름 등),
+  `format_metric`(MetricFormat dispatcher), `meter_width`(0~100 클램프), `change_class`(up/down),
+  `register_filters(env)`: 위 함수들을 Jinja2 필터로 등록.
+
+## presentation/repository/ (데이터 어댑터)
+- `base.py`: `StockRepository` Protocol — `good_stocks(limit)`, `top_by_market_cap(region, limit)`,
+  `iter_stock_details()`, `search_entries()`, `market_counts()`, `updated_date()`.
+  빌더는 이 계약만 의존한다. 저장 방식이 바뀌면 구현체를 추가하고 build_site.py에서 교체.
+- `row_mapping.py`: 두 구현체가 공유하는 컬럼명 상수(`COL_*`)와 행→모델 변환
+  (`summary_from_row`/`detail_from_row`/`search_entry_from_row`, NaN→None 처리).
+- `db_repository.py`: `DuckDbStockRepository` — **기본 구현체**. collection_runs에서 시장별
+  최신 run을 찾아 snapshot_factors를 통합, 추천 종목은 `storage.report_export.get_goodstock`
+  재사용(파이프라인과 동일 기준). DB 없으면 경고 후 빈 데이터. read_only 연결.
+- `csv_repository.py`: `CsvStockRepository` — 과거 CSV 산출물(qipinfos/{시장}stockdata2/) 폴백.
+  없는 시장은 경고 후 스킵.
+- `indicators_provider.py`: `load_economic_indicators()` → `list[EconomicIndicator] | None`.
+  **경제지표 수집이 구현되면 이 함수 본문만 교체** (None이면 "준비 중" 카드).
+- `news_provider.py`: `load_news(ticker=None)` → `list[NewsItem] | None`. 뉴스도 동일한 계약.
+
+## presentation/builders/ (페이지 1종 = 파일 1개)
+- `environment.py`: `create_environment()` — 공유 Jinja2 환경 (로더+필터+전역값).
+- `assets.py`: `copy_static()`(static→docs/static), `write_nojekyll()`.
+- `index_page.py`: `build_index_page()` — 메인 (경제지표 placeholder·추천 미리보기·뉴스 placeholder).
+- `stocks_page.py`: `build_stocks_page()` — 주식 분석 (추천 카드·KR/US 시총 상위 CSS 탭·뉴스).
+- `detail_pages.py`: `build_detail_pages()` — 전 종목 상세. `ticker_filename()` sanitize,
+  metrics 스펙 순회로 그룹 표 조립(템플릿은 CSV 컬럼명을 모름), 대표 점수 4종은 상단 타일.
+- `search_index.py`: `build_search_index()` — `data/search-index.json` (축약 키 t/n/m/s/f/c).
+- `site_builder.py`: `build_site(repository, output_dir)` — 자산→메인→주식→상세→검색인덱스 순 실행.
+
+## presentation/templates/ · static/
+- `base.html`(공통 레이아웃, 컨텍스트: root/active_page/updated_date), `index.html`, `stocks.html`,
+  `stock_detail.html`, partials(`_header`/`_stock_card`/`_top_cap_table`/`_score_bar`/`_metric_table`/
+  `_indicators_section`/`_news_section`).
+- `static/style.css`: 토스풍 라이트 테마, 카드/표/점수미터/CSS 탭, 모바일 720px 브레이크포인트.
+- `static/search.js`: 유일한 JS — 첫 입력 시 인덱스 지연 로드, 부분일치 상위 20개 드롭다운.

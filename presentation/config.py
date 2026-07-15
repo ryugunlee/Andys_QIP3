@@ -15,6 +15,15 @@ US_MARKETS: tuple[str, ...] = ("NASDAQ", "NYSE")
 REGION_KR: str = "KR"
 REGION_US: str = "US"
 
+
+def is_korean_market_name(market: str | None) -> bool:
+    """시장명이 한국 시장(K로 시작: KRX/KOSPI/KOSDAQ/KONEX)인지 판별한다.
+
+    collection.tickers.is_korean_market과 같은 규칙이지만, 표현 계층이
+    수집 계층에 의존하지 않도록 여기서 별도로 정의한다.
+    """
+    return bool(market) and market[0] == "K"
+
 DEFAULT_DATA_DIR: Path = Path("./qipinfos")
 DEFAULT_OUTPUT_DIR: Path = Path("./docs")
 

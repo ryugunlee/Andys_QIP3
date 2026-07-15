@@ -43,7 +43,7 @@ _SIGNAL_LABELS: dict[str, str] = {
 
 
 def is_kr_market(market: str | None) -> bool:
-    return market in config.KR_MARKETS
+    return config.is_korean_market_name(market)
 
 
 def format_money(value: float | None, market: str | None = None) -> str:

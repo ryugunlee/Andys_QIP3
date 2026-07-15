@@ -4,20 +4,22 @@
 
 ## 구성
 
-1. **데이터 수집** (`collection/`) — yfinance·FinanceDataReader로 종목 데이터 수집, 약 60개 지표 계산
+1. **데이터 수집** (`collection/`) — 미국 등 해외는 yfinance, 한국은 네이버증권으로 수집, 약 60개 지표 계산
 2. **데이터 분석** (`analysis/`) — 백분위 기반 점수화 (Vscore/Mscore/Fscore/Finalscore 등), 우량주 선별
 3. **데이터 표현** (`presentation/`) — 분석 산출물을 정적 웹사이트로 생성 (GitHub Pages 배포)
+
+수집·분석 결과는 DuckDB(`qipinfos/andys_qip.duckdb`)에 저장된다 (`storage/`).
 
 ## 사용법
 
 ```bash
 pip install -r requirements.txt
 
-# 1) 시장별 수집·분석 (시장마다 실행, 결과는 qipinfos/에 저장)
+# 1) 시장별 수집·분석 (시장마다 실행, 결과는 qipinfos/andys_qip.duckdb에 저장)
 python Andys_QIP2.py   # 예: KOSPI, KOSDAQ, NASDAQ, NYSE
 
-# 2) 정적 사이트 생성 (모든 시장 갱신 후 1회)
-python build_site.py   # qipinfos/ → docs/
+# 2) 정적 사이트 생성 (모든 시장 갱신 후 1회, DuckDB → docs/)
+python build_site.py   # DB가 없으면 과거 CSV 산출물로 폴백
 
 # 3) 로컬 미리보기
 python -m http.server -d docs 8000
