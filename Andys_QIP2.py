@@ -23,6 +23,7 @@ from collection import (
 )
 from collection.stock_base import BaseStock
 from analysis import (
+    compute_group_summary,
     compute_scores,
     get_standard_data,
     score_output_columns,
@@ -146,6 +147,12 @@ def main(stockmarket):
         scored
     )
     storage.save_standard_cutlines(conn, run_id, standard_data, sector_standard_data, country_standard_data)
+
+    # 섹터/산업 자체 평가 (그룹별 팩터 중앙값 + 그룹 간 상대 점수)
+    for group_type, group_column in (("sector", "Sector"), ("industry", "Industry")):
+        storage.upsert_group_summary(
+            conn, group_type, compute_group_summary(scored, group_column)
+        )
 
     goodstock = storage.get_goodstock(conn, run_id)
 

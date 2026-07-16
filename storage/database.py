@@ -19,6 +19,8 @@ DB 파일은 용도별로 3개로 나뉜다 (점수 모집단 = 통화권 단위
   upsert라서 회계기간이 늘지 않는 한 크기가 고정된다.
 - raw_latest: yfinance info / 네이버 basic·integration 같은 원본 응답을 종목당 최신본만 보관.
 - standard_cutlines: get_standard_data가 만드는 전체/섹터/국가별 percentile 커트라인 표.
+- group_summary: 섹터/산업 자체 평가 — 그룹별 팩터 중앙값과 그룹 간 상대 점수
+  (analysis/group_summary.py가 계산, 재계산 시 (group_type, group_value, factor) upsert).
 - macro_daily: 경제지표(매크로) 일별값. (indicator, date) 기준 upsert — 지표 정의는
   collection/macro/indicators.py, 저장/조회는 macro_repository.py 참고.
 """
@@ -109,6 +111,18 @@ _SCHEMA_STATEMENTS: list[str] = [
         date DATE,
         value DOUBLE,
         PRIMARY KEY (indicator, date)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS group_summary (
+        group_type TEXT,
+        group_value TEXT,
+        ticker_count INTEGER,
+        factor TEXT,
+        median_value DOUBLE,
+        score_s DOUBLE,
+        score_ss DOUBLE,
+        PRIMARY KEY (group_type, group_value, factor)
     )
     """,
 ]

@@ -11,6 +11,7 @@ from storage.database import (
     stock_db_path_for_market,
 )
 from storage.financial_repository import get_financial_statements, upsert_financial_statements
+from storage.group_summary_repository import get_group_summary, upsert_group_summary
 from storage.macro_repository import (
     get_latest_macro_pairs,
     get_macro_history,
@@ -51,6 +52,8 @@ __all__ = [
     "save_standard_cutlines",
     "update_snapshot_scores",
     "get_latest_snapshots",
+    "upsert_group_summary",
+    "get_group_summary",
     "export_run_summary",
     "get_goodstock",
     "get_market_cutlines",

@@ -7,6 +7,7 @@ get_sorting_and_basicscore/get_detailscore_and_finalrank는 퍼센타일 계열�
 
 from analysis.basic_score import get_sorting_and_basicscore
 from analysis.detail_score import get_detailscore_and_finalrank
+from analysis.group_summary import compute_group_summary
 from analysis.percentile import calculating_percentile
 from analysis.score_pipeline import compute_scores, score_output_columns
 from analysis.standard_data import get_standard_data
@@ -16,6 +17,7 @@ __all__ = [
     "calculating_percentile",
     "calculating_standard",
     "compute_scores",
+    "compute_group_summary",
     "score_output_columns",
     "get_sorting_and_basicscore",
     "get_detailscore_and_finalrank",

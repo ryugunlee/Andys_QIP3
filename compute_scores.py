@@ -10,7 +10,12 @@
 import sys
 
 import storage
-from analysis import compute_scores, get_standard_data, score_output_columns
+from analysis import (
+    compute_group_summary,
+    compute_scores,
+    get_standard_data,
+    score_output_columns,
+)
 
 _REGION_DB_PATHS: dict[str, str] = {
     "KR": storage.KR_STOCK_DB_PATH,
@@ -34,6 +39,10 @@ def rescore_db(region: str, db_path: str) -> None:
         storage.save_standard_cutlines(
             conn, latest_run_id, standard_data, sector_standard_data, country_standard_data
         )
+        for group_type, group_column in (("sector", "Sector"), ("industry", "Industry")):
+            storage.upsert_group_summary(
+                conn, group_type, compute_group_summary(scored, group_column)
+            )
         print(f"[scores] {region}: {len(scored):,}종목 재점수 완료 (점수 컬럼 {len(new_columns)}개)")
     finally:
         conn.close()
