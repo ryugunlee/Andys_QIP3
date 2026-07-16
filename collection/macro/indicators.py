@@ -4,10 +4,8 @@
 보여줄지 여기서만 정의한다 (analysis/factors.py의 FactorSpec,
 presentation/metrics.py의 MetricSpec과 같은 패턴).
 
-- 새 지표 추가 = 이 파일에 스펙 한 줄 추가 (소스가 기존 4종이면 수집기 수정 불필요).
+- 새 지표 추가 = 이 파일에 스펙 한 줄 추가 (소스가 기존 5종이면 수집기 수정 불필요).
 - 선언 순서 = 메인 페이지 카드 표시 순서.
-- ECOS 소스는 API 키 확보 전까지 수집기가 없어 자리만 잡아둔 상태다
-  (프로젝트 루트 API_REQUESTS.txt 참고).
 """
 
 from dataclasses import dataclass
@@ -16,10 +14,10 @@ from enum import Enum
 
 class MacroSource(Enum):
     YAHOO = "yahoo"  # yfinance (지수/환율/원자재/미 국채 지수)
-    FRED = "fred"  # fredgraph.csv (키 불필요, 네트워크에 따라 차단 가능)
+    FRED = "fred"  # FRED 공식 API (FRED_API_KEY 필요, .env 참고)
     NAVER_GOLD = "naver_gold"  # 네이버 marketindex 금현물 (KRX)
     DERIVED = "derived"  # 수집된 다른 지표로부터 계산
-    ECOS = "ecos"  # 한국은행 ECOS — API 키 필요, 수집 보류
+    ECOS = "ecos"  # 한국은행 ECOS Open API (BOK_API_KEY 필요, .env 참고)
 
 
 class MacroCategory(Enum):
@@ -37,10 +35,12 @@ class MacroIndicatorSpec:
     name_ko: str  # 카드에 보여줄 한국어 이름
     unit: str  # 카드에 보여줄 단위
     source: MacroSource
-    symbol: str | None  # yfinance 티커 / FRED 시리즈 / 네이버 reutersCode. DERIVED는 None
+    symbol: str | None  # yfinance 티커 / FRED 시리즈 / 네이버 reutersCode / ECOS 통계표코드. DERIVED는 None
     category: MacroCategory
     scale: float = 1.0  # 수집 원값에 곱하는 배율 (예: 엔/원은 100엔 기준 표시)
     show_card: bool = True  # False면 수집만 하고 메인 페이지 카드에는 노출하지 않음
+    ecos_cycle: str | None = None  # ECOS 조회 주기 (D=일간, M=월간). MacroSource.ECOS 전용
+    ecos_item_code: str | None = None  # ECOS 통계항목코드. MacroSource.ECOS 전용
 
 
 MACRO_INDICATORS: list[MacroIndicatorSpec] = [
@@ -83,9 +83,27 @@ MACRO_INDICATORS: list[MacroIndicatorSpec] = [
     MacroIndicatorSpec(
         "us_cpi_yoy", "미국 인플레이션 (CPI YoY)", "%", MacroSource.FRED, "CPIAUCSL", MacroCategory.RATE
     ),
-    # --- 수집 보류 (ECOS API 키 필요 — API_REQUESTS.txt 참고) ---
-    MacroIndicatorSpec("kr_base_rate", "한국 기준금리", "%", MacroSource.ECOS, "722Y001", MacroCategory.RATE),
-    MacroIndicatorSpec("kr_cpi_yoy", "한국 인플레이션 (CPI YoY)", "%", MacroSource.ECOS, "901Y009", MacroCategory.RATE),
+    # --- 한국 금리·물가 (ECOS) ---
+    MacroIndicatorSpec(
+        "kr_base_rate",
+        "한국 기준금리",
+        "%",
+        MacroSource.ECOS,
+        "722Y001",
+        MacroCategory.RATE,
+        ecos_cycle="D",
+        ecos_item_code="0101000",
+    ),
+    MacroIndicatorSpec(
+        "kr_cpi_yoy",
+        "한국 인플레이션 (CPI YoY)",
+        "%",
+        MacroSource.ECOS,
+        "901Y009",
+        MacroCategory.RATE,
+        ecos_cycle="M",
+        ecos_item_code="0",
+    ),
 ]
 
 

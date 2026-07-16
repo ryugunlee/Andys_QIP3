@@ -119,19 +119,28 @@ PFCR/Coverage Ratio/NCAV/Current Ratio/ROC/GPTOA/ARP/Interest Ratio/Debt Growth/
 갱신을 같은 upsert로 처리). 주식 파이프라인과 독립 실행.
 
 - `indicators.py`: 지표 정의 단일 소스. `MacroIndicatorSpec(id, name_ko, unit, source,
-  symbol, category, scale)` 23종 — 시장 지수(코스피/코스닥/나스닥/S&P500/VIX), 환율(달러·
-  엔100·위안/원, 달러인덱스), 원자재·금(WTI/브렌트/국제 금/KRX 금현물/금 괴리율), 금리·물가
-  (미 기준금리/2Y/10Y/30Y/3M/장단기금리차/미 CPI YoY, ECOS 보류 2종). 선언 순서 = 메인 페이지
-  카드 순서. `specs_by_source()`/`spec_by_id()` 헬퍼.
+  symbol, category, scale, show_card, ecos_cycle, ecos_item_code)` 25종 — 시장 지수(코스피/
+  코스닥/나스닥/S&P500/VIX), 환율(달러·엔100·위안/원, 달러인덱스), 원자재·금(WTI/브렌트/국제
+  금/KRX 금현물/금 괴리율), 금리·물가(미 기준금리/2Y/10Y/30Y/3M/장단기금리차/미 CPI YoY,
+  한국 기준금리/한국 CPI YoY). 선언 순서 = 메인 페이지 카드 순서. `specs_by_source()`/
+  `spec_by_id()` 헬퍼. `ecos_cycle`/`ecos_item_code`는 MacroSource.ECOS 전용 필드.
 - `yahoo_source.py`: `fetch_yahoo_macro(period)` — yfinance 배치 다운로드 → (indicator, date,
   value) long DataFrame. spec.scale 적용(엔/원 100엔 기준 등).
-- `fred_source.py`: `fetch_fred_macro()` — fredgraph.csv 키리스 다운로드. CPIAUCSL은 YoY %로
-  변환해 us_cpi_yoy로 저장. 시리즈별 실패는 경고 후 계속 (`.claude/PROBLEMS.md` #16).
+- `fred_source.py`: `fetch_fred_macro()` — FRED 공식 API(api.stlouisfed.org, FRED_API_KEY
+  필요)로 수집. CPIAUCSL은 YoY %로 변환해 us_cpi_yoy로 저장. 키 미설정/시리즈별 실패는 경고
+  후 건너뛰고 나머지는 계속 (`.claude/PROBLEMS.md` #16 해결).
+- `ecos_source.py`: `fetch_ecos_macro()` — 한국은행 ECOS StatisticSearch API(BOK_API_KEY
+  필요)로 한국 기준금리(kr_base_rate, 722Y001/일간)·CPI(kr_cpi_yoy, 901Y009/월간, YoY %로
+  변환)를 수집. 키 미설정/시리즈별 실패는 경고 후 건너뜀.
 - `naver_gold_source.py`: `fetch_naver_gold_macro(max_pages)` — KRX 금현물(원/g) 히스토리를
   네이버 marketindex 페이지네이션으로 수집 (`client.fetch_market_index_prices` 사용, #18).
 - `derived.py`: `compute_derived_indicators(collected)` — 금 괴리율(gold_gap_pct: KRX 원/g vs
   국제 금 USD/oz÷31.1034768×달러원 환산, %)과 미 10Y−3M 장단기 금리차. 원천 지표가 없으면
   해당 파생만 건너뜀.
+
+`collect_macro.py`는 `python-dotenv`의 `load_dotenv()`로 로컬 `.env`(BOK_API_KEY,
+FRED_API_KEY)를 읽는다. GitHub Actions에서는 `.env` 없이 리포지토리 Secrets →
+`collect-macro.yml`의 `env:`로 동일한 이름의 환경변수가 주입된다.
 
 
 # 저장 함수 및 영역

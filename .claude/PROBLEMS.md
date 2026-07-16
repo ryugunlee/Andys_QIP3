@@ -126,12 +126,12 @@ yfinance는 버전에 따라 배당수익률을 소수(0.0055) 또는 %(0.55)로
 PERCENT). 사이트에서 배당수익률이 100배 이상하게 보이면 이 포맷 지정을 조정할 것.
 네이버 경로는 `parse_number`로 %값을 그대로 파싱하므로 영향 없다.
 
-## 16. FRED(fredgraph.csv)가 일부 네트워크에서 차단됨
+## 16. (해결 완료) FRED(fredgraph.csv)가 일부 네트워크에서 차단됨
 
-미 기준금리(DFF)/미 2년물(DGS2)/미 CPI(CPIAUCSL)는 키 없는 fredgraph.csv 방식으로
-구현했지만, GitHub Codespaces에서는 fred.stlouisfed.org가 타임아웃된다(2026-07-16 확인).
-수집기는 시리즈별로 경고만 내고 계속 진행하므로 해당 지표만 결측이 된다.
-해결책은 FRED API 키 발급 후 공식 API 전환 — API_REQUESTS.txt에 기록되어 있다.
+미 기준금리(DFF)/미 2년물(DGS2)/미 CPI(CPIAUCSL)를 키 없는 fredgraph.csv 방식으로
+구현했으나 GitHub Codespaces에서는 fred.stlouisfed.org가 타임아웃됐다(2026-07-16 확인).
+FRED_API_KEY 발급 후 `fred_source.py`를 공식 API(api.stlouisfed.org)로 전환해
+해결(2026-07-16). 키 미설정 시에는 여전히 경고 후 해당 소스 전체를 건너뛴다.
 
 ## 17. 경제지표 카드의 전일 대비 표시가 %와 %p를 구분하지 않음
 

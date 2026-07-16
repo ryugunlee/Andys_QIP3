@@ -1,29 +1,22 @@
 # API 키 신청 목록
 #
-# 아래 지표들은 무료지만 API 키 발급(회원가입)이 필요해서 아직 수집하지 못한다.
-# 키를 발급받으면 이 파일에 적힌 지표를 수집할 수 있도록 연결 작업을 요청할 것.
-# (지표 자리는 collection/macro/indicators.py에 이미 잡혀 있음)
+# 아래는 과거에 API 키 발급이 필요해 수집을 보류했던 지표들이다.
+# 두 키 모두 발급 완료(2026-07-16)되어 연결 작업까지 끝났다 — 이 파일은 기록용으로만 남긴다.
 
-## 1. 한국은행 ECOS Open API  ★ 우선순위 높음
-- 신청: https://ecos.bok.or.kr/api/ → 회원가입 → 인증키 신청 (무료, 즉시 발급)
-- 필요한 지표:
-  - 한국 기준금리 (indicators.py의 kr_base_rate, 통계코드 722Y001)
-  - 한국 소비자물가지수 → 인플레이션율 YoY (kr_cpi_yoy, 통계코드 901Y009)
-- 키 없는 대안을 찾지 못함 (네이버 금융에는 기준금리 일별 시계열이 없음).
+## 1. 한국은행 ECOS Open API — 완료
+- 한국 기준금리 (indicators.py의 kr_base_rate, 통계코드 722Y001, 항목 0101000, 일간)
+- 한국 소비자물가지수 → 인플레이션율 YoY (kr_cpi_yoy, 통계코드 901Y009, 항목 0, 월간)
+- 구현: collection/macro/ecos_source.py (BOK_API_KEY 필요)
 
-## 2. FRED API (미국 세https://fred.stlouisfed.org/docs/api/api_key.html인트루이스 연준)  ★ 권장
-- 신청:  (무료, 즉시 발급)
-- 현재 상태: 키 없이 fredgraph.csv 다운로드 방식으로 구현되어 있으나,
-  일부 네트워크(현재 개발 중인 GitHub Codespaces 포함)에서 fred.stlouisfed.org가
-  응답하지 않아 아래 지표가 결측이다. 로컬 PC에서는 동작할 가능성이 높다.
-- 영향받는 지표:
-  - 미국 기준금리 (us_base_rate, 시리즈 DFF)
-  - 미 2년 국채금리 (us_2y, 시리즈 DGS2) — 야후에는 2년물 지수가 없음
-  - 미국 인플레이션 CPI YoY (us_cpi_yoy, 시리즈 CPIAUCSL)
-- 키를 받으면 공식 API(api.stlouisfed.org)로 전환해 어느 네트워크에서든 안정적으로
-  수집할 수 있다.
+## 2. FRED API (미국 세인트루이스 연준) — 완료
+- 기존 fredgraph.csv 키리스 방식이 일부 네트워크(GitHub Codespaces 포함)에서
+  fred.stlouisfed.org 차단으로 결측이 발생해(.claude/PROBLEMS.md #16),
+  공식 API(api.stlouisfed.org)로 전환했다.
+- 영향받은 지표: 미국 기준금리(us_base_rate, DFF), 미 2년 국채금리(us_2y, DGS2),
+  미국 인플레이션 CPI YoY(us_cpi_yoy, CPIAUCSL)
+- 구현: collection/macro/fred_source.py (FRED_API_KEY 필요)
 
-## 참고: 키 없이 이미 수집 중인 것들
+## 참고: 키 없이 수집 중인 것들
 - 지수(코스피/코스닥/나스닥/S&P500/VIX), 환율(달러·엔·위안/원, 달러인덱스),
   유가(WTI/브렌트), 국제 금, 미 국채금리(10Y/30Y/3M) — yfinance
 - KRX 금현물(원/g), 금 괴리율 — 네이버 시장지표
