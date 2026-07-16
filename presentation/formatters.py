@@ -90,7 +90,9 @@ def format_signed_percent(value: float | None) -> str:
     """부호를 항상 붙이는 %. 색과 함께 상승/하락을 이중으로 전달한다."""
     if value is None:
         return MISSING
-    return f"{value:+,.1f}%"
+    # 반올림 결과가 0이면 "-0.0%"처럼 음수 부호만 남는 표시를 피한다 (예: -0.03 → 0.0).
+    rounded = round(value, 1) + 0.0
+    return f"{rounded:+,.1f}%"
 
 
 def format_multiple(value: float | None) -> str:
