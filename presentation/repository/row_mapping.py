@@ -7,6 +7,7 @@ db_repository)는 데이터를 DataFrame으로 읽는 방법만 다르고 변환
 
 import pandas as pd
 
+from presentation.korean_names import display_name
 from presentation.metrics import DETAIL_VALUE_COLUMNS
 from presentation.models import SearchEntry, StockDetail, StockSummary
 
@@ -56,10 +57,15 @@ def row_value(row: pd.Series, column: str) -> object:
     return to_none(row[column]) if column in row.index else None
 
 
+def _display_name(row: pd.Series) -> str | None:
+    """한국 종목은 한글 보정명, 그 외는 원문 종목명을 반환한다."""
+    return display_name(str(row[COL_TICKER]), to_str(row_value(row, COL_NAME)))
+
+
 def summary_from_row(row: pd.Series) -> StockSummary:
     return StockSummary(
         ticker=str(row[COL_TICKER]),
-        name=to_str(row_value(row, COL_NAME)),
+        name=_display_name(row),
         market=str(row[COL_MARKET]),
         sector=to_str(row_value(row, COL_SECTOR)),
         close=to_float(row_value(row, COL_CLOSE)),
@@ -74,7 +80,7 @@ def detail_from_row(row: pd.Series) -> StockDetail:
     values = {column: row_value(row, column) for column in DETAIL_VALUE_COLUMNS}
     return StockDetail(
         ticker=str(row[COL_TICKER]),
-        name=to_str(row_value(row, COL_NAME)),
+        name=_display_name(row),
         market=str(row[COL_MARKET]),
         sector=to_str(row_value(row, COL_SECTOR)),
         industry=to_str(row_value(row, COL_INDUSTRY)),
@@ -89,7 +95,7 @@ def detail_from_row(row: pd.Series) -> StockDetail:
 def search_entry_from_row(row: pd.Series) -> SearchEntry:
     return SearchEntry(
         ticker=str(row[COL_TICKER]),
-        name=to_str(row_value(row, COL_NAME)),
+        name=_display_name(row),
         market=str(row[COL_MARKET]),
         sector=to_str(row_value(row, COL_SECTOR)),
         final_score=to_float(row_value(row, COL_FINALSCORE)),

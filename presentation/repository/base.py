@@ -7,12 +7,25 @@ DB에서 오는지 모른다. 저장 방식이 바뀌면 이 계약을 만족하
 
 from typing import Iterator, Protocol
 
-from presentation.models import GroupScore, SearchEntry, StockDetail, StockSummary
+from presentation.models import (
+    GroupScore,
+    SearchEntry,
+    StockCharts,
+    StockDetail,
+    StockSummary,
+)
 
 
 class StockRepository(Protocol):
     def good_stocks(self, limit: int | None = None) -> list[StockSummary]:
         """추천 종목(분석 영역이 선별한 goodstock)을 Finalscore 내림차순으로 반환."""
+        ...
+
+    def chart_bundle(self, ticker: str, market: str) -> StockCharts | None:
+        """종목 상세 차트용 시계열(일봉·연간 실적). 데이터가 없으면 None.
+
+        시장(market)으로 통화권 DB와 수집 소스를 결정한다.
+        """
         ...
 
     def top_by_market_cap(self, region: str, limit: int) -> list[StockSummary]:

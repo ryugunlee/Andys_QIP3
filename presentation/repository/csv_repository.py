@@ -16,7 +16,13 @@ from typing import Iterator
 import pandas as pd
 
 from presentation import config
-from presentation.models import GroupScore, SearchEntry, StockDetail, StockSummary
+from presentation.models import (
+    GroupScore,
+    SearchEntry,
+    StockCharts,
+    StockDetail,
+    StockSummary,
+)
 from presentation.repository import row_mapping as rows
 
 # Andys_QIP2.py의 과거 CSV 저장 규칙과 일치해야 하는 경로 템플릿
@@ -81,6 +87,10 @@ class CsvStockRepository:
         stocks = stocks[is_kr if region == config.REGION_KR else ~is_kr]
         stocks = stocks.sort_values(by=rows.COL_MARKET_CAP, ascending=False).head(limit)
         return [rows.summary_from_row(row) for _, row in stocks.iterrows()]
+
+    def chart_bundle(self, ticker: str, market: str) -> StockCharts | None:
+        """CSV 폴백에는 일봉·재무제표 시계열이 없다 — 차트 섹션은 표시되지 않는다."""
+        return None
 
     def iter_stock_details(self) -> Iterator[StockDetail]:
         for _, row in self._all().iterrows():

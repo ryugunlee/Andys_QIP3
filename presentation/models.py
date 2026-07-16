@@ -45,6 +45,41 @@ class StockDetail:
 
 
 @dataclass(frozen=True)
+class PricePoint:
+    """일봉 한 점 (주가 차트용)."""
+
+    date: str  # "YYYY-MM-DD"
+    close: float
+    volume: float | None = None
+    foreign_rate: float | None = None  # 외국인소진율(%) — 한국 종목만, 미국은 None
+
+
+@dataclass(frozen=True)
+class AnnualFinancials:
+    """연간 실적 한 해 (매출·영업이익·순이익 막대그래프용).
+
+    항목명은 수집 소스마다 다르므로(repository/financial_series.py) 변환을 거쳐
+    여기서는 이미 계열별로 정리된 값만 담는다. 없는 값은 None.
+    """
+
+    period: str  # 표시용 연도 라벨 "2023"
+    revenue: float | None = None
+    operating_income: float | None = None
+    net_income: float | None = None
+
+
+@dataclass(frozen=True)
+class StockCharts:
+    """종목 상세 페이지의 시계열 시각화 묶음.
+
+    데이터가 없는 계열은 빈 리스트 — 템플릿에서 해당 섹션을 숨긴다.
+    """
+
+    prices: list[PricePoint] = field(default_factory=list)
+    annual: list[AnnualFinancials] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
 class SearchEntry:
     """검색 인덱스(JSON)에 들어가는 경량 항목."""
 

@@ -17,10 +17,20 @@ import duckdb
 import pandas as pd
 
 from presentation import config
-from presentation.models import GroupScore, SearchEntry, StockDetail, StockSummary
+from presentation.models import (
+    GroupScore,
+    PricePoint,
+    SearchEntry,
+    StockCharts,
+    StockDetail,
+    StockSummary,
+)
 from presentation.repository import row_mapping as rows
+from presentation.repository.financial_series import annual_financials_from_df
 from storage.database import KR_STOCK_DB_PATH, US_STOCK_DB_PATH
+from storage.financial_repository import get_financial_statements
 from storage.group_summary_repository import get_group_summary
+from storage.price_repository import get_price_history
 from storage.report_export import get_goodstock, get_run_snapshot
 
 DEFAULT_STOCK_DB_PATHS: tuple[str, ...] = (KR_STOCK_DB_PATH, US_STOCK_DB_PATH)
@@ -44,6 +54,8 @@ class DuckDbStockRepository:
         self._warned_missing: set[Path] = set()
         self._all_stocks: pd.DataFrame | None = None
         self._good_stocks: pd.DataFrame | None = None
+        # 차트용 종목별 시계열 조회는 종목 수만큼 반복되므로 DB 연결을 캐시한다.
+        self._chart_conns: dict[Path, duckdb.DuckDBPyConnection] = {}
 
     # --- 내부: DB 접근 ---
 
@@ -104,6 +116,50 @@ class DuckDbStockRepository:
         if limit is not None:
             good = good.head(limit)
         return [rows.summary_from_row(row) for _, row in good.iterrows()]
+
+    def chart_bundle(self, ticker: str, market: str) -> StockCharts | None:
+        path = Path(
+            KR_STOCK_DB_PATH
+            if config.is_korean_market_name(market)
+            else US_STOCK_DB_PATH
+        )
+        if not path.exists():
+            return None
+        source = "naver" if config.is_korean_market_name(market) else "yahoo"
+        conn = self._chart_conn(path)
+        prices = self._price_points(get_price_history(conn, ticker))
+        annual = annual_financials_from_df(
+            get_financial_statements(conn, ticker, source), source
+        )
+        if not prices and not annual:
+            return None
+        return StockCharts(prices=prices, annual=annual)
+
+    def _chart_conn(self, path: Path) -> duckdb.DuckDBPyConnection:
+        conn = self._chart_conns.get(path)
+        if conn is None:
+            conn = duckdb.connect(str(path), read_only=True)
+            self._chart_conns[path] = conn
+        return conn
+
+    @staticmethod
+    def _price_points(prices: pd.DataFrame) -> list[PricePoint]:
+        if prices.empty:
+            return []
+        points: list[PricePoint] = []
+        for row in prices.itertuples(index=False):
+            close = rows.to_float(row.close)
+            if close is None:
+                continue
+            points.append(
+                PricePoint(
+                    date=pd.Timestamp(row.date).strftime("%Y-%m-%d"),
+                    close=close,
+                    volume=rows.to_float(getattr(row, "volume", None)),
+                    foreign_rate=rows.to_float(getattr(row, "foreign_rate", None)),
+                )
+            )
+        return points
 
     def top_by_market_cap(self, region: str, limit: int) -> list[StockSummary]:
         stocks = self._all()

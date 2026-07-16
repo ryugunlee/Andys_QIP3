@@ -15,6 +15,24 @@
   </div>
 </div>
 
+{% if chart_data and chart_data.prices %}
+<section class="page-section">
+  <div class="section-head">
+    <h2>가격</h2>
+  </div>
+  <div class="price-chart" data-chart="price" data-market="{{ detail.market }}">
+    <div class="range-tabs" role="tablist">
+      <button type="button" class="range-tab" data-range="1">1개월</button>
+      <button type="button" class="range-tab" data-range="3">3개월</button>
+      <button type="button" class="range-tab" data-range="6">6개월</button>
+      <button type="button" class="range-tab active" data-range="12">1년</button>
+      <button type="button" class="range-tab" data-range="60">5년</button>
+    </div>
+    <div class="chart-canvas"></div>
+  </div>
+</section>
+{% endif %}
+
 <section class="page-section">
   <div class="headline-scores">
     {% for score in headline_scores %}
@@ -32,6 +50,47 @@
 </section>
 {% endif %}
 
+{% if financial_table %}
+<section class="page-section">
+  <details class="reveal-block">
+    <summary>
+      <span class="reveal-title">실적 (매출·영업이익·순이익)</span>
+      <span class="reveal-hint">클릭하여 펼치기</span>
+    </summary>
+    <div class="reveal-body">
+      <div class="bar-legend">
+        <span class="legend-item"><i class="swatch rev"></i>매출</span>
+        <span class="legend-item"><i class="swatch op"></i>영업이익</span>
+        <span class="legend-item"><i class="swatch net"></i>순이익</span>
+      </div>
+      <div class="bar-chart" data-chart="annual" data-market="{{ detail.market }}"></div>
+      <div class="table-scroll">
+        <table class="fin-table">
+          <thead>
+            <tr>
+              <th>연도</th><th>매출</th><th>영업이익</th>
+              <th>순이익</th><th>영업이익률</th><th>매출성장률</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in financial_table %}
+            <tr>
+              <td>{{ row.year }}</td>
+              <td>{{ row.revenue }}</td>
+              <td>{{ row.operating_income }}</td>
+              <td>{{ row.net_income }}</td>
+              <td>{{ row.op_margin }}</td>
+              <td>{{ row.rev_growth }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+</section>
+{% endif %}
+
 <section class="page-section">
   <div class="section-head">
     <h2>상세 지표</h2>
@@ -41,4 +100,11 @@
   {% include "partials/_metric_table.html" %}
   {% endfor %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+{% if chart_data %}
+<script type="application/json" id="chart-data">{{ chart_data | tojson }}</script>
+<script src="{{ root }}/static/charts.js" defer></script>
+{% endif %}
 {% endblock %}
