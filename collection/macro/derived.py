@@ -38,6 +38,12 @@ def compute_derived_indicators(collected: pd.DataFrame) -> pd.DataFrame:
 
     frames: list[pd.DataFrame] = []
 
+    # 위안/원 = 달러/원 ÷ 달러/위안 (yfinance CNYKRW=X는 히스토리가 없어 파생 계산)
+    if {"usd_krw", "usd_cny"}.issubset(wide.columns):
+        frames.append(_to_long(wide["usd_krw"] / wide["usd_cny"], "cny_krw"))
+    else:
+        print("[macro] 경고: 위안/원 계산에 필요한 지표 부족 — 건너뜀")
+
     # 금 괴리율: (KRX 원/g − 국제 금 원/g 환산) / 환산가 × 100
     if {"gold_krx", "gold_intl", "usd_krw"}.issubset(wide.columns):
         intl_krw_per_gram = wide["gold_intl"] / TROY_OUNCE_GRAMS * wide["usd_krw"]

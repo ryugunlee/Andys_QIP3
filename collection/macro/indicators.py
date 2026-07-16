@@ -40,6 +40,7 @@ class MacroIndicatorSpec:
     symbol: str | None  # yfinance 티커 / FRED 시리즈 / 네이버 reutersCode. DERIVED는 None
     category: MacroCategory
     scale: float = 1.0  # 수집 원값에 곱하는 배율 (예: 엔/원은 100엔 기준 표시)
+    show_card: bool = True  # False면 수집만 하고 메인 페이지 카드에는 노출하지 않음
 
 
 MACRO_INDICATORS: list[MacroIndicatorSpec] = [
@@ -54,7 +55,11 @@ MACRO_INDICATORS: list[MacroIndicatorSpec] = [
     MacroIndicatorSpec(
         "jpy100_krw", "엔/원 (100엔)", "원", MacroSource.YAHOO, "JPYKRW=X", MacroCategory.FX, scale=100.0
     ),
-    MacroIndicatorSpec("cny_krw", "위안/원", "원", MacroSource.YAHOO, "CNYKRW=X", MacroCategory.FX),
+    # 위안/원: yfinance의 CNYKRW=X는 히스토리가 1일뿐이라(2026-07-16 확인) 달러원÷달러위안으로 파생 계산
+    MacroIndicatorSpec("cny_krw", "위안/원", "원", MacroSource.DERIVED, None, MacroCategory.FX),
+    MacroIndicatorSpec(
+        "usd_cny", "달러/위안", "위안", MacroSource.YAHOO, "CNY=X", MacroCategory.FX, show_card=False
+    ),
     MacroIndicatorSpec("dollar_index", "달러인덱스", "pt", MacroSource.YAHOO, "DX-Y.NYB", MacroCategory.FX),
     # --- 원자재·금 ---
     MacroIndicatorSpec("wti", "WTI 유가", "달러/배럴", MacroSource.YAHOO, "CL=F", MacroCategory.COMMODITY),
