@@ -3,13 +3,8 @@
 import pandas as pd
 from datetime import datetime
 import schedule
+import sys
 import time
-import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email import encoders
 
 import duckdb
 
@@ -45,66 +40,17 @@ def _persist_ticker_data(conn: duckdb.DuckDBPyConnection, stock: BaseStock, sour
     storage.upsert_raw_latest(conn, stock.ticker, source, raw_payload)
 
 
-def email_report(title, text, folder_path):
-    """
-    이 함수는 이메일로 보고서를 보내는 함수이다.
-    발신/수신 계정 정보는 환경변수 GMAIL_ADDRESS, GMAIL_APP_PASSWORD에서 읽는다.
-    """
-    gmail_address = os.environ.get("GMAIL_ADDRESS")
-    gmail_app_password = os.environ.get("GMAIL_APP_PASSWORD")
-    if not gmail_address or not gmail_app_password:
-        raise RuntimeError(
-            "이메일 발송에 필요한 환경변수가 설정되지 않았습니다. "
-            "GMAIL_ADDRESS(지메일 주소)와 GMAIL_APP_PASSWORD(지메일 앱 비밀번호)를 설정해 주세요."
-        )
-    msg = MIMEMultipart()
-    msg["From"] = gmail_address
-    msg["To"] = gmail_address
-    msg["Subject"] = title
-    msg.attach(MIMEText(text, "plain"))
-    filepaths = [
-        os.path.join(folder_path, filename)
-        for filename in os.listdir(folder_path)
-        if filename.endswith(".csv")
-        or filename.endswith(".txt")
-        or filename.endswith(".json")
-    ]
-
-    for filepath in filepaths:
-        try:
-            with open(filepath, "rb") as attachment:
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(attachment.read())
-
-            encoders.encode_base64(part)
-            part.add_header(
-                "Content-Disposition",
-                f"attachment; filename= {os.path.basename(filepath)}",
-            )
-            msg.attach(part)
-        except Exception as e:
-            print(f"Failed to attach file {filepath}: {e}")
-
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(gmail_address, gmail_app_password)
-        server.sendmail(msg["From"], msg["To"], msg.as_string())
-
-
 def main(stockmarket):
     """
     이 함수는 전체적인 프로그램을 실행하는 함수이다.
 
     한국 시장(KRX/KOSPI/KOSDAQ/KONEX)은 네이버증권, 그 외는 yfinance로 수집한다.
-    산출물은 통화권별 DuckDB(qipinfos/andys_qip_kr.duckdb / andys_qip_us.duckdb)에
-    저장하며, 이메일 첨부 파일만 발송 시점에 DB에서 임시로 뽑아낸다.
+    산출물은 통화권별 DuckDB(qipinfos/andys_qip_kr.duckdb / andys_qip_us.duckdb)에 저장한다.
     점수는 수집 직후 해당 통화권 DB의 시장별 최신 run 전체를 모집단으로 계산한다.
     """
     today = datetime.today().strftime("%Y-%m-%d")
     print(f"Date: {today}")
 
-    folder_name = f"{stockmarket}stockdata2"
-    folder_path = os.path.join("./qipinfos", folder_name)
     conn = storage.connect(storage.stock_db_path_for_market(stockmarket))
     source = "naver" if is_korean_market(stockmarket) else "yahoo"
 
@@ -165,15 +111,7 @@ def main(stockmarket):
     text += f"Time taken to load stock data: {elapsed_time}\n"
     text += f"good stock tickerlist: \n{goodstock['Ticker'].tolist()[:30]}\n"
 
-    title = f"{stockmarket} Stock Data Summary - {today}"
-
-    try:
-        storage.export_run_summary(conn, run_id, folder_path)
-        email_report(title, text, folder_path)
-        print("Email report has been sent.")
-    except Exception as e:
-        # 이메일 발송이 실패해도 수집/분석 결과는 이미 DuckDB에 저장되어 있다.
-        print(f"이메일 발송에 실패했습니다 (데이터는 DB에 저장됨): {e}")
+    print(text)
 
     conn.close()
 
@@ -183,13 +121,17 @@ pd.set_option("display.max_rows", None)
 pd.set_option("display.max_colwidth", None)
 
 if __name__ == "__main__":
-    stockmarket = input(
-        "Enter the stock market (e.g., NASDAQ, NYSE, KRX, AMERICAN): "
-    ).upper()
-    main(stockmarket)
-    # Schedule the main function to run every day at 9:00 AM
-    schedule.every().day.at("09:00").do(main, stockmarket)
-    # Keep the script running to execute the scheduled task
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    if len(sys.argv) > 1:
+        # 명령줄 인자로 시장을 넘기면 (GitHub Actions 등 비대화형 실행) 1회만 실행하고 종료한다.
+        main(sys.argv[1].upper())
+    else:
+        stockmarket = input(
+            "Enter the stock market (e.g., NASDAQ, NYSE, KRX, AMERICAN): "
+        ).upper()
+        main(stockmarket)
+        # Schedule the main function to run every day at 9:00 AM
+        schedule.every().day.at("09:00").do(main, stockmarket)
+        # Keep the script running to execute the scheduled task
+        while True:
+            schedule.run_pending()
+            time.sleep(1)

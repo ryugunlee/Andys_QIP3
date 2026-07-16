@@ -68,9 +68,11 @@ python Andys_QIP2.py   # 실행 후 시장명 입력 (예: NASDAQ, NYSE, KRX, AM
 ```
 
 - 결과물은 `qipinfos/andys_qip.duckdb`(DuckDB)에 저장된다. 이 폴더는 git에 커밋하지 않는다.
-  이메일 첨부용 CSV만 발송 시점에 DB에서 임시로 뽑아 같은 폴더에 잠깐 생성된다.
-- 이메일 리포트 발송에는 환경변수 `GMAIL_ADDRESS`, `GMAIL_APP_PASSWORD`가 필요하다. 인증 정보를 코드에 하드코딩하지 않는다.
 - 자동화된 테스트는 아직 없다.
+- GitHub Actions로 요일별 시장 수집(월 KOSPI/화 KOSDAQ/수 NASDAQ/목 NYSE)과 매일 매크로 수집이
+  자동 실행된다 (`.github/workflows/`). git에 커밋하지 않는 DuckDB는 저장소의 비공개(draft)
+  릴리스(`data-store`)에 자산으로 올려 실행 간 영속시킨다 — 자세한 내용은
+  `.claude/STRUCTURE.md`의 자동화 섹션 참고.
 
 ## 개발 철학
 

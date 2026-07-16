@@ -1,0 +1,41 @@
+name: Collect Macro Indicators
+
+on:
+  schedule:
+    # 매일 23:30 UTC
+    - cron: "30 23 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: collect-macro
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore macro DuckDB from data-store release
+        run: bash .github/scripts/restore_db.sh "andys_qip_macro.duckdb"
+
+      - name: Collect macro indicators
+        run: python collect_macro.py
+
+      - name: Save macro DuckDB to data-store release
+        run: bash .github/scripts/save_db.sh qipinfos/andys_qip_macro.duckdb

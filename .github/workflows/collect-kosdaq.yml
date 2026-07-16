@@ -1,0 +1,44 @@
+name: Collect KOSDAQ
+
+on:
+  schedule:
+    # 매주 화요일 22:00 UTC == 수요일 07:00 KST (KRX 종가 이후 여유를 둔 시각)
+    - cron: "0 22 * * 2"
+  workflow_dispatch: {}
+
+concurrency:
+  group: collect-kosdaq
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore DuckDB from data-store release
+        run: bash .github/scripts/restore_db.sh
+
+      - name: Collect KOSDAQ data
+        run: python Andys_QIP2.py KOSDAQ
+
+      - name: Save DuckDB to data-store release
+        run: bash .github/scripts/save_db.sh
+
+      - name: Rebuild site and commit
+        run: bash .github/scripts/build_and_commit_site.sh
