@@ -45,7 +45,8 @@ BASIC_ORIGINAL_FACTORS: list[FactorSpec] = [
 ]
 BASIC_REVERSE_FACTORS: list[FactorSpec] = []
 
-VC1_FACTOR_COLUMNS: list[str] = ["PERS", "PBRS", "PSRS", "PCRS", "EV/EBITDAS"]
+# VC1 구성 팩터 목록은 analysis/composite_scores.py의 VC1_FACTORS(접미사 없는
+# 원본 이름)로 이동했다 — 여러 점수 계열(S/SS 등)에서 재사용하기 위함.
 
 
 # --- get_detailscore_and_finalrank ---
