@@ -12,12 +12,18 @@ AnnualFinancials 리스트만 받는다. is_consensus(컨센서스 추정치)는
 
 import pandas as pd
 
+from collection.constants import NAVER_EOK_TO_WON
 from presentation.repository import row_mapping as rows
 from presentation.models import AnnualFinancials
 
 # 소스별 (statement_type, {계열키: 항목 매칭 기준})
 _NAVER_STATEMENT = "wise_income_statement"
 _YAHOO_STATEMENT = "financials"
+
+# WiseFn 원본 값은 "억원" 단위로 온다(collection/naver/naver_stock.py가 스냅샷
+# 팩터에 적용하는 것과 같은 상수) — financial_statements에는 원 단위 미변환으로
+# 저장되므로, 원(₩) 단위를 기대하는 표현 계층 포맷터에 맞춰 여기서 변환한다.
+_NAVER_UNIT_SCALE = NAVER_EOK_TO_WON
 
 # WiseFn ACCODE 접두사 (collection/constants.py와 동일한 값)
 _NAVER_PREFIXES: dict[str, str] = {
@@ -73,6 +79,8 @@ def annual_financials_from_df(df: pd.DataFrame, source: str) -> list[AnnualFinan
         value = rows.to_float(row.value)
         if value is None:
             continue
+        if source == "naver":
+            value *= _NAVER_UNIT_SCALE
         by_period.setdefault(str(row.period), {})[key] = value
 
     result: list[AnnualFinancials] = []
