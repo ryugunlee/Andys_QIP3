@@ -3,7 +3,13 @@
 CSV/txt 산출물을 대체한다. 스키마는 `database.py`에 정의되어 있다.
 """
 
-from storage.database import DEFAULT_DB_PATH, connect
+from storage.database import (
+    KR_STOCK_DB_PATH,
+    MACRO_DB_PATH,
+    US_STOCK_DB_PATH,
+    connect,
+    stock_db_path_for_market,
+)
 from storage.financial_repository import get_financial_statements, upsert_financial_statements
 from storage.macro_repository import (
     get_latest_macro_pairs,
@@ -20,7 +26,10 @@ from storage.snapshot_repository import (
 )
 
 __all__ = [
-    "DEFAULT_DB_PATH",
+    "KR_STOCK_DB_PATH",
+    "US_STOCK_DB_PATH",
+    "MACRO_DB_PATH",
+    "stock_db_path_for_market",
     "connect",
     "upsert_price_history",
     "get_price_history",

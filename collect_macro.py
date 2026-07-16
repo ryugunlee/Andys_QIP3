@@ -37,7 +37,7 @@ def main() -> None:
         print("[macro] 수집된 지표가 없습니다.")
         return
 
-    conn = storage.connect()
+    conn = storage.connect(storage.MACRO_DB_PATH)
     try:
         storage.upsert_macro_values(conn, values)
         summary = (

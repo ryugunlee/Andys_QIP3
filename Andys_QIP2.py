@@ -103,7 +103,7 @@ def main(stockmarket):
 
     folder_name = f"{stockmarket}stockdata2"
     folder_path = os.path.join("./qipinfos", folder_name)
-    conn = storage.connect()
+    conn = storage.connect(storage.stock_db_path_for_market(stockmarket))
     source = "naver" if is_korean_market(stockmarket) else "yahoo"
 
     tickers = get_tickers(stockmarket)

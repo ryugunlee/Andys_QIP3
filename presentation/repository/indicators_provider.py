@@ -17,7 +17,7 @@ import duckdb
 
 from collection.macro.indicators import MACRO_INDICATORS
 from presentation.models import EconomicIndicator
-from storage.database import DEFAULT_DB_PATH
+from storage.database import MACRO_DB_PATH
 from storage.macro_repository import get_latest_macro_pairs
 
 # 이 단위들은 값 자체가 비율이므로 전일 대비를 %p 차이로 계산한다
@@ -42,7 +42,7 @@ def _change_pct(value: float, prev: float | None, unit: str) -> float | None:
 
 
 def load_economic_indicators(
-    db_path: str | Path = DEFAULT_DB_PATH,
+    db_path: str | Path = MACRO_DB_PATH,
 ) -> list[EconomicIndicator] | None:
     path = Path(db_path)
     if not path.exists():

@@ -1,16 +1,17 @@
 """StockRepository의 DuckDB 구현체 (현재 파이프라인의 기본 데이터 소스).
 
-Andys_QIP2.py가 storage 패키지로 저장한 DuckDB에서 시장별 **최신 run**의
-스냅샷(snapshot_factors)을 읽어 통합한다. 행→모델 변환은 row_mapping에 위임한다.
+주식 DB는 통화권별로 2개(KR/US)로 나뉘어 있다 (storage/database.py 참고).
+각 DB에서 시장별 **최신 run**의 스냅샷(snapshot_factors)을 읽어 통합한다.
+행→모델 변환은 row_mapping에 위임한다.
 
 - 추천 종목은 storage.report_export.get_goodstock을 재사용해 파이프라인과
   동일한 선별 기준(run 단위 Finalscore 상위 10% 등)을 유지한다.
-- DB 파일이 없으면 경고 후 빈 데이터로 동작한다 (CSV 구현체의 결측 시장 처리와 동일한 태도).
+- DB 파일이 없으면 경고 후 그 DB만 건너뛴다 (CSV 구현체의 결측 시장 처리와 동일한 태도).
 - 사이트 생성은 읽기 전용이므로 read_only로 연결한다.
 """
 
 from pathlib import Path
-from typing import Iterator
+from typing import Callable, Iterator, Sequence
 
 import duckdb
 import pandas as pd
@@ -18,67 +19,62 @@ import pandas as pd
 from presentation import config
 from presentation.models import SearchEntry, StockDetail, StockSummary
 from presentation.repository import row_mapping as rows
-from storage.database import DEFAULT_DB_PATH
+from storage.database import KR_STOCK_DB_PATH, US_STOCK_DB_PATH
 from storage.report_export import get_goodstock, get_run_snapshot
+
+DEFAULT_STOCK_DB_PATHS: tuple[str, ...] = (KR_STOCK_DB_PATH, US_STOCK_DB_PATH)
+
+_LATEST_RUNS_QUERY = """
+    SELECT market, max(run_id) AS run_id, max(run_at) AS run_at
+    FROM collection_runs
+    GROUP BY market
+    ORDER BY max(run_at) DESC
+"""
 
 
 class DuckDbStockRepository:
-    """qipinfos/andys_qip.duckdb에서 시장별 최신 run을 읽는 StockRepository 구현체."""
+    """통화권별 주식 DB들에서 시장별 최신 run을 읽는 StockRepository 구현체."""
 
-    def __init__(self, db_path: str | Path = DEFAULT_DB_PATH):
-        self._db_path = Path(db_path)
-        self._conn: duckdb.DuckDBPyConnection | None = None
-        self._missing_warned = False
-        self._latest_runs: pd.DataFrame | None = None
+    def __init__(self, db_paths: Sequence[str | Path] = DEFAULT_STOCK_DB_PATHS):
+        self._db_paths = [Path(path) for path in db_paths]
+        self._warned_missing: set[Path] = set()
         self._all_stocks: pd.DataFrame | None = None
         self._good_stocks: pd.DataFrame | None = None
 
     # --- 내부: DB 접근 ---
 
-    def _connect(self) -> duckdb.DuckDBPyConnection | None:
-        if self._conn is None:
-            if not self._db_path.exists():
-                if not self._missing_warned:
-                    print(f"[presentation] 경고: DuckDB 없음 — {self._db_path}")
-                    self._missing_warned = True
-                return None
-            self._conn = duckdb.connect(str(self._db_path), read_only=True)
-        return self._conn
+    def _existing_paths(self) -> list[Path]:
+        paths = []
+        for path in self._db_paths:
+            if path.exists():
+                paths.append(path)
+            elif path not in self._warned_missing:
+                print(f"[presentation] 경고: DuckDB 없음 — {path}")
+                self._warned_missing.add(path)
+        return paths
 
-    def _runs(self) -> pd.DataFrame:
-        """시장별 최신 run (컬럼: market, run_id, run_at). 최신 실행 순으로 정렬."""
-        if self._latest_runs is None:
-            conn = self._connect()
-            if conn is None:
-                self._latest_runs = pd.DataFrame(columns=["market", "run_id", "run_at"])
-            else:
-                self._latest_runs = conn.execute(
-                    """
-                    SELECT market, max(run_id) AS run_id, max(run_at) AS run_at
-                    FROM collection_runs
-                    GROUP BY market
-                    ORDER BY max(run_at) DESC
-                    """
-                ).fetchdf()
-        return self._latest_runs
-
-    def _load_runs(self, loader) -> pd.DataFrame:
-        """시장별 최신 run에 loader(conn, run_id)를 적용해 통합한다.
+    def _load_runs(
+        self, loader: Callable[[duckdb.DuckDBPyConnection, int], pd.DataFrame]
+    ) -> pd.DataFrame:
+        """모든 주식 DB의 시장별 최신 run에 loader(conn, run_id)를 적용해 통합한다.
 
         같은 티커가 여러 시장 run에 있으면(예: KRX와 KOSPI를 둘 다 실행)
-        최신 run의 행이 남는다 (_runs()가 최신 순 정렬이므로 keep="first").
+        최신 run의 행이 남는다 (run_at 내림차순 순회 + keep="first").
         """
-        conn = self._connect()
-        if conn is None:
-            return pd.DataFrame(columns=[rows.COL_TICKER, rows.COL_MARKET])
         frames: list[pd.DataFrame] = []
-        for run in self._runs().itertuples():
-            frame = loader(conn, int(run.run_id))
-            if frame.empty:
-                continue
-            frame = frame.drop(columns=["run_id"], errors="ignore")
-            frame[rows.COL_MARKET] = run.market
-            frames.append(frame)
+        for path in self._existing_paths():
+            conn = duckdb.connect(str(path), read_only=True)
+            try:
+                runs = conn.execute(_LATEST_RUNS_QUERY).fetchdf()
+                for run in runs.itertuples():
+                    frame = loader(conn, int(run.run_id))
+                    if frame.empty:
+                        continue
+                    frame = frame.drop(columns=["run_id"], errors="ignore")
+                    frame[rows.COL_MARKET] = run.market
+                    frames.append(frame)
+            finally:
+                conn.close()
         if not frames:
             return pd.DataFrame(columns=[rows.COL_TICKER, rows.COL_MARKET])
         merged = pd.concat(frames, ignore_index=True)
@@ -131,7 +127,14 @@ class DuckDbStockRepository:
         return {str(market): int(count) for market, count in counts.items()}
 
     def updated_date(self) -> str | None:
-        runs = self._runs()
-        if runs.empty:
-            return None
-        return pd.Timestamp(runs["run_at"].max()).strftime("%Y-%m-%d")
+        latest: pd.Timestamp | None = None
+        for path in self._existing_paths():
+            conn = duckdb.connect(str(path), read_only=True)
+            try:
+                value = conn.execute("SELECT max(run_at) FROM collection_runs").fetchone()[0]
+            finally:
+                conn.close()
+            if value is not None:
+                stamp = pd.Timestamp(value)
+                latest = stamp if latest is None or stamp > latest else latest
+        return latest.strftime("%Y-%m-%d") if latest is not None else None

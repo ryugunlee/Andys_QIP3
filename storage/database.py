@@ -1,5 +1,12 @@
 """DuckDB 연결과 스키마 생성.
 
+DB 파일은 용도별로 3개로 나뉜다 (점수 모집단 = 통화권 단위이므로 주식 DB를 시장권별로 분리):
+- KR_STOCK_DB_PATH: 한국 시장(KRX/KOSPI/KOSDAQ/KONEX) 상장 종목
+- US_STOCK_DB_PATH: 미국 시장(NASDAQ/NYSE/AMEX 등) 상장 종목 — ADR도 미국 시장 상장이므로 여기
+- MACRO_DB_PATH: 경제지표(매크로) — 시장 구분이 없는 세계 지표
+
+세 DB 모두 같은 스키마로 생성한다 (스키마 분기로 얻는 이득보다 단순함이 크다).
+
 테이블 책임:
 - price_daily: 종목별 일봉. (ticker, date) 기준 upsert로 5년치를 계속 유지.
 - collection_runs: 수집 실행(run) 1회 = 1행. 다른 스냅샷 테이블이 run_id로 참조한다.
@@ -20,7 +27,18 @@ import os
 
 import duckdb
 
-DEFAULT_DB_PATH: str = "./qipinfos/andys_qip.duckdb"
+KR_STOCK_DB_PATH: str = "./qipinfos/andys_qip_kr.duckdb"
+US_STOCK_DB_PATH: str = "./qipinfos/andys_qip_us.duckdb"
+MACRO_DB_PATH: str = "./qipinfos/andys_qip_macro.duckdb"
+
+
+def stock_db_path_for_market(market: str) -> str:
+    """시장명으로 주식 DB 파일을 고른다. 한국 시장(K로 시작)은 KR, 그 외는 US.
+
+    collection.tickers.is_korean_market과 같은 규칙이지만, 저장 계층이
+    수집 계층에 의존하지 않도록 여기서 별도로 정의한다.
+    """
+    return KR_STOCK_DB_PATH if market and market[0] == "K" else US_STOCK_DB_PATH
 
 _SCHEMA_STATEMENTS: list[str] = [
     """
@@ -96,8 +114,12 @@ _SCHEMA_STATEMENTS: list[str] = [
 ]
 
 
-def connect(db_path: str = DEFAULT_DB_PATH) -> duckdb.DuckDBPyConnection:
-    """DuckDB 파일에 연결하고 스키마가 없으면 생성한다."""
+def connect(db_path: str) -> duckdb.DuckDBPyConnection:
+    """DuckDB 파일에 연결하고 스키마가 없으면 생성한다.
+
+    db_path는 KR_STOCK_DB_PATH / US_STOCK_DB_PATH / MACRO_DB_PATH 중 하나를
+    (또는 stock_db_path_for_market 결과를) 명시적으로 받는다.
+    """
     parent_dir = os.path.dirname(db_path)
     if parent_dir:
         os.makedirs(parent_dir, exist_ok=True)
