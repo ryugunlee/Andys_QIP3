@@ -21,6 +21,7 @@ from collection.naver.endpoints import (
     BASIC_URL_TEMPLATE,
     FINANCE_ANNUAL_URL_TEMPLATE,
     INTEGRATION_URL_TEMPLATE,
+    MARKET_INDEX_PRICES_URL,
     SISE_JSON_URL,
     WISE_COMPANY_PAGE_URL_TEMPLATE,
     WISE_FINANCIAL_STATEMENT_URL,
@@ -81,6 +82,29 @@ def fetch_price_history(code: str, start_date: str, end_date: str) -> str | None
     }
     response = _get(SISE_JSON_URL, params=params)
     return response.text if response is not None else None
+
+
+def fetch_market_index_prices(
+    category: str, reuters_code: str, page: int, page_size: int
+) -> list[dict] | None:
+    """시장지표(금현물 등) 일별 시세 한 페이지를 가져온다 (최신 날짜부터).
+
+    page_size는 60까지만 허용된다 (collection/constants.py의 NAVER_GOLD_PAGE_SIZE 참고).
+    응답이 없거나 실패하면 None.
+    """
+    params = {
+        "category": category,
+        "reutersCode": reuters_code,
+        "page": page,
+        "pageSize": page_size,
+    }
+    response = _get(MARKET_INDEX_PRICES_URL, params=params)
+    if response is None:
+        return None
+    payload = response.json()
+    if not payload.get("isSuccess"):
+        return None
+    return payload.get("result") or []
 
 
 def fetch_wise_encparam(code: str) -> str | None:

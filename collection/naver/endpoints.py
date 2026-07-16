@@ -10,3 +10,7 @@ FINANCE_ANNUAL_URL_TEMPLATE: str = "https://m.stock.naver.com/api/stock/{code}/f
 # cF3002.aspx 호출에는 이 페이지에서 추출한 encparam 토큰과 Referer 헤더가 필요하다.
 WISE_COMPANY_PAGE_URL_TEMPLATE: str = "https://navercomp.wisereport.co.kr/v2/company/c1030001.aspx?cmp_cd={code}"
 WISE_FINANCIAL_STATEMENT_URL: str = "https://navercomp.wisereport.co.kr/company/cF3002.aspx"
+
+# 시장지표(marketIndex) 일별 시세. KRX 금현물(category=metals, reutersCode=M04020000) 등
+# 종목이 아닌 시장지표의 일별 히스토리를 페이지네이션으로 제공한다 (2026-07-16 검증).
+MARKET_INDEX_PRICES_URL: str = "https://m.stock.naver.com/front-api/marketIndex/prices"

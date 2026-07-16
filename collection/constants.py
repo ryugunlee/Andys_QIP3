@@ -86,6 +86,7 @@ TROY_OUNCE_GRAMS: float = 31.1034768
 # 실패해도 다른 지표 수집은 계속한다 (collection/macro/fred_source.py).
 FRED_REQUEST_TIMEOUT_SECONDS: int = 30
 
-# 네이버 marketindex(금현물) 페이지네이션. pageSize 최대치는 검증값 기준.
-NAVER_GOLD_PAGE_SIZE: int = 100
-NAVER_GOLD_MAX_PAGES: int = 15  # 100개 × 15페이지 ≈ 거래일 5년(약 1,250일) 커버
+# 네이버 marketindex(금현물) 페이지네이션. pageSize는 60까지만 허용됨(2026-07-16 검증,
+# 100은 400 응답). 60개 × 21페이지 = 1,260행 ≈ 거래일 5년 커버.
+NAVER_GOLD_PAGE_SIZE: int = 60
+NAVER_GOLD_MAX_PAGES: int = 21
