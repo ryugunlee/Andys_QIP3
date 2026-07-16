@@ -57,6 +57,20 @@ class SearchEntry:
 
 
 @dataclass(frozen=True)
+class GroupScore:
+    """섹터/산업 자체 평가 한 행 (그룹 간 상대 점수 + 대표 지표 중앙값)."""
+
+    name: str  # 섹터/산업명
+    region: str  # KR | US
+    ticker_count: int
+    relative_score: float | None  # 그룹 간 상대 점수 (Finalscore의 퍼센타일·스탠다드 평균)
+    median_finalscore: float | None  # 그룹 내 종목 종합 점수 중앙값
+    median_per: float | None
+    median_roe: float | None  # 소수(0.15 = 15%)
+    median_ratio_3m: float | None  # %
+
+
+@dataclass(frozen=True)
 class EconomicIndicator:
     """세계 경제 지표(금값, 유가, 금리, 환율 등) 한 개.
 

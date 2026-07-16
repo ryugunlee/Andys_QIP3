@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}섹터·산업 비교 — {{ site_title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">섹터·산업 비교</h1>
+<p class="page-lead">
+  각 섹터/산업의 대표 지표(그룹 내 종목 중앙값)와, 다른 그룹 대비 상대 점수(0~100)를
+  보여줍니다. 상대 점수는 그룹별 종합 점수 중앙값을 그룹들 사이에서 다시 점수화한 값입니다.
+</p>
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>섹터</h2>
+    <span class="section-sub">상대 점수 내림차순</span>
+  </div>
+  {% with rows = sector_rows %}{% include "partials/_group_table.html" %}{% endwith %}
+</section>
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>산업</h2>
+    <span class="section-sub">상대 점수 내림차순 · 한국 종목의 산업명은 현재 업종 코드로 표시됩니다</span>
+  </div>
+  {% with rows = industry_rows %}{% include "partials/_group_table.html" %}{% endwith %}
+</section>
+{% endblock %}

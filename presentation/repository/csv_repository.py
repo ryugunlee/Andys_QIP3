@@ -16,7 +16,7 @@ from typing import Iterator
 import pandas as pd
 
 from presentation import config
-from presentation.models import SearchEntry, StockDetail, StockSummary
+from presentation.models import GroupScore, SearchEntry, StockDetail, StockSummary
 from presentation.repository import row_mapping as rows
 
 # Andys_QIP2.py의 과거 CSV 저장 규칙과 일치해야 하는 경로 템플릿
@@ -97,6 +97,10 @@ class CsvStockRepository:
             return {}
         counts = stocks[rows.COL_MARKET].value_counts()
         return {market: int(counts[market]) for market in config.MARKETS if market in counts}
+
+    def group_scores(self, group_type: str) -> list[GroupScore]:
+        """CSV 폴백에는 그룹 요약 산출물이 없다 — 섹터 페이지는 안내 카드를 보여준다."""
+        return []
 
     def updated_date(self) -> str | None:
         self._all()  # 로드된 파일 목록 확보

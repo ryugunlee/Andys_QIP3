@@ -113,6 +113,10 @@ METRIC_SPECS: list[MetricSpec] = [
     MetricSpec("MA200", "200일 이동평균선", MetricFormat.TEXT, MetricGroup.TECHNICAL),
     # --- 종합 점수 (analysis/가 계산) ---
     MetricSpec("Finalscore", "종합 점수", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("FinalscorePS", "종합 점수 (퍼센타일 계열)", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("FinalscoreSS", "종합 점수 (스탠다드 계열)", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("FinalscoreSec", "종합 점수 (섹터 내)", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("FinalscoreInd", "종합 점수 (산업 내)", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("Vscore", "가치 점수", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("Mscore", "모멘텀 점수", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("Fscore", "펀더멘털 점수", MetricFormat.SCORE, MetricGroup.SCORES),

@@ -13,6 +13,7 @@ from presentation.builders.detail_pages import build_detail_pages
 from presentation.builders.environment import create_environment
 from presentation.builders.index_page import build_index_page
 from presentation.builders.search_index import build_search_index
+from presentation.builders.sectors_page import build_sectors_page
 from presentation.builders.stocks_page import build_stocks_page
 from presentation.repository.base import StockRepository
 
@@ -27,6 +28,7 @@ def build_site(
     write_nojekyll(output_dir)
     build_index_page(repository, env, output_dir)
     build_stocks_page(repository, env, output_dir)
+    build_sectors_page(repository, env, output_dir)
     detail_count = build_detail_pages(repository, env, output_dir)
     build_search_index(repository, output_dir)
 

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>섹터·산업 비교 — Andy&#39;s QIP</title>
+  <meta name="description" content="투자자가 스스로 판단할 수 있도록 정보를 제공하는 정량 분석 리포트">
+  <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="../index.html">Andy's <span>QIP</span></a>
+    <nav class="main-nav" aria-label="주요 메뉴">
+      <a href="../index.html">홈</a>
+      <a href="../stocks/index.html">주식 분석</a>
+      <a href="../sectors/index.html" class="active" aria-current="page">섹터·산업</a>
+    </nav>
+    <div class="search-box" data-root="..">
+      <input type="search" id="stock-search" placeholder="종목명·티커 검색"
+             autocomplete="off" aria-label="종목 검색">
+      <ul id="search-results" class="search-results" hidden></ul>
+    </div>
+  </div>
+</header><main class="container">
+<h1 class="page-title">섹터·산업 비교</h1>
+<p class="page-lead">
+  각 섹터/산업의 대표 지표(그룹 내 종목 중앙값)와, 다른 그룹 대비 상대 점수(0~100)를
+  보여줍니다. 상대 점수는 그룹별 종합 점수 중앙값을 그룹들 사이에서 다시 점수화한 값입니다.
+</p>
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>섹터</h2>
+    <span class="section-sub">상대 점수 내림차순</span>
+  </div>
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>그룹</th>
+        <th>상대 점수</th>
+        <th>종합 점수 중앙값</th>
+        <th>PER 중앙값</th>
+        <th>ROE 중앙값</th>
+        <th>3개월 수익률 중앙값</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>
+          <span class="cell-name">Technology</span>
+          <div class="cell-sub">US · 7종목</div>
+        </td>
+        <td>
+          <div class="score-meter">
+            <div class="meter-track">
+              <div class="meter-fill" style="width: 75.0%"></div>
+            </div>
+            <span class="meter-value">75.0</span>
+          </div>
+        </td>
+        <td>44.3</td>
+        <td>38.28배</td>
+        <td>34.0%</td>
+        <td class="up">+21.2%</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>산업</h2>
+    <span class="section-sub">상대 점수 내림차순 · 한국 종목의 산업명은 현재 업종 코드로 표시됩니다</span>
+  </div>
+<div class="placeholder-card">
+  그룹 평가 데이터가 아직 없습니다. 수집·점수 산출 후 다시 생성해 주세요.
+</div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="container">
+    <p>본 사이트의 모든 정보는 투자 판단을 돕기 위한 자료이며, 매수·매도를 권유하지 않습니다.</p>
+    <p class="footer-meta">데이터 기준일: 2026-07-16</p>
+  </div>
+</footer>
+<script src="../static/search.js" defer></script>
+</body>
+</html>

@@ -7,7 +7,7 @@ DB에서 오는지 모른다. 저장 방식이 바뀌면 이 계약을 만족하
 
 from typing import Iterator, Protocol
 
-from presentation.models import SearchEntry, StockDetail, StockSummary
+from presentation.models import GroupScore, SearchEntry, StockDetail, StockSummary
 
 
 class StockRepository(Protocol):
@@ -29,6 +29,13 @@ class StockRepository(Protocol):
 
     def market_counts(self) -> dict[str, int]:
         """시장명 -> 분석된 종목 수. 데이터가 없는 시장은 포함하지 않는다."""
+        ...
+
+    def group_scores(self, group_type: str) -> list[GroupScore]:
+        """섹터/산업 자체 평가 목록. group_type은 "sector" 또는 "industry".
+
+        상대 점수 내림차순으로 반환한다. 데이터가 없으면 빈 리스트.
+        """
         ...
 
     def updated_date(self) -> str | None:

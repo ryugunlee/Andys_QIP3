@@ -17,12 +17,16 @@ import duckdb
 import pandas as pd
 
 from presentation import config
-from presentation.models import SearchEntry, StockDetail, StockSummary
+from presentation.models import GroupScore, SearchEntry, StockDetail, StockSummary
 from presentation.repository import row_mapping as rows
 from storage.database import KR_STOCK_DB_PATH, US_STOCK_DB_PATH
+from storage.group_summary_repository import get_group_summary
 from storage.report_export import get_goodstock, get_run_snapshot
 
 DEFAULT_STOCK_DB_PATHS: tuple[str, ...] = (KR_STOCK_DB_PATH, US_STOCK_DB_PATH)
+
+# 그룹 요약(long format)에서 상대 점수·종합 중앙값의 기준이 되는 팩터
+_GROUP_SCORE_FACTOR = "Finalscore"
 
 _LATEST_RUNS_QUERY = """
     SELECT market, max(run_id) AS run_id, max(run_at) AS run_at
@@ -125,6 +129,62 @@ class DuckDbStockRepository:
             return {}
         counts = stocks[rows.COL_MARKET].value_counts()
         return {str(market): int(count) for market, count in counts.items()}
+
+    def group_scores(self, group_type: str) -> list[GroupScore]:
+        scores: list[GroupScore] = []
+        for path in self._existing_paths():
+            region = self._region_for_path(path)
+            conn = duckdb.connect(str(path), read_only=True)
+            try:
+                summary = get_group_summary(conn, group_type)
+            finally:
+                conn.close()
+            if summary.empty:
+                continue
+            for group_value, rows_of_group in summary.groupby("group_value"):
+                by_factor = rows_of_group.set_index("factor")
+                scores.append(
+                    GroupScore(
+                        name=str(group_value),
+                        region=region,
+                        ticker_count=int(rows_of_group["ticker_count"].iloc[0]),
+                        relative_score=self._relative_score(by_factor),
+                        median_finalscore=self._median_of(by_factor, _GROUP_SCORE_FACTOR),
+                        median_per=self._median_of(by_factor, "PER"),
+                        median_roe=self._median_of(by_factor, "ROE"),
+                        median_ratio_3m=self._median_of(by_factor, "3M Ratio"),
+                    )
+                )
+        scores.sort(
+            key=lambda score: score.relative_score if score.relative_score is not None else -1,
+            reverse=True,
+        )
+        return scores
+
+    @staticmethod
+    def _region_for_path(path: Path) -> str:
+        if path == Path(KR_STOCK_DB_PATH):
+            return config.REGION_KR
+        if path == Path(US_STOCK_DB_PATH):
+            return config.REGION_US
+        return path.stem  # 기본 경로가 아니면 파일명으로 표시
+
+    @staticmethod
+    def _median_of(by_factor: pd.DataFrame, factor: str) -> float | None:
+        if factor not in by_factor.index:
+            return None
+        value = by_factor.loc[factor, "median_value"]
+        return None if pd.isna(value) else float(value)
+
+    @staticmethod
+    def _relative_score(by_factor: pd.DataFrame) -> float | None:
+        """그룹 간 상대 점수 = Finalscore 중앙값의 (퍼센타일 + 스탠다드) / 2."""
+        if _GROUP_SCORE_FACTOR not in by_factor.index:
+            return None
+        row = by_factor.loc[_GROUP_SCORE_FACTOR]
+        if pd.isna(row["score_s"]) or pd.isna(row["score_ss"]):
+            return None
+        return (float(row["score_s"]) + float(row["score_ss"])) / 2
 
     def updated_date(self) -> str | None:
         latest: pd.Timestamp | None = None

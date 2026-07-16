@@ -1,0 +1,45 @@
+{# 섹터/산업 비교 표. 컨텍스트: rows (list of dict — sectors_page 빌더가 포맷 완료) #}
+{% if rows %}
+<div class="table-wrap">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>그룹</th>
+        <th>상대 점수</th>
+        <th>종합 점수 중앙값</th>
+        <th>PER 중앙값</th>
+        <th>ROE 중앙값</th>
+        <th>3개월 수익률 중앙값</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>
+          <span class="cell-name">{{ row.name }}</span>
+          <div class="cell-sub">{{ row.region }} · {{ row.ticker_count }}종목</div>
+        </td>
+        <td>
+          <div class="score-meter">
+            <div class="meter-track">
+              <div class="meter-fill" style="width: {{ row.relative_score | meter_width }}%"></div>
+            </div>
+            <span class="meter-value">{{ row.relative_score | score }}</span>
+          </div>
+        </td>
+        <td>{{ row.median_finalscore_text }}</td>
+        <td>{{ row.median_per_text }}</td>
+        <td>{{ row.median_roe_text }}</td>
+        <td class="{{ row.median_ratio_3m | change_class }}">{{ row.median_ratio_3m_text }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="placeholder-card">
+  그룹 평가 데이터가 아직 없습니다. 수집·점수 산출 후 다시 생성해 주세요.
+</div>
+{% endif %}
