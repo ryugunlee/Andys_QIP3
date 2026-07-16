@@ -23,6 +23,30 @@ def get_run_snapshot(conn: duckdb.DuckDBPyConnection, run_id: int) -> pd.DataFra
     return df.rename(columns={"ticker": "Ticker"})
 
 
+def get_latest_snapshots(conn: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+    """이 DB(통화권)의 시장별 최신 run 스냅샷을 통합해 반환한다 (run_id 컬럼 포함).
+
+    점수 산출의 모집단이 된다. 같은 티커가 여러 시장 run에 있으면(예: KRX와
+    KOSPI를 둘 다 실행) 최신 run의 행만 남긴다.
+    """
+    runs = conn.execute(
+        """
+        SELECT market, max(run_id) AS run_id
+        FROM collection_runs
+        GROUP BY market
+        ORDER BY max(run_at) DESC
+        """
+    ).fetchdf()
+    frames = [
+        get_run_snapshot(conn, int(run.run_id)) for run in runs.itertuples()
+    ]
+    frames = [frame for frame in frames if not frame.empty]
+    if not frames:
+        return pd.DataFrame(columns=["run_id", "Ticker"])
+    merged = pd.concat(frames, ignore_index=True)
+    return merged.drop_duplicates(subset="Ticker", keep="first").reset_index(drop=True)
+
+
 def get_goodstock(conn: duckdb.DuckDBPyConnection, run_id: int) -> pd.DataFrame:
     """기존 main()의 goodstock 필터(Finalscore 상위 10% & 신뢰도>80 & Quant score>50
     & Fscore>50)를 그대로 재현한다."""

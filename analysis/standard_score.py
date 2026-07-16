@@ -22,14 +22,21 @@ MAX_SCORE: float = 100.0
 STANDARD_SUFFIX: str = "SS"
 
 
-def _numeric_values(series: pd.Series) -> pd.Series:
-    """문자열 등 숫자가 아닌 값을 결측으로 바꾼 숫자 시리즈를 반환한다."""
+def numeric_values(series: pd.Series) -> pd.Series:
+    """문자열 등 숫자가 아닌 값을 결측으로 바꾼 숫자 시리즈를 반환한다.
+
+    (score_pipeline의 그룹 모집단 벡터 연산에서도 재사용한다.)
+    """
     cleaned = series.apply(lambda x: None if isinstance(x, str) else x)
     return pd.to_numeric(cleaned, errors="coerce")
 
 
-def _transform_by_direction(values: pd.Series, direction: Direction) -> pd.Series:
-    """방향에 따라 '클수록 좋다' 공간으로 변환한다 (percentile 엔진과 동일 규칙)."""
+def transform_by_direction(values: pd.Series, direction: Direction) -> pd.Series:
+    """방향에 따라 '클수록 좋다' 공간으로 변환한다 (percentile 엔진과 동일 규칙).
+
+    LOWER_IS_BETTER_RECIPROCAL에서 0은 역수를 만들 수 없어 제외(결측)된다.
+    (score_pipeline의 그룹 모집단 벡터 연산에서도 재사용한다.)
+    """
     if direction == Direction.LOWER_IS_BETTER_RECIPROCAL:
         values = values[values != 0]
         return 1 / values
@@ -53,8 +60,8 @@ def calculating_standard(
     target = score_column if score_column is not None else f"{column}{STANDARD_SUFFIX}"
     df[target] = NEUTRAL_SCORE
 
-    values = _numeric_values(df[column]).dropna()
-    transformed = _transform_by_direction(values, direction)
+    values = numeric_values(df[column]).dropna()
+    transformed = transform_by_direction(values, direction)
     if transformed.empty:
         return df
 

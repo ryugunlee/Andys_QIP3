@@ -23,9 +23,9 @@ from collection import (
 )
 from collection.stock_base import BaseStock
 from analysis import (
-    get_sorting_and_basicscore,
-    get_detailscore_and_finalrank,
+    compute_scores,
     get_standard_data,
+    score_output_columns,
 )
 
 # 현재 KRX, KOSPI, KOSDAQ, KONEX, NASDAQ, NYSE, AMEX, S&P500, DJI 중 하나를 선택할 수 있습니다.
@@ -95,8 +95,9 @@ def main(stockmarket):
     이 함수는 전체적인 프로그램을 실행하는 함수이다.
 
     한국 시장(KRX/KOSPI/KOSDAQ/KONEX)은 네이버증권, 그 외는 yfinance로 수집한다.
-    산출물은 CSV/txt 대신 DuckDB(`storage/andys_qip.duckdb`)에 저장하며, 이메일
-    첨부 파일만 발송 시점에 DB에서 임시로 뽑아낸다.
+    산출물은 통화권별 DuckDB(qipinfos/andys_qip_kr.duckdb / andys_qip_us.duckdb)에
+    저장하며, 이메일 첨부 파일만 발송 시점에 DB에서 임시로 뽑아낸다.
+    점수는 수집 직후 해당 통화권 DB의 시장별 최신 run 전체를 모집단으로 계산한다.
     """
     today = datetime.today().strftime("%Y-%m-%d")
     print(f"Date: {today}")
@@ -123,20 +124,26 @@ def main(stockmarket):
     elapsed_time = time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
     print(f"Time taken to execute collection ({source}): {elapsed_time}")
 
-    stockdata = get_sorting_and_basicscore(stockdata)
-    stockdata = get_detailscore_and_finalrank(stockdata)
     print("Basic stock information has been downloaded.")
     print("The number of searched stock: ", len(stockdata))
-    print(
-        "The number of reliable stock: ", len(stockdata[stockdata["reliablity"] > 50])
-    )
 
     run_id = storage.record_collection_run(conn, stockmarket, source, len(stockdata), errortickers)
     curated_columns = [column for column in stockdata.columns if not column.startswith("raw_")]
     storage.save_snapshot_factors(conn, run_id, stockdata[curated_columns])
 
+    # 점수는 이 DB(통화권)의 시장별 최신 run 전체를 모집단으로 계산한다.
+    # (예: KOSPI 수집 직후라도 KOSDAQ 최신 run과 합쳐 한국 전체에서 점수를 냄)
+    population = storage.get_latest_snapshots(conn)
+    scored = compute_scores(population)
+    new_score_columns = score_output_columns(scored, population.columns)
+    storage.update_snapshot_scores(conn, scored[["run_id", "Ticker"] + new_score_columns])
+    this_run = scored[scored["run_id"] == run_id]
+    print(
+        "The number of reliable stock: ", int((this_run["reliablity"] > 50).sum())
+    )
+
     standard_data, sector_standard_data, country_standard_data = get_standard_data(
-        stockdata
+        scored
     )
     storage.save_standard_cutlines(conn, run_id, standard_data, sector_standard_data, country_standard_data)
 
@@ -145,7 +152,7 @@ def main(stockmarket):
     text = f"Date: {today}\n"
     text += f"Number of searched stocks: {len(stockdata)}\n"
     text += (
-        f"Number of reliable stocks: {len(stockdata[stockdata['reliablity'] > 50])}\n"
+        f"Number of reliable stocks: {int((this_run['reliablity'] > 50).sum())}\n"
     )
     text += f"Number of good stocks: {len(goodstock)}\n"
     text += f"Time taken to load stock data: {elapsed_time}\n"

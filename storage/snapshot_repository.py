@@ -82,6 +82,42 @@ def save_snapshot_factors(
         conn.unregister("snapshot_rows_view")
 
 
+def update_snapshot_scores(
+    conn: duckdb.DuckDBPyConnection, scores: pd.DataFrame
+) -> None:
+    """점수 파이프라인(analysis.compute_scores) 결과로 스냅샷 행들을 갱신한다.
+
+    scores는 run_id·Ticker(또는 ticker)와 점수 컬럼들을 담는다. 점수 모집단이
+    통화권 전체(여러 run)라서 INSERT가 아닌 (run_id, ticker) 기준 UPDATE를 쓴다.
+    새 점수 컬럼은 _ensure_snapshot_columns가 동적으로 추가한다.
+    """
+    if scores.empty:
+        return
+
+    rows = scores.rename(columns={"Ticker": "ticker"}).copy()
+    _ensure_snapshot_columns(conn, rows)
+
+    score_columns = [
+        column for column in rows.columns if column not in _FIXED_SNAPSHOT_COLUMNS
+    ]
+    if not score_columns:
+        return
+    set_clause = ", ".join(f'"{column}" = v."{column}"' for column in score_columns)
+
+    conn.register("score_rows_view", rows)
+    try:
+        conn.execute(
+            f"""
+            UPDATE {_SNAPSHOT_TABLE} SET {set_clause}
+            FROM score_rows_view v
+            WHERE {_SNAPSHOT_TABLE}.run_id = v.run_id
+              AND {_SNAPSHOT_TABLE}.ticker = v.ticker
+            """
+        )
+    finally:
+        conn.unregister("score_rows_view")
+
+
 def _melt_standard_table(table: pd.DataFrame, row_labels: list[str]) -> pd.DataFrame:
     table = table.drop(columns=["Top"], errors="ignore").copy()
     table.insert(0, "row_label", row_labels[: len(table)])
