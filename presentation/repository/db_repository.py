@@ -26,7 +26,10 @@ from presentation.models import (
     StockSummary,
 )
 from presentation.repository import row_mapping as rows
-from presentation.repository.financial_series import annual_financials_from_df
+from presentation.repository.financial_series import (
+    annual_financials_from_df,
+    quarterly_financials_from_df,
+)
 from storage.database import KR_STOCK_DB_PATH, US_STOCK_DB_PATH
 from storage.financial_repository import get_financial_statements
 from storage.group_summary_repository import get_group_summary
@@ -128,12 +131,12 @@ class DuckDbStockRepository:
         source = "naver" if config.is_korean_market_name(market) else "yahoo"
         conn = self._chart_conn(path)
         prices = self._price_points(get_price_history(conn, ticker))
-        annual = annual_financials_from_df(
-            get_financial_statements(conn, ticker, source), source
-        )
-        if not prices and not annual:
+        statements = get_financial_statements(conn, ticker, source)
+        annual = annual_financials_from_df(statements, source)
+        quarterly = quarterly_financials_from_df(statements, source)
+        if not prices and not annual and not quarterly:
             return None
-        return StockCharts(prices=prices, annual=annual)
+        return StockCharts(prices=prices, annual=annual, quarterly=quarterly)
 
     def _chart_conn(self, path: Path) -> duckdb.DuckDBPyConnection:
         conn = self._chart_conns.get(path)

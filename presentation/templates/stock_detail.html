@@ -58,13 +58,21 @@
       <span class="reveal-hint">클릭하여 펼치기</span>
     </summary>
     <div class="reveal-body">
-      <div class="bar-legend">
-        <span class="legend-item"><i class="swatch rev"></i>매출</span>
-        <span class="legend-item"><i class="swatch op"></i>영업이익</span>
-        <span class="legend-item"><i class="swatch net"></i>순이익</span>
+      <div class="bar-chart-toolbar">
+        <div class="bar-legend">
+          <span class="legend-item"><i class="swatch rev"></i>매출</span>
+          <span class="legend-item"><i class="swatch op"></i>영업이익</span>
+          <span class="legend-item"><i class="swatch net"></i>순이익</span>
+        </div>
+        {% if financial_table_quarterly %}
+        <div class="range-tabs bar-period-tabs" role="tablist">
+          <button type="button" class="range-tab active" data-period="annual">연간</button>
+          <button type="button" class="range-tab" data-period="quarterly">분기</button>
+        </div>
+        {% endif %}
       </div>
-      <div class="bar-chart" data-chart="annual" data-market="{{ detail.market }}"></div>
-      <div class="table-scroll">
+      <div class="bar-chart" data-chart="financials" data-market="{{ detail.market }}"></div>
+      <div class="table-scroll fin-table-panel" data-period="annual">
         <table class="fin-table">
           <thead>
             <tr>
@@ -86,6 +94,30 @@
           </tbody>
         </table>
       </div>
+      {% if financial_table_quarterly %}
+      <div class="table-scroll fin-table-panel" data-period="quarterly" hidden>
+        <table class="fin-table">
+          <thead>
+            <tr>
+              <th>분기</th><th>매출</th><th>영업이익</th>
+              <th>순이익</th><th>영업이익률</th><th>매출성장률(QoQ)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in financial_table_quarterly %}
+            <tr>
+              <td>{{ row.year }}</td>
+              <td>{{ row.revenue }}</td>
+              <td>{{ row.operating_income }}</td>
+              <td>{{ row.net_income }}</td>
+              <td>{{ row.op_margin }}</td>
+              <td>{{ row.rev_growth }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
     </div>
   </details>
 </section>

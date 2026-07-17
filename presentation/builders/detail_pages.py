@@ -23,7 +23,7 @@ from presentation.metrics import (
     MetricGroup,
     specs_by_group,
 )
-from presentation.models import StockCharts, StockDetail
+from presentation.models import AnnualFinancials, StockCharts, StockDetail
 from presentation.repository.base import StockRepository
 
 # 티커는 원래 [A-Za-z0-9.\-]만 오지만(get_tickers 필터), 파일명 안전을 위해 방어한다.
@@ -82,35 +82,32 @@ def _chart_data(charts: StockCharts | None) -> dict[str, object] | None:
             "c": [point.close for point in prices],
             "v": [point.volume for point in prices],
         }
-    annual_block = [
-        {
-            "p": year.period,
-            "r": year.revenue,
-            "o": year.operating_income,
-            "n": year.net_income,
-        }
-        for year in charts.annual
+    annual_block = _financial_series_block(charts.annual)
+    quarterly_block = _financial_series_block(charts.quarterly)
+    if price_block is None and not annual_block and not quarterly_block:
+        return None
+    return {"prices": price_block, "annual": annual_block, "quarterly": quarterly_block}
+
+
+def _financial_series_block(series: list[AnnualFinancials]) -> list[dict[str, object]]:
+    return [
+        {"p": point.period, "r": point.revenue, "o": point.operating_income, "n": point.net_income}
+        for point in series
     ]
-    if price_block is None and not annual_block:
-        return None
-    return {"prices": price_block, "annual": annual_block}
 
 
-def _financial_table(
-    charts: StockCharts | None, market: str
-) -> list[dict[str, str]] | None:
-    """연간 실적을 표로 보여줄 행 목록(포맷 완료 문자열)으로 만든다.
+def _financial_rows(series: list[AnnualFinancials], market: str) -> list[dict[str, str]]:
+    """실적 시계열(연간 또는 분기)을 표로 보여줄 행 목록(포맷 완료 문자열)으로 만든다.
 
-    막대그래프로 흐름을 보고, 정확한 수치·비율(영업이익률·매출성장률)은 표로 본다.
-    최근 연도가 위로 오도록 내림차순 정렬한다.
+    막대그래프로 흐름을 보고, 정확한 수치·비율(영업이익률·성장률)은 표로 본다.
+    최근 기간이 위로 오도록 내림차순 정렬한다. 성장률은 입력 순서상 직전 기간
+    대비이므로, 연간이면 YoY, 분기면 QoQ가 된다.
     """
-    if charts is None or not charts.annual:
-        return None
     rows_out: list[dict[str, str]] = []
     previous_revenue: float | None = None
-    for year in charts.annual:  # 연도 오름차순 (성장률 계산에 직전 해 필요)
-        revenue = year.revenue
-        op_income = year.operating_income
+    for point in series:  # 기간 오름차순 입력 (성장률 계산에 직전 기간 필요)
+        revenue = point.revenue
+        op_income = point.operating_income
         margin = (
             op_income / revenue * 100
             if op_income is not None and revenue not in (None, 0)
@@ -123,10 +120,10 @@ def _financial_table(
         )
         rows_out.append(
             {
-                "year": year.period,
+                "year": point.period,
                 "revenue": format_money(revenue, market),
                 "operating_income": format_money(op_income, market),
-                "net_income": format_money(year.net_income, market),
+                "net_income": format_money(point.net_income, market),
                 "op_margin": format_percent(margin) if margin is not None else MISSING,
                 "rev_growth": format_signed_percent(growth)
                 if growth is not None
@@ -135,8 +132,22 @@ def _financial_table(
         )
         if revenue is not None:
             previous_revenue = revenue
-    rows_out.reverse()  # 최근 연도부터 표시
+    rows_out.reverse()  # 최근 기간부터 표시
     return rows_out
+
+
+def _financial_table(charts: StockCharts | None, market: str) -> list[dict[str, str]] | None:
+    if charts is None or not charts.annual:
+        return None
+    return _financial_rows(charts.annual, market)
+
+
+def _financial_table_quarterly(
+    charts: StockCharts | None, market: str
+) -> list[dict[str, str]] | None:
+    if charts is None or not charts.quarterly:
+        return None
+    return _financial_rows(charts.quarterly, market)
 
 
 def build_detail_pages(
@@ -161,6 +172,7 @@ def build_detail_pages(
             metric_groups=_metric_groups(detail),
             chart_data=_chart_data(charts),
             financial_table=_financial_table(charts, detail.market),
+            financial_table_quarterly=_financial_table_quarterly(charts, detail.market),
         )
         (stocks_dir / ticker_filename(detail.ticker)).write_text(
             html, encoding="utf-8"

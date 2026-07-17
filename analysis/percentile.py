@@ -41,3 +41,15 @@ def calculating_percentile(
         )
     df.update(df_non_na)
     return df
+
+
+def attach_presence_flag(df: pd.DataFrame, column: str) -> pd.DataFrame:
+    """방향성 점수 없이 `{column}TF`(데이터 존재 0/1)만 추가한다.
+
+    다른 점수 계산의 입력으로 쓰이지 않아 방향(direction)을 정할 필요가 없는
+    팩터(예: 신뢰도 판단에만 쓰이는 팩터)에 calculating_percentile 대신 쓴다.
+    """
+    df = df.copy()
+    cleaned = df[column].apply(lambda x: None if isinstance(x, str) else x)
+    df[f"{column}TF"] = cleaned.apply(lambda x: 0 if x is None or pd.isna(x) else 1)
+    return df

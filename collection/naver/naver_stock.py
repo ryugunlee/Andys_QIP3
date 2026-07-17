@@ -28,6 +28,7 @@ from collection.constants import (
     MIN_HISTORY_TRADING_DAYS,
     NAVER_EOK_TO_WON,
     NAVER_ROE_PERCENT_TO_FRACTION,
+    NAVER_WISE_FRQ_QUARTER,
     NAVER_WISE_ACCODE_CAPEX,
     NAVER_WISE_ACCODE_CASH_AND_EQUIVALENTS,
     NAVER_WISE_ACCODE_CURRENT_ASSETS,
@@ -67,6 +68,10 @@ _ANNUAL_STATEMENT_TYPE = "finance_annual"
 _WISE_INCOME_STATEMENT_TYPE = "wise_income_statement"
 _WISE_BALANCE_SHEET_TYPE = "wise_balance_sheet"
 _WISE_CASH_FLOW_TYPE = "wise_cash_flow"
+# 분기(frq=1) 통계는 연간과 같은 계정과목·응답 형태를 쓰므로 접미사만 붙여 구분한다.
+_WISE_INCOME_STATEMENT_Q_TYPE = "wise_income_statement_q"
+_WISE_BALANCE_SHEET_Q_TYPE = "wise_balance_sheet_q"
+_WISE_CASH_FLOW_Q_TYPE = "wise_cash_flow_q"
 
 
 class NaverStock(BaseStock):
@@ -85,6 +90,10 @@ class NaverStock(BaseStock):
         self.wise_income_statement: pd.DataFrame = pd.DataFrame()
         self.wise_balance_sheet: pd.DataFrame = pd.DataFrame()
         self.wise_cash_flow: pd.DataFrame = pd.DataFrame()
+        # 분기 실적(연간과 별도 조회, 재무 팩터 계산에는 쓰지 않고 실적 시계열 표시용)
+        self.wise_income_statement_q: pd.DataFrame = pd.DataFrame()
+        self.wise_balance_sheet_q: pd.DataFrame = pd.DataFrame()
+        self.wise_cash_flow_q: pd.DataFrame = pd.DataFrame()
 
     def fetch(self) -> None:
         """네이버증권에서 raw 데이터를 가져온다. 필수 데이터가 없으면 is_valid=False로 남긴다."""
@@ -122,10 +131,12 @@ class NaverStock(BaseStock):
         self.is_valid = True
 
     def _fetch_wise_statements(self) -> None:
-        """WiseFn 손익계산서/재무상태표/현금흐름표를 가져온다.
+        """WiseFn 손익계산서/재무상태표/현금흐름표를 연간·분기 두 주기로 가져온다.
 
         encparam 토큰 발급에 실패해도(예: 페이지 구조 변경, 일시적 오류) 종목 자체는
-        유효하게 남긴다 — 이 데이터로만 채워지는 팩터들만 결측이 된다."""
+        유효하게 남긴다 — 이 데이터로만 채워지는 팩터들만 결측이 된다. 분기(frq=1)
+        조회 실패도 같은 원칙으로 종목을 무효화하지 않고 분기 시계열만 비워둔다
+        (재무 팩터 계산은 연간 데이터만 쓰므로 영향 없음)."""
         encparam = client.fetch_wise_encparam(self.ticker)
         if encparam is None:
             return
@@ -152,6 +163,36 @@ class NaverStock(BaseStock):
         if cash_flow_payload is not None:
             self.wise_cash_flow = parse_wise_financial_statement(
                 cash_flow_payload, _WISE_CASH_FLOW_TYPE
+            )
+
+        self._fetch_wise_quarterly_statements(encparam)
+
+    def _fetch_wise_quarterly_statements(self, encparam: str) -> None:
+        """분기(frq=1) 손익계산서/재무상태표/현금흐름표 — 실적 시계열(막대그래프) 전용.
+
+        재무 팩터(curated factors)는 여전히 연간 데이터만 사용한다."""
+        income_payload_q = client.fetch_wise_financial_statement(
+            self.ticker, encparam, NAVER_WISE_RPT_INCOME_STATEMENT, frq=NAVER_WISE_FRQ_QUARTER
+        )
+        if income_payload_q is not None:
+            self.wise_income_statement_q = parse_wise_financial_statement(
+                income_payload_q, _WISE_INCOME_STATEMENT_Q_TYPE
+            )
+
+        balance_payload_q = client.fetch_wise_financial_statement(
+            self.ticker, encparam, NAVER_WISE_RPT_BALANCE_SHEET, frq=NAVER_WISE_FRQ_QUARTER
+        )
+        if balance_payload_q is not None:
+            self.wise_balance_sheet_q = parse_wise_financial_statement(
+                balance_payload_q, _WISE_BALANCE_SHEET_Q_TYPE
+            )
+
+        cash_flow_payload_q = client.fetch_wise_financial_statement(
+            self.ticker, encparam, NAVER_WISE_RPT_CASH_FLOW, frq=NAVER_WISE_FRQ_QUARTER
+        )
+        if cash_flow_payload_q is not None:
+            self.wise_cash_flow_q = parse_wise_financial_statement(
+                cash_flow_payload_q, _WISE_CASH_FLOW_Q_TYPE
             )
 
     def compute_curated_factors(self) -> None:
@@ -379,6 +420,9 @@ class NaverStock(BaseStock):
             self.wise_income_statement,
             self.wise_balance_sheet,
             self.wise_cash_flow,
+            self.wise_income_statement_q,
+            self.wise_balance_sheet_q,
+            self.wise_cash_flow_q,
         ]
         non_empty = [self._with_identity_columns(frame) for frame in frames if not frame.empty]
         if not non_empty:

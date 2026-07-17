@@ -51,7 +51,7 @@ def get_goodstock(conn: duckdb.DuckDBPyConnection, run_id: int) -> pd.DataFrame:
     finalscore_threshold = df["Finalscore"].quantile(GOODSTOCK_FINALSCORE_QUANTILE)
     goodstock = df[
         (df["Finalscore"] > finalscore_threshold)
-        & (df["reliablity"] > GOODSTOCK_RELIABILITY_THRESHOLD)
+        & (df["reliability"] > GOODSTOCK_RELIABILITY_THRESHOLD)
         & (df["Quant score"] > GOODSTOCK_QUANT_SCORE_THRESHOLD)
         & (df["Fscore"] > GOODSTOCK_FSCORE_THRESHOLD)
     ]

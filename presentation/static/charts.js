@@ -348,19 +348,51 @@
     var priceRoot = document.querySelector('.price-chart[data-chart="price"]');
     if (priceRoot && data.prices) renderPrice(priceRoot, data);
 
-    var barRoot = document.querySelector('.bar-chart[data-chart="annual"]');
+    var barRoot = document.querySelector('.bar-chart[data-chart="financials"]');
     if (barRoot && data.annual && data.annual.length) {
+      var currentSeries = data.annual;
+      var periodTabs = document.querySelector(".bar-period-tabs");
+      var tablePanels = Array.prototype.slice.call(
+        document.querySelectorAll(".fin-table-panel")
+      );
+
+      function showPeriod(period) {
+        currentSeries =
+          period === "quarterly" && data.quarterly && data.quarterly.length
+            ? data.quarterly
+            : data.annual;
+        renderBars(barRoot, currentSeries);
+        tablePanels.forEach(function (panel) {
+          panel.hidden = panel.dataset.period !== period;
+        });
+      }
+
+      if (periodTabs) {
+        var periodButtons = Array.prototype.slice.call(
+          periodTabs.querySelectorAll(".range-tab")
+        );
+        periodButtons.forEach(function (tab) {
+          tab.addEventListener("click", function () {
+            periodButtons.forEach(function (t) {
+              t.classList.remove("active");
+            });
+            tab.classList.add("active");
+            showPeriod(tab.dataset.period);
+          });
+        });
+      }
+
       var details = barRoot.closest("details");
       if (details) {
         var rendered = false;
         details.addEventListener("toggle", function () {
           if (details.open && !rendered) {
             rendered = true;
-            renderBars(barRoot, data.annual);
+            renderBars(barRoot, currentSeries);
           }
         });
       } else {
-        renderBars(barRoot, data.annual);
+        renderBars(barRoot, currentSeries);
       }
     }
   }

@@ -1,5 +1,5 @@
 """2차 스코어링: 세부 팩터 percentile, Vscore/Mscore/Fscore/Finalscore,
-품질/리스크 지표(EQC, Value risk, Growth risk, Quant score, reliablity)를 계산한다.
+품질/리스크 지표(EQC, Value risk, Growth risk, Quant score, reliability)를 계산한다.
 
 종합점수 수식은 composite_scores.py(단일 소스)에 위임한다 — 이 파일은
 퍼센타일 계열(suffix "S")로 호출하는 기존 경로다. 리스크 플래그와 신뢰도는
@@ -22,9 +22,10 @@ from analysis.factors import (
     DETAIL_ORIGINAL_FACTORS,
     DETAIL_REVERSE_FACTORS,
     DETAIL_SHARE_FACTORS,
+    PRESENCE_ONLY_FACTORS,
     RELIABILITY_TF_COLUMNS,
 )
-from analysis.percentile import calculating_percentile
+from analysis.percentile import attach_presence_flag, calculating_percentile
 
 _PERCENTILE_SUFFIX = "S"
 
@@ -41,20 +42,20 @@ def get_detailscore_and_finalrank(stockinfo: pd.DataFrame) -> pd.DataFrame:
     stockinfo["Value risk"] = compute_value_risk(stockinfo)
     stockinfo["Growth risk"] = compute_growth_risk(stockinfo)
     stockinfo["Quant score"] = compute_quant_score(stockinfo, _PERCENTILE_SUFFIX)
-    stockinfo["reliablity"] = compute_reliability(stockinfo)
+    stockinfo["reliability"] = compute_reliability(stockinfo)
 
     return stockinfo
 
 
 def _apply_detail_percentiles(stockinfo: pd.DataFrame) -> pd.DataFrame:
-    # 이 순서(share -> original -> reverse)가 "Buyback to Income"이 두 리스트에
-    # 모두 들어있을 때 어느 계산이 최종값으로 남는지를 결정하므로 그대로 유지한다.
     for factor in DETAIL_SHARE_FACTORS:
         stockinfo = calculating_percentile(stockinfo, factor.name, factor.direction)
     for factor in DETAIL_ORIGINAL_FACTORS:
         stockinfo = calculating_percentile(stockinfo, factor.name, factor.direction)
     for factor in DETAIL_REVERSE_FACTORS:
         stockinfo = calculating_percentile(stockinfo, factor.name, factor.direction)
+    for name in PRESENCE_ONLY_FACTORS:
+        stockinfo = attach_presence_flag(stockinfo, name)
     return stockinfo
 
 

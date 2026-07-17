@@ -117,15 +117,21 @@ def fetch_wise_encparam(code: str) -> str | None:
     return match.group(1) if match else None
 
 
-def fetch_wise_financial_statement(code: str, encparam: str, rpt: int) -> dict | None:
+def fetch_wise_financial_statement(
+    code: str, encparam: str, rpt: int, frq: int = NAVER_WISE_FRQ_ANNUAL
+) -> dict | None:
     """WiseFn 손익계산서(rpt=0)/재무상태표(rpt=1)/현금흐름표(rpt=2) JSON을 가져온다.
-    Referer 헤더가 없으면 빈 응답을 주므로 반드시 함께 보낸다."""
+    frq=0(연간, 기본)/1(분기). Referer 헤더가 없으면 빈 응답을 주므로 반드시 함께 보낸다.
+
+    frq와 무관하게 응답 형태(YYMM 6개 = 실적 5개 기간 + 컨센서스 1개 기간)는 동일함을
+    확인했다(2026-07-17, 005930으로 검증) — parsers.parse_wise_financial_statement가
+    그대로 재사용된다."""
     params = {
         "cmp_cd": code,
-        "frq": NAVER_WISE_FRQ_ANNUAL,
+        "frq": frq,
         "rpt": rpt,
         "finGubun": "MAIN",
-        "frqTyp": NAVER_WISE_FRQ_ANNUAL,
+        "frqTyp": frq,
         "cn": "",
         "encparam": encparam,
     }

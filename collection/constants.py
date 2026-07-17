@@ -55,6 +55,7 @@ NAVER_WISE_RPT_INCOME_STATEMENT: int = 0
 NAVER_WISE_RPT_BALANCE_SHEET: int = 1
 NAVER_WISE_RPT_CASH_FLOW: int = 2
 NAVER_WISE_FRQ_ANNUAL: int = 0  # frq/frqTyp 공통: 0=연간, 1=분기
+NAVER_WISE_FRQ_QUARTER: int = 1
 
 # WiseFn 계정과목 코드(ACCODE). 삼성전자(005930)와 SK하이닉스(000660) 두 종목으로
 # 교차 검증해 종목·기간과 무관하게 고정된 값임을 확인했다 (표준 IFRS 계정 코드 체계로 보임).

@@ -40,7 +40,6 @@ BASIC_ORIGINAL_FACTORS: list[FactorSpec] = [
         "Debt to Equity",
         "EPS",
         "Net Income",
-        "Dividend to Income",
     ]
 ]
 BASIC_REVERSE_FACTORS: list[FactorSpec] = []
@@ -50,12 +49,9 @@ BASIC_REVERSE_FACTORS: list[FactorSpec] = []
 
 
 # --- get_detailscore_and_finalrank ---
-# "Buyback to Income"가 아래 두 리스트에 모두 들어있는 것은 원본 코드의 의도치 않은
-# 중복으로 보이지만, 두 번째 계산(originalfactor, s=0)이 값을 덮어써서 현재 결과값이
-# 정해지는 방식이라 그대로 보존한다. 자세한 내용은 .claude/PROBLEMS.md 참고.
 DETAIL_SHARE_FACTORS: list[FactorSpec] = [
     FactorSpec(name, Direction.LOWER_IS_BETTER_RECIPROCAL)
-    for name in ["PFCR", "Buyback to Income", "Dividend to Income"]
+    for name in ["PFCR", "Dividend to Income"]
 ]
 DETAIL_ORIGINAL_FACTORS: list[FactorSpec] = [
     FactorSpec(name, Direction.HIGHER_IS_BETTER)
@@ -80,13 +76,17 @@ DETAIL_ORIGINAL_FACTORS: list[FactorSpec] = [
         "ROC",
         "GPTOA",
         "Asset Turnover",
-        "Buyback to Income",
         "Depreciation Capex Ratio",
     ]
 ]
 DETAIL_REVERSE_FACTORS: list[FactorSpec] = [
     FactorSpec(name, Direction.LOWER_IS_BETTER_NEGATED) for name in ["Debt Growth", "ARP"]
 ]
+
+# "Buyback to Income"는 다른 어떤 종합점수(Vscore/Mscore/Fscore/EQC/Quant score)의
+# 입력으로도 쓰이지 않는다 — 화면에는 원문 값만 표시된다(presentation/metrics.py).
+# 따라서 점수(S/SS)는 산출하지 않고, 데이터 존재 여부(TF, 신뢰도 계산용)만 별도로 붙인다.
+PRESENCE_ONLY_FACTORS: list[str] = ["Buyback to Income"]
 
 RELIABILITY_TF_COLUMNS: list[str] = [
     "PER",
@@ -165,6 +165,6 @@ STANDARD_DATA_FACTORS: list[FactorSpec] = [
     FactorSpec("Vscore", Direction.HIGHER_IS_BETTER),
     FactorSpec("Mscore", Direction.HIGHER_IS_BETTER),
     FactorSpec("EQC", Direction.HIGHER_IS_BETTER),
-    FactorSpec("reliablity", Direction.HIGHER_IS_BETTER),
+    FactorSpec("reliability", Direction.HIGHER_IS_BETTER),
     FactorSpec("Quant score", Direction.HIGHER_IS_BETTER),
 ]

@@ -56,13 +56,13 @@ class PricePoint:
 
 @dataclass(frozen=True)
 class AnnualFinancials:
-    """연간 실적 한 해 (매출·영업이익·순이익 막대그래프용).
+    """실적 한 기간 (매출·영업이익·순이익 막대그래프용). 연간·분기 겸용.
 
     항목명은 수집 소스마다 다르므로(repository/financial_series.py) 변환을 거쳐
     여기서는 이미 계열별로 정리된 값만 담는다. 없는 값은 None.
     """
 
-    period: str  # 표시용 연도 라벨 "2023"
+    period: str  # 표시용 기간 라벨. 연간 "2023", 분기 "2025 Q3"
     revenue: float | None = None
     operating_income: float | None = None
     net_income: float | None = None
@@ -73,10 +73,13 @@ class StockCharts:
     """종목 상세 페이지의 시계열 시각화 묶음.
 
     데이터가 없는 계열은 빈 리스트 — 템플릿에서 해당 섹션을 숨긴다.
+    quarterly는 현재 네이버(WiseFn 분기) 수집만 채워진다 — 미국 종목은 항상 빈 리스트
+    (.claude/PROBLEMS.md #10 참고).
     """
 
     prices: list[PricePoint] = field(default_factory=list)
     annual: list[AnnualFinancials] = field(default_factory=list)
+    quarterly: list[AnnualFinancials] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

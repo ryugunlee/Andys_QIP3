@@ -10,7 +10,7 @@
 컬럼 네이밍 규칙 (STRUCTURE.md에도 기록):
 - 팩터:   {이름}S / {이름}SS / {이름}SecS / {이름}SecSS / {이름}IndS / {이름}IndSS
 - 종합:   {이름}{모집단}PS / {이름}{모집단}SS / {이름}{모집단}   (모집단 = ""|Sec|Ind)
-- 리스크/신뢰도(Value risk·Growth risk·reliablity)는 계열 무관 단일 컬럼
+- 리스크/신뢰도(Value risk·Growth risk·reliability)는 계열 무관 단일 컬럼
 
 새 모집단(예: 국가별)이 필요하면 GROUP_POPULATIONS에 (태그, 그룹컬럼) 한 줄을 추가한다.
 """
@@ -57,8 +57,8 @@ MIN_GROUP_POPULATION: int = 5
 # 부분 모집단 정의: (컬럼 접미사 태그, 그룹 기준 컬럼). 확장 지점.
 GROUP_POPULATIONS: list[tuple[str, str]] = [("Sec", "Sector"), ("Ind", "Industry")]
 
-# 점수화 대상 팩터 (기존 percentile 적용 순서 그대로 — "Buyback to Income" 중복 포함,
-# 뒤 계산이 덮어쓰는 기존 동작을 두 엔진 모두 동일하게 따른다)
+# 점수화 대상 팩터 ("Buyback to Income"은 다른 종합점수의 입력이 아니라 여기서
+# 제외한다 — analysis/factors.py의 PRESENCE_ONLY_FACTORS 참고)
 SCORED_FACTORS: list[FactorSpec] = (
     BASIC_SHARE_FACTORS
     + BASIC_ORIGINAL_FACTORS

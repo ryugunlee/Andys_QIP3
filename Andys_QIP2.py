@@ -86,7 +86,7 @@ def main(stockmarket):
     storage.update_snapshot_scores(conn, scored[["run_id", "Ticker"] + new_score_columns])
     this_run = scored[scored["run_id"] == run_id]
     print(
-        "The number of reliable stock: ", int((this_run["reliablity"] > 50).sum())
+        "The number of reliable stock: ", int((this_run["reliability"] > 50).sum())
     )
 
     standard_data, sector_standard_data, country_standard_data = get_standard_data(
@@ -105,7 +105,7 @@ def main(stockmarket):
     text = f"Date: {today}\n"
     text += f"Number of searched stocks: {len(stockdata)}\n"
     text += (
-        f"Number of reliable stocks: {int((this_run['reliablity'] > 50).sum())}\n"
+        f"Number of reliable stocks: {int((this_run['reliability'] > 50).sum())}\n"
     )
     text += f"Number of good stocks: {len(goodstock)}\n"
     text += f"Time taken to load stock data: {elapsed_time}\n"

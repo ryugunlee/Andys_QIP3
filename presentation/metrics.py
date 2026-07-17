@@ -123,7 +123,7 @@ METRIC_SPECS: list[MetricSpec] = [
     MetricSpec("EQC", "이익 품질 점수", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("Quant score", "퀀트 점수", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("VC1", "기본 가치 점수 (VC1)", MetricFormat.SCORE, MetricGroup.SCORES),
-    MetricSpec("reliablity", "데이터 신뢰도", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("reliability", "데이터 신뢰도", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("Value risk", "가치 리스크", MetricFormat.TEXT, MetricGroup.SCORES),
     MetricSpec("Growth risk", "성장 리스크", MetricFormat.TEXT, MetricGroup.SCORES),
 ]

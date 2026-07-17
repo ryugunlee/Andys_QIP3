@@ -21,7 +21,7 @@ COL_MARKET_CAP = "Market Cap"
 COL_CLOSE = "Close"
 COL_RATIO_3M = "3M Ratio"
 COL_FINALSCORE = "Finalscore"
-COL_RELIABILITY = "reliablity"  # 분석 영역의 원문 표기(오탈자 포함)를 그대로 따른다
+COL_RELIABILITY = "reliability"
 
 # 시장 통합 시 구현체가 덧붙이는 컬럼 (산출물 원본에는 없음)
 COL_MARKET = "Market"
