@@ -6,8 +6,16 @@
   <title>Andy&#39;s QIP — 시장 한눈에 보기</title>
   <meta name="description" content="투자자가 스스로 판단할 수 있도록 정보를 제공하는 정량 분석 리포트">
   <link rel="stylesheet" href="./static/style.css">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./static/icons/icon-192.png" type="image/png">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="./static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="QIP">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
-<body>
+<body data-root=".">
 <header class="site-header">
   <div class="container header-inner">
     <a class="logo" href="./index.html">Andy's <span>QIP</span></a>
@@ -21,7 +29,20 @@
              autocomplete="off" aria-label="종목 검색">
       <ul id="search-results" class="search-results" hidden></ul>
     </div>
+<div class="install-cta" hidden>
+  <button type="button" class="install-button" aria-expanded="false" aria-controls="install-guide">
+    앱 설치
+  </button>
+  <div class="install-guide" id="install-guide" role="dialog" aria-label="앱 설치 안내" hidden>
+    <p class="install-guide-title">홈 화면에 추가하기</p>
+    <ol class="install-guide-steps">
+      <li>아래쪽 <strong>공유</strong> 버튼을 누릅니다.</li>
+      <li>목록에서 <strong>홈 화면에 추가</strong>를 고릅니다.</li>
+      <li>오른쪽 위 <strong>추가</strong>를 누르면 끝납니다.</li>
+    </ol>
+    <button type="button" class="install-guide-close">닫기</button>
   </div>
+</div>  </div>
 </header><main class="container">
 <h1 class="page-title">시장 한눈에 보기</h1>
 <p class="page-lead">투자자가 스스로 판단할 수 있도록 정보를 제공하는 정량 분석 리포트</p>
@@ -35,21 +56,21 @@
     <div class="indicator-card">
       <div class="indicator-name">코스피</div>
       <div class="indicator-value">
-        6,872.27
+        6,820.60
         <span class="indicator-unit">pt</span>
       </div>
       <div class="indicator-change down">
-        -5.7%
+        -6.4%
       </div>
     </div>
     <div class="indicator-card">
       <div class="indicator-name">코스닥</div>
       <div class="indicator-value">
-        798.05
+        791.84
         <span class="indicator-unit">pt</span>
       </div>
       <div class="indicator-change down">
-        -3.8%
+        -4.5%
       </div>
     </div>
     <div class="indicator-card">
@@ -75,27 +96,17 @@
     <div class="indicator-card">
       <div class="indicator-name">VIX (공포지수)</div>
       <div class="indicator-value">
-        15.67
+        15.94
         <span class="indicator-unit">pt</span>
       </div>
-      <div class="indicator-change down">
-        -5.0%
+      <div class="indicator-change up">
+        +1.7%
       </div>
     </div>
     <div class="indicator-card">
       <div class="indicator-name">달러/원</div>
       <div class="indicator-value">
-        1,482.68
-        <span class="indicator-unit">원</span>
-      </div>
-      <div class="indicator-change down">
-        -0.3%
-      </div>
-    </div>
-    <div class="indicator-card">
-      <div class="indicator-name">엔/원 (100엔)</div>
-      <div class="indicator-value">
-        912.50
+        1,478.37
         <span class="indicator-unit">원</span>
       </div>
       <div class="indicator-change down">
@@ -103,73 +114,103 @@
       </div>
     </div>
     <div class="indicator-card">
-      <div class="indicator-name">위안/원</div>
+      <div class="indicator-name">엔/원 (100엔)</div>
       <div class="indicator-value">
-        219.14
+        909.40
         <span class="indicator-unit">원</span>
       </div>
       <div class="indicator-change down">
-        -0.3%
+        -0.9%
+      </div>
+    </div>
+    <div class="indicator-card">
+      <div class="indicator-name">위안/원</div>
+      <div class="indicator-value">
+        218.49
+        <span class="indicator-unit">원</span>
+      </div>
+      <div class="indicator-change down">
+        -0.6%
       </div>
     </div>
     <div class="indicator-card">
       <div class="indicator-name">달러인덱스</div>
       <div class="indicator-value">
-        100.50
+        100.54
         <span class="indicator-unit">pt</span>
+      </div>
+      <div class="indicator-change up">
+        +0.0%
+      </div>
+    </div>
+    <div class="indicator-card">
+      <div class="indicator-name">WTI 유가</div>
+      <div class="indicator-value">
+        79.50
+        <span class="indicator-unit">달러/배럴</span>
+      </div>
+      <div class="indicator-change down">
+        -0.1%
+      </div>
+    </div>
+    <div class="indicator-card">
+      <div class="indicator-name">브렌트유</div>
+      <div class="indicator-value">
+        84.59
+        <span class="indicator-unit">달러/배럴</span>
       </div>
       <div class="indicator-change down">
         -0.4%
       </div>
     </div>
     <div class="indicator-card">
-      <div class="indicator-name">WTI 유가</div>
-      <div class="indicator-value">
-        79.76
-        <span class="indicator-unit">달러/배럴</span>
-      </div>
-      <div class="indicator-change up">
-        +0.5%
-      </div>
-    </div>
-    <div class="indicator-card">
-      <div class="indicator-name">브렌트유</div>
-      <div class="indicator-value">
-        84.84
-        <span class="indicator-unit">달러/배럴</span>
-      </div>
-      <div class="indicator-change up">
-        +0.1%
-      </div>
-    </div>
-    <div class="indicator-card">
       <div class="indicator-name">국제 금</div>
       <div class="indicator-value">
-        4,035.00
+        4,040.40
         <span class="indicator-unit">달러/온스</span>
       </div>
       <div class="indicator-change down">
-        -0.6%
+        -0.1%
       </div>
     </div>
     <div class="indicator-card">
       <div class="indicator-name">KRX 금현물</div>
       <div class="indicator-value">
-        191,710.00
+        191,420.00
         <span class="indicator-unit">원/g</span>
       </div>
       <div class="indicator-change down">
-        -0.2%
+        -0.3%
       </div>
     </div>
     <div class="indicator-card">
       <div class="indicator-name">금 괴리율 (KRX/국제)</div>
       <div class="indicator-value">
-        -0.53
+        -0.32
         <span class="indicator-unit">%</span>
       </div>
       <div class="indicator-change up">
-        +0.8%
+        +0.4%
+      </div>
+    </div>
+    <div class="indicator-card">
+      <div class="indicator-name">미국 기준금리</div>
+      <div class="indicator-value">
+        3.63
+        <span class="indicator-unit">%</span>
+      </div>
+      <div class="indicator-change up">
+        +0.0%
+      </div>
+    </div>
+    <div class="indicator-card">
+      <div class="indicator-name">미 2년 국채금리</div>
+      <div class="indicator-value">
+        4.18
+        <span class="indicator-unit">%</span>
+      </div>
+      <div class="indicator-change down">
+        -0.1%
       </div>
     </div>
     <div class="indicator-card">
@@ -212,6 +253,36 @@
         +0.0%
       </div>
     </div>
+    <div class="indicator-card">
+      <div class="indicator-name">미국 인플레이션 (CPI YoY)</div>
+      <div class="indicator-value">
+        3.73
+        <span class="indicator-unit">%</span>
+      </div>
+      <div class="indicator-change down">
+        -0.5%
+      </div>
+    </div>
+    <div class="indicator-card">
+      <div class="indicator-name">한국 기준금리</div>
+      <div class="indicator-value">
+        2.75
+        <span class="indicator-unit">%</span>
+      </div>
+      <div class="indicator-change up">
+        +0.2%
+      </div>
+    </div>
+    <div class="indicator-card">
+      <div class="indicator-name">한국 인플레이션 (CPI YoY)</div>
+      <div class="indicator-value">
+        3.16
+        <span class="indicator-unit">%</span>
+      </div>
+      <div class="indicator-change up">
+        +0.0%
+      </div>
+    </div>
   </div>
 </section>
 <section class="page-section">
@@ -238,5 +309,7 @@
   </div>
 </footer>
 <script src="./static/search.js" defer></script>
+<script src="./static/sw-register.js" defer></script>
+<script src="./static/install.js" defer></script>
 </body>
 </html>
