@@ -1,0 +1,48 @@
+{#
+  웹 앱 매니페스트. 사이트 루트(docs/manifest.webmanifest)에 놓아야 scope "./"가
+  사이트 전체를 덮는다. 경로를 전부 상대(./)로 쓰므로 github.io 하위 경로 배포와
+  커스텀 도메인 루트 배포 어느 쪽에서도 그대로 동작한다.
+#}
+{
+  "id": "./",
+  "name": {{ site_title | tojson }},
+  "short_name": {{ app_short_name | tojson }},
+  "description": {{ site_description | tojson }},
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": {{ app_background_color | tojson }},
+  "theme_color": {{ app_theme_color | tojson }},
+  "categories": ["finance", "business"],
+  "icons": [
+    {
+      "src": "./static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./static/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "주식 분석",
+      "url": "./stocks/index.html"
+    },
+    {
+      "name": "섹터·산업",
+      "url": "./sectors/index.html"
+    }
+  ]
+}

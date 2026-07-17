@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{# 서비스워커가 오프라인 상태에서 캐시에 없는 페이지 대신 보여주는 대체 페이지. #}
+{% block title %}오프라인 — {{ site_title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">오프라인 상태입니다</h1>
+<p class="page-lead">인터넷에 연결되면 최신 분석 결과를 다시 불러옵니다.</p>
+
+<div class="placeholder-card">
+  이미 열어 본 페이지는 연결 없이도 볼 수 있습니다.
+  홈·주식 분석·섹터·산업 화면은 저장되어 있으니 위 메뉴로 이동해 보세요.
+</div>
+{% endblock %}

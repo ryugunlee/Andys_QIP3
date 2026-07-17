@@ -34,6 +34,16 @@ DISCLAIMER: str = (
     "매수·매도를 권유하지 않습니다."
 )
 
+# --- PWA (홈 화면 설치) ---
+# 별도의 모바일 앱을 만들지 않고 이 정적 사이트 자체를 설치형 앱으로 쓴다
+# (.claude/DECISIONS.md 2026-07-17 "모바일 앱 = PWA" 참고).
+# 홈 화면 아이콘 아래에 표시되는 이름이라 짧아야 한다(안드로이드 권장 12자 이내).
+APP_SHORT_NAME: str = "QIP"
+# 안드로이드 상태 표시줄 색. 헤더 배경(흰색)과 맞춰 이어져 보이게 한다.
+APP_THEME_COLOR: str = "#ffffff"
+# 앱 시작 시 스플래시 배경. style.css의 --page-bg와 같은 값이어야 깜빡임이 없다.
+APP_BACKGROUND_COLOR: str = "#ffffff"
+
 # 목록 화면에 노출하는 종목 개수
 TOP_MARKET_CAP_LIMIT: int = 10  # 시가총액 상위 표
 RECOMMENDED_DISPLAY_LIMIT: int = 12  # 주식 분석 페이지의 추천 종목 카드

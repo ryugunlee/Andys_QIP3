@@ -6,8 +6,18 @@
   <title>{% block title %}{{ site_title }}{% endblock %}</title>
   <meta name="description" content="{{ site_description }}">
   <link rel="stylesheet" href="{{ root }}/static/style.css">
+  {# 홈 화면 설치(PWA). 매니페스트·서비스워커는 사이트 루트에 있다 — builders/pwa.py 참고. #}
+  <link rel="manifest" href="{{ root }}/manifest.webmanifest">
+  <link rel="icon" href="{{ root }}/static/icons/icon-192.png" type="image/png">
+  <meta name="theme-color" content="{{ app_theme_color }}">
+  <meta name="mobile-web-app-capable" content="yes">
+  {# iOS는 매니페스트의 아이콘·이름을 쓰지 않으므로 전용 태그가 따로 필요하다. #}
+  <link rel="apple-touch-icon" href="{{ root }}/static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="{{ app_short_name }}">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
-<body>
+<body data-root="{{ root }}">
 {% include "partials/_header.html" %}
 <main class="container">
 {% block content %}{% endblock %}
@@ -21,6 +31,8 @@
   </div>
 </footer>
 <script src="{{ root }}/static/search.js" defer></script>
+<script src="{{ root }}/static/sw-register.js" defer></script>
+<script src="{{ root }}/static/install.js" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

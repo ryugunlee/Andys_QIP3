@@ -25,4 +25,7 @@ def create_environment() -> Environment:
     env.globals["site_description"] = config.SITE_DESCRIPTION
     env.globals["disclaimer"] = config.DISCLAIMER
     env.globals["missing"] = MISSING
+    env.globals["app_short_name"] = config.APP_SHORT_NAME
+    env.globals["app_theme_color"] = config.APP_THEME_COLOR
+    env.globals["app_background_color"] = config.APP_BACKGROUND_COLOR
     return env

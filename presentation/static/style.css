@@ -85,6 +85,65 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
 .main-nav a:hover { background: var(--card-bg-strong); }
 .main-nav a.active { color: var(--ink-primary); background: var(--card-bg-strong); }
 
+/* --- 앱 설치 (PWA) ---
+   설치 가능한 환경에서만 static/install.js가 [hidden]을 벗긴다. */
+.install-cta {
+  position: relative;
+  flex: none;
+}
+.install-button {
+  padding: 7px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-small);
+  background: var(--accent-weak);
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.install-button:hover { background: var(--accent); color: #ffffff; }
+
+.install-guide {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: 264px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--page-bg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.install-guide-title {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+.install-guide-steps {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--ink-secondary);
+  font-size: 14px;
+}
+.install-guide-steps li { margin: 4px 0; }
+.install-guide-steps strong { color: var(--ink-primary); }
+.install-guide-close {
+  margin-top: 12px;
+  padding: 7px 12px;
+  width: 100%;
+  border: none;
+  border-radius: var(--radius-small);
+  background: var(--card-bg-strong);
+  color: var(--ink-secondary);
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.install-guide-close:hover { color: var(--ink-primary); }
+
 /* --- 검색 --- */
 .search-box {
   position: relative;
@@ -441,11 +500,16 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
     gap: 8px 16px;
   }
   .main-nav { order: 2; }
+  /* 검색창과 설치 버튼을 같은 줄에 둔다. 헤더가 sticky라 줄이 늘면 그만큼
+     본문이 가려지므로, 설치 버튼이 생겨도 헤더는 두 줄을 넘지 않아야 한다.
+     기준폭 200px이라 좁은 화면에서는 검색창이 메뉴 아랫줄로 내려가고,
+     설치 버튼이 숨겨진 경우에는 검색창이 그 줄을 통째로 차지한다. */
   .search-box {
     order: 3;
-    flex: 1 0 100%;
+    flex: 1 1 200px;
     margin-left: 0;
   }
+  .install-cta { order: 4; }
   .page-title { font-size: 22px; margin-top: 24px; }
   .page-section { margin: 28px 0; }
   .metric-table { grid-template-columns: 1fr; }
