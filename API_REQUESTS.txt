@@ -3,12 +3,12 @@
 # 아래는 과거에 API 키 발급이 필요해 수집을 보류했던 지표들이다.
 # 두 키 모두 발급 완료(2026-07-16)되어 연결 작업까지 끝났다 — 이 파일은 기록용으로만 남긴다.
 
-## 1. 한국은행 ECOS Open API — 완료
+## 1. 한국은행 ECOS Open API — 완료 (BOK_API_KEY)
 - 한국 기준금리 (indicators.py의 kr_base_rate, 통계코드 722Y001, 항목 0101000, 일간)
 - 한국 소비자물가지수 → 인플레이션율 YoY (kr_cpi_yoy, 통계코드 901Y009, 항목 0, 월간)
 - 구현: collection/macro/ecos_source.py (BOK_API_KEY 필요)
 
-## 2. FRED API (미국 세인트루이스 연준) — 완료
+## 2. FRED API (미국 세인트루이스 연준) — 완료 (FRED_API_KEY)
 - 기존 fredgraph.csv 키리스 방식이 일부 네트워크(GitHub Codespaces 포함)에서
   fred.stlouisfed.org 차단으로 결측이 발생해(.claude/PROBLEMS.md #16),
   공식 API(api.stlouisfed.org)로 전환했다.
