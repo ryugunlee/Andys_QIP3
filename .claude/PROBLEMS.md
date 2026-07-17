@@ -308,3 +308,23 @@ push할 때마다 deploy-site가 트리거되어 정상 배포본을 지웠다. 
 제안했다. 이 프로젝트의 "정성적 조사" 파이프라인(기업 뉴스·정치적/사회적 관점 평가, CLAUDE.md
 "데이터 분석" 섹션)과 같은 성격의 작업이 될 가능성이 높다 — 그 파이프라인이 구현되면
 같이 검토.
+
+## 30. (해결) FDR 티커 목록 중복이 1시간짜리 수집 실행을 마지막 저장 단계에서 통째로 죽였다
+
+2026-07-17 NYSE 수집 워크플로우가 1시간 9분 수집을 전부 마친 뒤 `save_snapshot_factors`의
+INSERT에서 `duplicate key "2, OGC"` (snapshot_factors의 (run_id, ticker) PK 위반)로 실패했다.
+원인은 FinanceDataReader의 NYSE 상장 목록에 같은 심볼이 두 번 들어 있었던 것 —
+`get_tickers()`의 AMERICAN 분기만 `set()` 중복 제거를 했고, 개별 시장(NASDAQ/NYSE 등)
+분기와 한국 시장 분기는 목록을 그대로 반환했다. job이 실패하면 `save_db.sh`가 실행되지
+않으므로 1시간치 수집이 전부 유실된다.
+
+해결(2026-07-17):
+- `collection/tickers.py`에 `_normalize_us_symbols()` 추가 — NaN 제거, 공백 포함 심볼 제외
+  (NYSE 기준 409개, 전부 yfinance 404라 시간만 낭비하던 우선주/신주인수권 등), "."→"-" 치환,
+  순서 유지 중복 제거. AMERICAN·개별 시장 분기가 공유. 한국 분기도 중복 제거 추가.
+  `_DOW_30_TICKERS`의 중복 "GS"도 제거.
+- `storage/snapshot_repository.py`의 `save_snapshot_factors()`에 방어선 — 저장 직전 중복
+  티커를 경고 출력 후 첫 행만 저장. 티커 목록이 다시 오염돼도 실행 전체가 죽지 않는다.
+
+교훈: 장시간 배치의 마지막 단계에 있는 유일한 non-upsert INSERT는 입력 정합성에 대한
+방어선을 자체적으로 가져야 한다. 나머지 저장 경로는 모두 ON CONFLICT upsert라 안전했다.

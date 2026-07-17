@@ -27,7 +27,6 @@ _DOW_30_TICKERS: list[str] = [
     "CVX",
     "DIS",
     "DOW",
-    "GS",
     "HD",
     "HON",
     "IBM",
@@ -46,6 +45,24 @@ _DOW_30_TICKERS: list[str] = [
     "WBA",
     "WMT",
 ]
+
+
+def _normalize_us_symbols(symbols: list) -> list[str]:
+    """FDR 상장 목록의 심볼을 yfinance로 조회 가능한 형태로 정규화한다.
+
+    - NaN/빈 값 제거
+    - 공백 포함 심볼 제외 — 우선주("WRB PR E"), 신주인수권("RT"), 발행예정("WI") 등은
+      yfinance에 존재하지 않아 전량 404가 난다 (NYSE 기준 400개 이상)
+    - 클래스 구분 "."을 yfinance 표기 "-"로 치환 (BRK.B → BRK-B)
+    - 순서를 유지하며 중복 제거 — FDR 목록에 같은 심볼이 두 번 있으면
+      snapshot_factors의 (run_id, ticker) PK를 깨뜨려 수집 실행 전체가 실패한다
+    """
+    cleaned = (
+        str(symbol).strip().replace(".", "-")
+        for symbol in symbols
+        if not pd.isna(symbol)
+    )
+    return list(dict.fromkeys(symbol for symbol in cleaned if symbol and " " not in symbol))
 
 
 def is_korean_market(stockmarket: str) -> bool:
@@ -79,14 +96,13 @@ def get_tickers(stockmarket: str) -> list[str]:
             + fdr.StockListing("NASDAQ")["Symbol"].tolist()
             + fdr.StockListing("NYSE")["Symbol"].tolist()
         )
-        tickers = list(set(tickers))
-        return [ticker.replace(".", "-") for ticker in tickers if " " not in ticker]
+        return _normalize_us_symbols(tickers)
     elif is_korean_market(stockmarket):
         tickers = fdr.StockListing(stockmarket)["Code"].tolist()
-        return [ticker for ticker in tickers if not pd.isna(ticker)]
+        return list(dict.fromkeys(ticker for ticker in tickers if not pd.isna(ticker)))
     elif stockmarket == "TMP":
         return ["AMZN", "QFIN", "GGAL", "STNE", "ALK"]
     elif stockmarket == "DJI" or stockmarket == "DOW":
         return _DOW_30_TICKERS
     else:
-        return fdr.StockListing(stockmarket)["Symbol"].tolist()
+        return _normalize_us_symbols(fdr.StockListing(stockmarket)["Symbol"].tolist())

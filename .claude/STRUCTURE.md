@@ -121,6 +121,10 @@ PFCR/Coverage Ratio/NCAV/Current Ratio/ROC/GPTOA/ARP/Interest Ratio/Debt Growth/
 - `is_korean_listed_ticker(ticker)`: 티커가 한국거래소 상장 종목(6자리 코드 + 선택적 .KS/.KQ,
   대소문자 무관)인지 여부. yfinance 진입점 가드에서 한국 종목을 걸러내는 데 쓴다. 한국 ADR
   (미국 상장 알파벳 심볼)은 매칭되지 않는다.
+- `_normalize_us_symbols(symbols)`: FDR 미국 상장 목록 심볼 정규화 — NaN/빈 값 제거, 공백 포함
+  심볼(우선주·신주인수권 등, yfinance 전량 404) 제외, "."→"-" 치환(BRK.B→BRK-B), 순서 유지
+  중복 제거. AMERICAN 분기와 개별 시장(NASDAQ/NYSE 등) 분기가 공유한다
+  (`.claude/PROBLEMS.md` #30 해결).
 
 ## collection/__init__.py
 - `get_stock_basic_infomation`, `get_naver_stock_information`, `get_tickers`, `is_korean_market`,

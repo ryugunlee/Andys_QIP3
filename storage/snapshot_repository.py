@@ -71,6 +71,15 @@ def save_snapshot_factors(
         return
 
     rows = stockdata.rename(columns={"Ticker": "ticker"}).copy()
+
+    # 티커 목록 오염 등으로 같은 티커가 두 번 수집돼도 (run_id, ticker) PK 위반으로
+    # 1시간짜리 수집 실행 전체가 마지막 저장 단계에서 죽지 않도록 하는 방어선.
+    duplicated = rows["ticker"].duplicated(keep="first")
+    if duplicated.any():
+        duplicate_tickers = rows.loc[duplicated, "ticker"].unique().tolist()
+        print(f"[storage] snapshot 중복 티커 {duplicate_tickers} — 첫 행만 저장합니다.")
+        rows = rows[~duplicated]
+
     rows.insert(0, "run_id", run_id)
 
     _ensure_snapshot_columns(conn, rows)
