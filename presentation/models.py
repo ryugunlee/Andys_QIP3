@@ -121,6 +121,8 @@ class EconomicIndicator:
     unit: str  # 예: "USD/oz", "%", "원/달러"
     change_pct: float | None  # 전일 대비 변화율 (%)
     as_of: str  # 기준일 "YYYY-MM-DD"
+    category: str = ""  # MacroCategory.value (한국어 카테고리명) — 우측 추이 사이드바 그룹핑용
+    history: list[float] = field(default_factory=list)  # 최근 6개월 일별값 (추이 스파크라인용, 오래된→최신 순)
 
 
 @dataclass(frozen=True)

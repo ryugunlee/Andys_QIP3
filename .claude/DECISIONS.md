@@ -86,3 +86,24 @@ main push(paths: presentation/**·build_site.py). `build_and_commit_site.sh`가 
 그러나 더 신뢰할 수 있는 정보를 가졌을 것으로 추측되는 곳이 있다면, 그곳에서 가져온다.
 
 ### 가능한 한 많은 정보를 분기별로 가져온다. 비록 사용하지 않더라도, 보관은 한다.
+
+### (2026-07-17) IMD 순위·전쟁 중인 국가·피델리티 경제사이클은 보류, 6개월 추이는 데스크탑 우측 사이드바로
+
+"IMD 국가경쟁력 순위 / 전쟁 중인 국가 / 피델리티 경제사이클 표시 / 기존 지표 6개월 추이
+그래프" 4가지를 요청받아 조사한 결과, 앞의 3개는 무료 실시간 자동 수집 API가 없다는 걸
+확인하고 두 가지 대안(수동 큐레이션 vs 위키피디아 등 크롤링)을 제시했다. 개발자가
+"둘 다 별로다, 지금은 하지 말고 PROBLEMS.md에 기록만 남겨라. 나중에 AI를 활용하는 방식을
+고려하겠다"고 답해 **세 항목 모두 보류**했다(`.claude/PROBLEMS.md` #29 참고).
+
+6개월 추이 그래프는 표시 위치로 "메인페이지에 새 섹션 추가"를, 레이아웃으로는
+"데스크탑 우측 사이드바(중앙 정렬 컨테이너 바깥 여백 활용, 모바일에서는 숨김)"를 골랐고,
+지표가 25종이라 사이드바가 길어지지 않도록 카테고리(시장 지수/환율/원자재·금/금리·물가)별
+접기 토글로 묶기로 했다.
+
+구현: `presentation/models.py`(`EconomicIndicator.category`/`history`),
+`presentation/repository/indicators_provider.py`(`_trend_history`),
+`presentation/formatters.py`(`sparkline_points` — 빌드 타임 정적 SVG, 별도 JS 없음),
+`presentation/builders/index_page.py`(`_group_by_category`),
+`presentation/templates/partials/_trend_rail.html`, `base.html`의 `{% block aside %}`,
+`static/style.css`의 `.trend-rail`(`@media (min-width: 1560px)`에서만 노출). 상세는
+`.claude/STRUCTURE.md` 참고.

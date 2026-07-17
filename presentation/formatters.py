@@ -165,6 +165,33 @@ def change_class(value: float | None) -> str:
     return ""
 
 
+# 스파크라인 SVG viewBox 기본 치수 (지표 추이 사이드바 전용, 인터랙션 없는 정적 렌더)
+_SPARKLINE_WIDTH = 120
+_SPARKLINE_HEIGHT = 32
+
+
+def sparkline_points(values: list[float], width: float = _SPARKLINE_WIDTH, height: float = _SPARKLINE_HEIGHT) -> str:
+    """값 목록을 SVG `<polyline points="...">` 좌표 문자열로 변환한다.
+
+    값이 모두 같으면(또는 1개면) 세로 중앙 수평선으로 그린다. 빌드 타임에 계산되는
+    순수 정적 SVG라 차트용 JS가 필요 없다 (인터랙티브 주가 차트는 static/charts.js 참고).
+    """
+    if not values:
+        return ""
+    if len(values) == 1:
+        mid = height / 2
+        return f"0,{mid} {width},{mid}"
+    lo, hi = min(values), max(values)
+    span = hi - lo
+    step = width / (len(values) - 1)
+    points = []
+    for i, value in enumerate(values):
+        x = i * step
+        y = height / 2 if span == 0 else height - (value - lo) / span * height
+        points.append(f"{x:.1f},{y:.1f}")
+    return " ".join(points)
+
+
 def register_filters(env: Environment) -> None:
     """Jinja2 환경에 포맷터를 필터로 등록한다."""
     env.filters["money"] = format_money
@@ -177,3 +204,4 @@ def register_filters(env: Environment) -> None:
     env.filters["number"] = format_number
     env.filters["meter_width"] = meter_width
     env.filters["change_class"] = change_class
+    env.filters["sparkline_points"] = sparkline_points

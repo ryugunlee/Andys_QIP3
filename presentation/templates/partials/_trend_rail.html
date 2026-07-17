@@ -1,0 +1,28 @@
+{# 우측 6개월 추이 사이드바 (데스크탑 전용, style.css의 breakpoint 아래에서는 숨김).
+   컨텍스트: trend_groups (list[tuple[카테고리명, list[EconomicIndicator]]]) #}
+{% if trend_groups %}
+<aside class="trend-rail" aria-label="주요 지표 6개월 추이">
+  <div class="trend-rail-inner">
+    <h2 class="trend-rail-title">6개월 추이</h2>
+    {% for category, group in trend_groups %}
+    <details class="trend-group" {% if loop.first %}open{% endif %}>
+      <summary>{{ category }}</summary>
+      <div class="trend-group-body">
+        {% for indicator in group %}
+        <div class="trend-item">
+          <div class="trend-item-head">
+            <span class="trend-item-name">{{ indicator.name }}</span>
+            <span class="trend-item-value">{{ indicator.value | number }}{{ indicator.unit }}</span>
+          </div>
+          <svg class="trend-chart {{ (indicator.history[-1] - indicator.history[0]) | change_class }}"
+               viewBox="0 0 120 32" preserveAspectRatio="none">
+            <polyline points="{{ indicator.history | sparkline_points }}" />
+          </svg>
+        </div>
+        {% endfor %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+</aside>
+{% endif %}
