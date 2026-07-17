@@ -22,9 +22,28 @@ from presentation.builders.stocks_page import build_stocks_page
 from presentation.repository.base import StockRepository
 
 
+class EmptySiteError(RuntimeError):
+    """시장 데이터가 0건이라 사이트를 만들 수 없을 때 발생한다."""
+
+
 def build_site(
     repository: StockRepository, output_dir: Path = config.DEFAULT_OUTPUT_DIR
 ) -> None:
+    """분석 산출물로 output_dir에 정적 사이트를 생성한다.
+
+    Raises:
+        EmptySiteError: 로드된 시장 데이터가 0건일 때. 빈 사이트는 정당한 산출물이
+            아니므로 output_dir을 건드리기 전에 중단한다 — 데이터 공급이 끊긴 실행이
+            이미 배포된 사이트를 빈 껍데기로 덮어쓰는 사고를 막기 위한 가드다.
+    """
+    counts = repository.market_counts()
+    if not counts:
+        raise EmptySiteError(
+            "로드된 시장 데이터가 0건이라 사이트 생성을 중단합니다 "
+            "(기존 산출물을 빈 사이트로 덮어쓰지 않기 위함). "
+            "데이터 소스(qipinfos/*.duckdb 또는 data-store 릴리스)를 확인하세요."
+        )
+
     output_dir.mkdir(parents=True, exist_ok=True)
     env = create_environment()
 
@@ -39,9 +58,5 @@ def build_site(
 
     print(f"[presentation] 사이트 생성 완료: {output_dir}")
     print(f"[presentation] 종목 상세 페이지 {detail_count:,}개")
-    counts = repository.market_counts()
-    if counts:
-        summary = " · ".join(f"{market} {count:,}개" for market, count in counts.items())
-        print(f"[presentation] 시장별 종목: {summary}")
-    else:
-        print("[presentation] 경고: 로드된 시장 데이터가 없어 빈 사이트가 생성되었습니다.")
+    summary = " · ".join(f"{market} {count:,}개" for market, count in counts.items())
+    print(f"[presentation] 시장별 종목: {summary}")
