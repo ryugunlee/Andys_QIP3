@@ -9,6 +9,7 @@ from tqdm import tqdm
 
 from collection.constants import TOO_MANY_REQUESTS_WAIT_SECONDS
 from collection.stock import Stock, YahooStock
+from collection.tickers import is_korean_listed_ticker
 
 
 def get_stock_basic_infomation(
@@ -28,6 +29,16 @@ def get_stock_basic_infomation(
     errortickers: list[str] = []
 
     for ticker in tqdm(tickers, desc="Downloading stock data", unit="Ticker"):
+        # 한국 상장 종목(6자리 코드/.KS/.KQ)은 네이버 경로 전용이다 — yfinance로는 절대
+        # 수집하지 않는다(.claude/PROBLEMS.md #24). 정상 라우팅(Andys_QIP2.main의
+        # is_korean_market 분기)에서는 걸릴 일이 없지만, 잘못 호출돼도 오염 데이터가
+        # 섞이지 않도록 진입점에서 차단하는 방어 가드다.
+        if is_korean_listed_ticker(ticker):
+            print(
+                f"[collection] 한국 상장 종목 {ticker}는 yfinance로 수집하지 않습니다 "
+                "(네이버 경로 전용). 건너뜁니다."
+            )
+            continue
         while True:
             try:
                 stock = Stock(ticker)

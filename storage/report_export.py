@@ -14,7 +14,13 @@ def get_run_snapshot(conn: duckdb.DuckDBPyConnection, run_id: int) -> pd.DataFra
     df = conn.execute(
         "SELECT * FROM snapshot_factors WHERE run_id = ?", [run_id]
     ).fetchdf()
-    return df.rename(columns={"ticker": "Ticker"})
+    df = df.rename(columns={"ticker": "Ticker"})
+    # 하위호환: 오타 수정(reliablity→reliability) 이전에 수집된 DB는 옛 컬럼명을 갖는다.
+    # 재수집 전까지 build_site가 크래시하지 않도록 읽기 경계에서 새 이름으로 정규화한다.
+    # (재수집 후에는 새 컬럼이 이미 존재하므로 이 분기는 no-op)
+    if "reliablity" in df.columns and "reliability" not in df.columns:
+        df = df.rename(columns={"reliablity": "reliability"})
+    return df
 
 
 def get_latest_snapshots(conn: duckdb.DuckDBPyConnection) -> pd.DataFrame:
