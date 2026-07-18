@@ -3,10 +3,21 @@
 import duckdb
 import pandas as pd
 
+from collection.stock_base import CURATED_COLUMNS
+
 GOODSTOCK_FINALSCORE_QUANTILE: float = 0.9
 GOODSTOCK_RELIABILITY_THRESHOLD: float = 80
 GOODSTOCK_QUANT_SCORE_THRESHOLD: float = 50
 GOODSTOCK_FSCORE_THRESHOLD: float = 50
+
+# get_latest_snapshots()가 되돌려주는 population의 허용 컬럼. snapshot_factors는
+# ALTER TABLE ADD COLUMN으로 컬럼이 계속 늘어나므로(analysis가 만드는 VscorePS 등
+# 점수 컬럼도 여기 영구히 남는다), SELECT *로 그대로 읽으면 이전 run에서 이미 계산된
+# 점수 컬럼이 섞여 들어온다. compute_scores는 curated 팩터만 받는다고 가정하고 내부에서
+# 같은 이름으로 새 점수 컬럼을 만들기 때문에, 옛 점수 컬럼이 섞여 있으면 rename 단계에서
+# 컬럼명이 중복돼 죽는다 (.claude/PROBLEMS.md #31). 매 실행마다 점수는 population
+# 전체로 처음부터 다시 계산되므로 옛 점수 값은 버려도 안전하다.
+_POPULATION_COLUMNS: set[str] = {"run_id"} | {name for name, _ in CURATED_COLUMNS}
 
 
 def get_run_snapshot(conn: duckdb.DuckDBPyConnection, run_id: int) -> pd.DataFrame:
@@ -44,7 +55,8 @@ def get_latest_snapshots(conn: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     if not frames:
         return pd.DataFrame(columns=["run_id", "Ticker"])
     merged = pd.concat(frames, ignore_index=True)
-    return merged.drop_duplicates(subset="Ticker", keep="first").reset_index(drop=True)
+    merged = merged.drop_duplicates(subset="Ticker", keep="first").reset_index(drop=True)
+    return merged[[column for column in merged.columns if column in _POPULATION_COLUMNS]]
 
 
 def get_goodstock(conn: duckdb.DuckDBPyConnection, run_id: int) -> pd.DataFrame:
