@@ -363,3 +363,41 @@ Capital Expenditure(`_capex`)는 음수(현금유출)라 결과가 `OCF + |Capex
 FCF 마진 같은 파생 팩터에는 그대로 새어나간다. 그래서 신규 팩터에서 FCF 마진은 이번에
 제외했다(2026-07-18, DECISIONS 참고). 수정하려면 두 소스의 PFCR·(향후)FCF 마진을 함께
 바꿔야 하고 기존 점수 분포가 이동하므로, 스코어링 연결 단계에서 함께 다룬다.
+
+## 31. (해결) compute_scores 재실행 시 이전 run의 점수 컬럼이 섞여 들어와 rename 충돌로 크래시
+
+2026-07-17 NYSE 재수집(#30 수정 반영 후)이 수집을 전부 마치고 저장까지 성공했지만,
+바로 다음 단계인 `compute_scores(population)`에서 `ValueError: cannot reindex on an axis
+with duplicate labels`로 죽었다. 실제 원인:
+
+- `storage.get_latest_snapshots()`가 `snapshot_factors`를 `SELECT *`로 읽는데, 이 테이블은
+  `_ensure_snapshot_columns`(ALTER TABLE ADD COLUMN)로 컬럼이 영구히 늘어난다 — 즉 예전에
+  어떤 시장이 한 번이라도 점수까지 계산됐다면 "VscorePS", "VscoreSS" 등 점수 컬럼이 테이블
+  스키마에 영구히 남고, 이후 모든 `SELECT *`에 섞여 나온다.
+- `compute_scores`는 입력이 curated 팩터만 있다고 가정하고, 계산한 원시 점수(예: "Vscore")를
+  `scored.rename(columns={"Vscore": "VscorePS", ...})`로 접미사를 붙인다. 그런데 population에
+  이미 "VscorePS"라는 컬럼이 (다른 run에서 옛날에 계산된 값으로) 존재하면, rename 후
+  "VscorePS"라는 이름의 컬럼이 두 개가 되어버린다. 이후 `df[f"{name}PS"] + df[f"{name}SS"]`가
+  `df["VscorePS"]`를 Series가 아니라 (중복 컬럼이라) DataFrame으로 돌려받아 덧셈에서 죽는다.
+- 실제로 프로덕션 `data-store` 릴리스의 `andys_qip_us.duckdb`에는 예전 수동 테스트로 만든
+  NASDAQ run(12종목, 점수까지 계산되어 저장됨)이 있었고, `restore_db.sh`가 매번 이를 복원한다.
+  NYSE 수집이 끝나고 이 NASDAQ 데이터와 합쳐지는 순간 항상 이 크래시가 재현됐다 — NYSE가
+  몇 번을 재시도해도 저장 직후 같은 지점에서 반복해서 죽는 구조였다.
+- 부수 효과: 설령 크래시가 안 났더라도, `score_output_columns(scored, population.columns)`가
+  "새 컬럼"만 추려 UPDATE 대상으로 삼는데, population에 이미 "VscorePS" 같은 컬럼이 있으면
+  "새 컬럼"이 아니라고 판단해 두 번째 run부터는 그 시장의 점수가 영원히 최신화되지 않는
+  잠재적 버그도 있었다(크래시 때문에 실제로는 발현되지 않았음).
+
+해결(2026-07-17): `storage/report_export.py`의 `get_latest_snapshots()`가 반환 직전에
+`collection.stock_base.CURATED_COLUMNS`(원래 수집이 만드는 curated 팩터 목록) + "run_id"만
+남기고 나머지(점수 컬럼 등)를 모두 버리도록 필터링을 추가했다. `compute_scores`는 매 실행마다
+population 전체를 처음부터 다시 채점하므로 옛 점수 값을 버려도 손실이 없다.
+
+검증: `andys_qip_us.duckdb`/`andys_qip_kr.duckdb`의 실제 프로덕션 스냅샷을 복사해 "이미 점수
+계산된 시장 + 방금 수집한 새 시장" 조합을 재현 → compute_scores/저장/site build까지 전체
+파이프라인이 에러 없이 통과하고 새 시장이 표현 계층(market_counts 등)에 정상 반영됨을 확인.
+
+교훈: 파이프라인 출력(점수 컬럼)이 같은 테이블에 영구 저장되고, 그 테이블이 다음 실행의
+입력(population)으로 재사용되는 구조에서는 "출력 컬럼이 입력에 섞여 들어올 수 있다"는
+가능성을 항상 열어두고 입력 경계에서 명시적으로 걸러야 한다. `_ensure_snapshot_columns`처럼
+스키마가 실행마다 넓어지는 테이블일수록 이 위험이 크다.

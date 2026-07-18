@@ -247,7 +247,10 @@ git에 커밋하지 않는다.
   `Ticker` 및 레거시 오타 컬럼 `reliablity`→`reliability`를 정규화한다(오타 수정 이전에 수집된
   DB로 build_site가 크래시하지 않도록 하는 하위호환 shim, 재수집 후에는 no-op).
 - `get_latest_snapshots(conn)`: 이 DB(통화권)의 시장별 최신 run 스냅샷을 통합해 반환
-  (점수 산출의 모집단, 중복 티커는 최신 run만 유지).
+  (점수 산출의 모집단, 중복 티커는 최신 run만 유지). 반환 직전 `run_id` + `collection.
+  stock_base.CURATED_COLUMNS`만 남기고 나머지(다른 run에서 이미 계산된 점수 컬럼 등)를
+  버린다 — `compute_scores`가 curated 팩터만 입력으로 가정하므로, 옛 점수 컬럼이 섞여
+  들어오면 rename 단계에서 컬럼명이 중복돼 죽는다(`.claude/PROBLEMS.md` #31 해결).
 - `export_run_summary(conn, run_id, output_dir)`: 이메일 첨부용 stockdata/goodstock/standarddata
   CSV를 output_dir에 쓰고 경로 목록을 반환. CSV는 영속 산출물이 아니라 발송 시점의 임시 파일이다.
 
