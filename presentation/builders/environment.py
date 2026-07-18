@@ -28,4 +28,6 @@ def create_environment() -> Environment:
     env.globals["app_short_name"] = config.APP_SHORT_NAME
     env.globals["app_theme_color"] = config.APP_THEME_COLOR
     env.globals["app_background_color"] = config.APP_BACKGROUND_COLOR
+    env.globals["news_featured_limit"] = config.NEWS_FEATURED_LIMIT
+    env.globals["news_list_limit"] = config.NEWS_LIST_LIMIT
     return env

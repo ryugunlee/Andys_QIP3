@@ -1,11 +1,15 @@
-{# 뉴스 섹션. 컨텍스트: news (list[NewsItem] | None) #}
+{# 뉴스 섹션. 컨텍스트: news (list[NewsItem] | None).
+   상위 news_featured_limit개는 요약과 함께, 그 다음 news_list_limit개는 헤드라인+링크만
+   나열한다 (두 전역값은 environment.py에서 등록, 실제 값은 presentation/config.py). #}
 <section class="page-section">
   <div class="section-head">
     <h2>뉴스</h2>
   </div>
   {% if news %}
+  {% set featured = news[:news_featured_limit] %}
+  {% set more = news[news_featured_limit:news_featured_limit + news_list_limit] %}
   <ul class="news-list">
-    {% for item in news %}
+    {% for item in featured %}
     <li>
       <a class="news-title" href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
       <div class="news-meta">{{ item.source }} · {{ item.published_at }}</div>
@@ -15,6 +19,16 @@
     </li>
     {% endfor %}
   </ul>
+  {% if more %}
+  <ul class="news-list news-list-compact">
+    {% for item in more %}
+    <li>
+      <a class="news-title" href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a>
+      <span class="news-meta">{{ item.source }} · {{ item.published_at }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
   {% else %}
   <div class="placeholder-card">
     뉴스는 준비 중입니다. 데이터 수집이 연결되면 이곳에 표시됩니다.

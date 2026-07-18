@@ -23,6 +23,10 @@ DB 파일은 용도별로 3개로 나뉜다 (점수 모집단 = 통화권 단위
   (analysis/group_summary.py가 계산, 재계산 시 (group_type, group_value, factor) upsert).
 - macro_daily: 경제지표(매크로) 일별값. (indicator, date) 기준 upsert — 지표 정의는
   collection/macro/indicators.py, 저장/조회는 macro_repository.py 참고.
+- news: 세계 경제 뉴스 헤드라인. url 기준 upsert(같은 기사 재수집해도 중복 안 됨) —
+  수집은 collection/news/, 저장/조회는 news_repository.py 참고. 현재는 시장 전체
+  뉴스(ticker 없음)만 채운다. origin(google_news/yonhap)은 표현 계층이 "세계 경제"
+  검색 결과(Google News)를 연합뉴스의 국내 경제 일반 기사보다 먼저 보여주는 데 쓴다.
 """
 
 import os
@@ -123,6 +127,16 @@ _SCHEMA_STATEMENTS: list[str] = [
         score_s DOUBLE,
         score_ss DOUBLE,
         PRIMARY KEY (group_type, group_value, factor)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS news (
+        url TEXT PRIMARY KEY,
+        title TEXT,
+        source TEXT,
+        published_at TEXT,
+        summary TEXT,
+        origin TEXT
     )
     """,
 ]

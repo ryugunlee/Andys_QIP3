@@ -1,0 +1,51 @@
+name: Collect News
+
+# 세계 경제 뉴스 헤드라인(Google News RSS + 연합뉴스 경제 RSS)을 수집해 macro DB의 news
+# 테이블에 채운다. 뉴스는 홈/주식 분석 페이지에 바로 반영돼야 하므로, 매크로 지표
+# 수집(collect-macro.yml)과 달리 이 워크플로는 수집 직후 사이트도 함께 재빌드·커밋한다.
+
+on:
+  schedule:
+    # 매일 22:30 UTC — 같은 macro DB 파일을 다루는 collect-macro.yml(23:30 UTC)과
+    # 겹치지 않도록 1시간 간격을 둔다 (두 워크플로가 동시에 같은 DB 자산을 --clobber로
+    # 덮어쓰면 서로의 갱신분을 지울 수 있음).
+    - cron: "30 22 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: collect-news
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # build_site.py가 KR·US 주식 DB도 읽으므로 전체 DuckDB를 복원한다(기본 패턴 *.duckdb).
+      - name: Restore DuckDB from data-store release
+        run: bash .github/scripts/restore_db.sh
+
+      - name: Collect world economic news
+        run: python collect_news.py
+
+      - name: Save macro DuckDB to data-store release
+        run: bash .github/scripts/save_db.sh qipinfos/andys_qip_macro.duckdb
+
+      - name: Rebuild site and commit
+        run: bash .github/scripts/build_and_commit_site.sh

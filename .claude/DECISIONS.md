@@ -7,6 +7,40 @@ AI가 선택지로 제시하여 결정한 이력들도 여기에 남아, 다시 
 ## AI가 했던 설계 관련 질문 및 결정사항.
 클로드 코드가 질문하여 답변한 것들은 여기에 작성된다.
 
+### (2026-07-18) 홈/주식 분석 페이지 뉴스 = Google News RSS("세계 경제") + 연합뉴스 경제 RSS 병합
+"홈에서 세계 경제 관련 뉴스 기사 링크와 헤드라인을 수집해 올 수 있을까?"라는 요청에 대해, 이미
+설계돼 있던 뉴스 연결 지점(`presentation/models.py`의 `NewsItem`, `news_provider.py`의
+`load_news()` placeholder, `_news_section.html`)을 실제로 채우는 작업으로 진행했다.
+
+소스 결정 과정에서 두 가지를 질문하고 답변받았다:
+- **소스**: Google News RSS(`news.google.com/rss/search?q=세계+경제&hl=ko&gl=KR&ceid=KR:ko`) +
+  연합뉴스 경제 RSS(`yna.co.kr/rss/economy.xml`) 둘 다 병합하기로 결정(다양성 우선, 중복은
+  url 기준 제거).
+- **Google News RSS 이용약관 리스크**: 실제로 받아보니 저작권 문구가 "개인용 피드리더,
+  비상업적 용도로만 사용 가능, 그 외 용도는 명시적으로 금지"였다. 이 프로젝트는 공개
+  웹사이트라 문면상 이 범위를 벗어난다는 점을 알렸고, 개발자가 **"그대로 포함"**을 택해
+  리스크를 인지한 상태로 진행했다. 헤드라인+링크(+연합뉴스 쪽만 짧은 요약)만 저장하고 본문은
+  저장하지 않는 애그리게이터 방식으로 제한했다.
+- **자동화**: 매크로 워크플로(`collect-macro.yml`)처럼 매일 GitHub Actions로 수집한다
+  (`collect-news.yml`, 22:30 UTC — 같은 macro DB 자산을 다루는 collect-macro.yml 23:30 UTC와
+  1시간 간격을 둬 `--clobber` 업로드 경합을 피함). 뉴스는 홈에 바로 반영돼야 하므로, 매크로와
+  달리 이 워크플로는 수집 직후 `build_and_commit_site.sh`까지 실행해 사이트도 재빌드한다.
+- **노출 개수**: "주요 기사 5개(요약 포함) + 헤드라인만 20개"로 답변받아 2단 레이아웃으로
+  구현했다(`presentation/config.py`의 `NEWS_FEATURED_LIMIT`/`NEWS_LIST_LIMIT`).
+
+구현 중 발견한 문제: 연합뉴스 경제 RSS는 게시 빈도가 훨씬 높아(하루 수십 건), 단순 발행일
+최신순으로 두 소스를 병합하면 "주요 5개" 자리가 국내 일반 경제 기사(부동산·소송 등)로
+채워지고 정작 "세계 경제" 검색 결과(Google News)가 밀려나는 것을 로컬 테스트로 확인했다.
+그래서 수집 시점에 `origin`(google_news/yonhap) 태그를 붙이고, 표현 계층
+(`news_provider.py`)에서 주요 5개는 Google News를 우선 채우고 부족분만 최신순으로 채우도록
+했다 — 그 아래 헤드라인 20개는 원래대로 최신순 병합이라 다양성은 유지된다.
+
+구현 파일: `collection/news/`(constants/parsers/google_news_source/yonhap_source),
+`storage/news_repository.py` + `storage/database.py`의 `news` 테이블, `collect_news.py`
+진입점, `presentation/repository/news_provider.py`, `presentation/config.py`의 뉴스 노출
+개수 상수, `_news_section.html`/`style.css`의 2단 레이아웃, `.github/workflows/collect-news.yml`.
+자세한 위치는 STRUCTURE.md 참고.
+
 ### (2026-07-17) 모바일 앱 = Flutter가 아니라 PWA. 표현 계층 언어는 TypeScript 유지
 "Flutter로 모바일 앱을 만들고, 웹에 설치 링크를 보여 달라"는 요청에 대해 **PWA(홈 화면에 추가)**로
 결정했다. Flutter/Dart는 도입하지 않는다.
