@@ -72,9 +72,6 @@ SCORED_FACTORS: list[FactorSpec] = (
 _AVERAGED_COMPOSITES: list[str] = ["VC1", "Vscore", "Mscore", "Fscore", "EQC", "Quant score"]
 COMPOSITE_NAMES: list[str] = _AVERAGED_COMPOSITES + ["Finalscore"]
 
-# 고유 팩터 이름 (중립 채움용 — SCORED_FACTORS의 중복 제거, 순서 유지)
-_UNIQUE_FACTOR_NAMES: list[str] = list(dict.fromkeys(spec.name for spec in SCORED_FACTORS))
-
 
 def compute_scores(stockdata: pd.DataFrame) -> pd.DataFrame:
     """모집단 3종 × 계열 2종의 팩터·종합 점수를 모두 붙인 DataFrame을 반환한다.
@@ -102,6 +99,14 @@ def compute_scores(stockdata: pd.DataFrame) -> pd.DataFrame:
     for tag in ["", *[tag for tag, _ in GROUP_POPULATIONS]]:
         _attach_averages(scored, tag)
 
+    # 5) QIP3 5요인 점수 체계(안정성/재무건전성/성장성/가치성/모멘텀)를 병행 부착한다.
+    #    기존 종합점수(Vscore/Mscore/…)와 독립된 새 컬럼 패밀리(QIP3 *)로만 추가하므로
+    #    위 결과에는 영향이 없다. 순환 import를 피하려고 호출 시점에 지연 import한다
+    #    (qip3_pipeline은 이 모듈의 _score_group_population/GROUP_POPULATIONS를 재사용).
+    from analysis.qip3_pipeline import compute_qip3_scores
+
+    scored = compute_qip3_scores(scored)
+
     return scored
 
 
@@ -111,16 +116,25 @@ def score_output_columns(scored: pd.DataFrame, source_columns: Iterable[str]) ->
     return [column for column in scored.columns if column not in source]
 
 
-def _score_group_population(df: pd.DataFrame, tag: str, group_column: str) -> pd.DataFrame:
+def _score_group_population(
+    df: pd.DataFrame,
+    tag: str,
+    group_column: str,
+    factors: list[FactorSpec] | None = None,
+) -> pd.DataFrame:
     """그룹(섹터/산업)별 모집단에서 두 계열 팩터 점수를 계산한다.
 
     그룹 수가 많아(산업은 100개 이상) 그룹×팩터마다 엔진을 호출하면 너무 느리므로,
     단일 컬럼 엔진(percentile/standard_score)과 동일한 규칙을 groupby 벡터 연산으로
     적용한다. 그룹 값이 결측이거나 표본이 MIN_GROUP_POPULATION 미만이면 중립 50점.
+
+    `factors`를 넘기면 그 팩터 목록만 채점한다 (기본값은 기존 SCORED_FACTORS —
+    호출부 무변경). QIP3 파이프라인이 자기 팩터 목록으로 재사용한다.
     """
     df = df.copy()
+    scored_factors = factors if factors is not None else SCORED_FACTORS
     if group_column not in df.columns:
-        for name in _UNIQUE_FACTOR_NAMES:
+        for name in dict.fromkeys(spec.name for spec in scored_factors):
             df[f"{name}{tag}S"] = NEUTRAL_SCORE
             df[f"{name}{tag}SS"] = NEUTRAL_SCORE
         return df
@@ -129,7 +143,7 @@ def _score_group_population(df: pd.DataFrame, tag: str, group_column: str) -> pd
     group_sizes = labels.groupby(labels).transform("size")
     in_valid_group = labels.notna() & (group_sizes >= MIN_GROUP_POPULATION)
 
-    for factor in SCORED_FACTORS:
+    for factor in scored_factors:
         values = numeric_values(df[factor.name])
         transformed = transform_by_direction(values, factor.direction)
         # 유효 그룹 소속 행만 모집단에 포함 (transform_by_direction이 0을 제외한

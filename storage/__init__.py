@@ -20,6 +20,7 @@ from storage.macro_repository import (
 from storage.news_repository import get_latest_news, prune_news, upsert_news
 from storage.price_repository import get_price_history, upsert_price_history
 from storage.raw_repository import get_raw_latest, upsert_raw_latest
+from storage.qip3_selection import get_goodstock2
 from storage.report_export import (
     get_goodstock,
     get_latest_snapshots,
@@ -54,6 +55,7 @@ __all__ = [
     "upsert_group_summary",
     "get_group_summary",
     "get_goodstock",
+    "get_goodstock2",
     "upsert_news",
     "prune_news",
     "get_latest_news",

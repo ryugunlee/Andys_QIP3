@@ -254,6 +254,11 @@ git에 커밋하지 않는다.
 - `export_run_summary(conn, run_id, output_dir)`: 이메일 첨부용 stockdata/goodstock/standarddata
   CSV를 output_dir에 쓰고 경로 목록을 반환. CSV는 영속 산출물이 아니라 발송 시점의 임시 파일이다.
 
+## storage/qip3_selection.py
+- `get_goodstock2(conn, run_id)`: QIP3 선별기(기존 `get_goodstock`과 병행). 안정성 필터
+  하위 20% 제외 → reliability>50 → QIP3 종합점수 상위 "시장 전체 종목 수×10%" 선별.
+  QIP3 점수 미계산 DB면 빈 DataFrame(사이트가 섹션을 숨김). run 1개=시장 1개라 시장별 10%가 자연 구현.
+
 ## storage/group_summary_repository.py
 - `upsert_group_summary(conn, group_type, summary)`: 섹터/산업 자체 평가 long DataFrame을
   (group_type, group_value, factor) 기준 upsert (재점수 시 갱신, 크기 고정).
@@ -359,6 +364,26 @@ git에 커밋하지 않는다.
   미만·결측 그룹은 중립 50. `GROUP_POPULATIONS`에 (태그, 컬럼) 추가로 새 모집단 확장.
 - `score_output_columns(scored, source_columns)`: compute_scores가 새로 만든 점수 컬럼 목록
   (저장 시 UPDATE 대상).
+- `_score_group_population(df, tag, group_column, factors=None)`: 섹터/산업 groupby 채점 헬퍼.
+  `factors`를 넘기면 그 목록만 채점(기본은 `SCORED_FACTORS`) — QIP3 파이프라인이 재사용.
+- compute_scores 마지막 단계에서 `qip3_pipeline.compute_qip3_scores`를 지연 import로 호출해
+  QIP3 5요인 점수를 병행 부착한다(기존 종합점수와 독립된 `QIP3 *` 컬럼만 추가).
+
+## analysis/qip3_factors.py · qip3_weights.py · qip3_composites.py · qip3_pipeline.py
+QIP3 5요인 점수 체계(안정성/재무건전성/성장성/가치성/모멘텀 → 0~100 종합 → 시장별 상위 10%).
+기존 Vscore/Mscore/Finalscore/goodstock은 **그대로 두고 병행 추가**한다. 방법론·근거는 `QUANT2.md`.
+- `qip3_factors.py`: 신규 채점 팩터(수집만 됐던 재무 10종 + `12-1Y Ratio`)의 방향성 단일 소스
+  (`QIP3_SCORED_FACTORS`). 기존에 이미 채점된 팩터는 그 점수 컬럼을 재사용하므로 재등록하지 않는다.
+- `qip3_weights.py`: 5요인 내부 가중치·종합 가중치(가치0.35/성장0.25/모멘텀0.25/건전성0.15)와
+  선별 상수(`STABILITY_CUT_QUANTILE=0.20`, `SELECTION_RATIO=0.10`, `RELIABILITY_THRESHOLD=50`,
+  안정성 필터 시장·섹터 블렌드 0.5/0.5).
+- `qip3_composites.py`: `compute_qip3_value/growth/momentum/stability/health(df, suffix)` +
+  `compute_qip3_total(...)`. composite_scores.py와 동일하게 접미사만 바꿔 6계열에 재사용.
+  `_inverted`(100-점수)로 1Y 변동성처럼 HIGHER로 등록된 팩터를 안정성에서 뒤집어 쓴다.
+- `qip3_pipeline.py`: `compute_qip3_scores(scored)` — 신규 팩터를 전체·섹터·산업 모집단에 채점하고
+  6계열(S/SS × 3모집단)로 요인·종합점수를 부착, 평균 산출. `QIP3_STABILITY_FILTER`(시장·섹터
+  블렌드)와 옛 스냅샷 결측 컬럼 가드(`_ensure_raw_factor_columns`) 포함.
+  컬럼 네이밍: `QIP3 Value{PS|SS|""}` / `QIP3 ValueSec…` / `QIP3 Score…` / `QIP3 Stability Filter`.
 
 ## analysis/group_summary.py
 - `compute_group_summary(scored, group_column)`: 섹터/산업 자체 평가. 그룹별 팩터 **중앙값**을

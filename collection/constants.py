@@ -29,6 +29,8 @@ RSI_UNDERHEAT_THRESHOLD: float = 30
 RATIO_LOOKBACK_1Y_DAYS: int = 252
 RATIO_LOOKBACK_6M_DAYS: int = 126
 RATIO_LOOKBACK_3M_DAYS: int = 63
+# 12-1 모멘텀(Jegadeesh-Titman)에서 단기 반전 회피를 위해 건너뛰는 최근 1개월 구간
+RATIO_LOOKBACK_1M_DAYS: int = 21
 VOLUME_LOOKBACK_10D_DAYS: int = 10
 
 # EPS가 0일 때 0으로 나누기를 피하기 위한 대체값
