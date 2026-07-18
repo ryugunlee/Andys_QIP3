@@ -342,3 +342,15 @@ DB를 읽지 않기 때문"이라고 적혀 있었지만, 실제로는 `indicato
 보여야 하므로 수집 직후 사이트를 재빌드하도록 새로 만들었다(DECISIONS.md 2026-07-18 참고).
 매크로 지표도 같은 방식(수집 직후 재빌드)으로 바꿀지는 별도 논의가 필요하다 — 매일 전체
 DuckDB 복원+재빌드+커밋이 하나 늘어나는 비용과, 경제지표 신선도를 맞바꾸는 판단.
+
+## 32. PFCR의 FCF 정의가 통상식과 부호가 반대다 (관찰, 미수정)
+
+`collection/stock.py`의 PFCR 분모는 `operating_cashflow - self._capex`인데, yfinance의
+Capital Expenditure(`_capex`)는 음수(현금유출)라 결과가 `OCF + |Capex|`가 된다. 네이버
+쪽(`_compute_wise_factors`)도 `free_cash_flow = operating_cashflow + capex`(네이버 capex는
+양수)로 똑같이 `OCF + |Capex|`다. 통상적 FCF = `OCF − |Capex|`와 부호가 반대라 FCF가
+과대평가되고 PFCR 분모가 부풀려진다. 두 소스가 **동일하게** 이 방식이라 상대 순위(percentile)
+에는 시장 전체가 같은 편향을 공유해 왜곡이 부분적으로 상쇄되지만, 절대값(예: 화면 표시)이나
+FCF 마진 같은 파생 팩터에는 그대로 새어나간다. 그래서 신규 팩터에서 FCF 마진은 이번에
+제외했다(2026-07-18, DECISIONS 참고). 수정하려면 두 소스의 PFCR·(향후)FCF 마진을 함께
+바꿔야 하고 기존 점수 분포가 이동하므로, 스코어링 연결 단계에서 함께 다룬다.

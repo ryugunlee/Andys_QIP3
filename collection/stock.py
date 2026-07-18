@@ -59,6 +59,7 @@ class YahooStock(BaseStock):
         self._current_assets: float | None = None
         self._current_liabilities: float | None = None
         self._liabilities: float | None = None
+        self._cogs: float | None = None
 
     def fetch(self) -> None:
         """yfinance에서 raw 데이터를 가져온다. 필수 데이터가 없으면 is_valid=False로 남긴다."""
@@ -179,6 +180,21 @@ class YahooStock(BaseStock):
             if "Reconciled Depreciation" in financials.index
             else None
         )
+        self._cogs = (
+            financials.loc["Cost Of Revenue"].iloc[0]
+            if "Cost Of Revenue" in financials.index
+            else None
+        )
+        tax_provision = (
+            financials.loc["Tax Provision"].iloc[0]
+            if "Tax Provision" in financials.index
+            else None
+        )
+        pretax_income = (
+            financials.loc["Pretax Income"].iloc[0]
+            if "Pretax Income" in financials.index
+            else None
+        )
 
         self.interest_ratio = (
             operating_income / interest_expense
@@ -188,6 +204,26 @@ class YahooStock(BaseStock):
         self.arp = (
             (self.net_income - self.operating_cashflow) / self.market_cap * 100
             if self.net_income is not None and self.operating_cashflow is not None
+            else None
+        )
+        self.operating_margin = (
+            operating_income / self.revenue
+            if operating_income is not None and self.revenue not in (None, 0)
+            else None
+        )
+        self.gross_margin = (
+            self._gross_profit / self.revenue
+            if self._gross_profit is not None and self.revenue not in (None, 0)
+            else None
+        )
+        self.net_margin = (
+            self.net_income / self.revenue
+            if self.net_income is not None and self.revenue not in (None, 0)
+            else None
+        )
+        self.effective_tax_rate = (
+            tax_provision / pretax_income
+            if tax_provision is not None and pretax_income not in (None, 0)
             else None
         )
 
@@ -278,6 +314,56 @@ class YahooStock(BaseStock):
         self.pfcr = (
             self.market_cap / (self.operating_cashflow - self._capex)
             if self.operating_cashflow is not None and self._capex is not None
+            else None
+        )
+
+        cash = (
+            balance_sheet.loc["Cash And Cash Equivalents"].iloc[0]
+            if "Cash And Cash Equivalents" in balance_sheet.index
+            else None
+        )
+        inventory = (
+            balance_sheet.loc["Inventory"].iloc[0]
+            if "Inventory" in balance_sheet.index
+            else None
+        )
+        receivables = (
+            balance_sheet.loc["Accounts Receivable"].iloc[0]
+            if "Accounts Receivable" in balance_sheet.index
+            else None
+        )
+
+        self.net_debt_to_equity = (
+            (self._debt - cash) / self._equity
+            if self._debt is not None and cash is not None and self._equity not in (None, 0)
+            else None
+        )
+        self.cash_ratio = (
+            cash / self._current_liabilities
+            if cash is not None and self._current_liabilities not in (None, 0)
+            else None
+        )
+        self.quick_ratio = (
+            (self._current_assets - inventory) / self._current_liabilities
+            if self._current_assets is not None
+            and inventory is not None
+            and self._current_liabilities not in (None, 0)
+            else None
+        )
+        self.inventory_turnover = (
+            self._cogs / inventory
+            if self._cogs is not None and inventory not in (None, 0)
+            else None
+        )
+        self.receivables_turnover = (
+            self.revenue / receivables
+            if self.revenue is not None and receivables not in (None, 0)
+            else None
+        )
+        # yfinance의 Capital Expenditure는 음수(현금유출)라 매출 대비 절대규모로 본다.
+        self.capex_to_revenue = (
+            abs(self._capex) / self.revenue
+            if self._capex is not None and self.revenue not in (None, 0)
             else None
         )
 

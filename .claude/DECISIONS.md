@@ -141,3 +141,21 @@ main push(paths: presentation/**·build_site.py). `build_and_commit_site.sh`가 
 `presentation/templates/partials/_trend_rail.html`, `base.html`의 `{% block aside %}`,
 `static/style.css`의 `.trend-rail`(`@media (min-width: 1560px)`에서만 노출). 상세는
 `.claude/STRUCTURE.md` 참고.
+### (2026-07-18) 재무 팩터 10종을 수집 영역에만 추가 (스코어링 미연결)
+
+수집된 재무제표 계정을 더 활용해 새 분석 팩터를 만들자는 요청. 유저와 3가지를 확정했다.
+- "부채형 자산을 제외한 유동비율 및 부채비율" → **당좌비율(Quick Ratio) + 순부채비율
+  (Net Debt to Equity)** 로 해석하는 데 동의받음.
+- 추가 범위 → 그룹 A(기존 계정만으로 양쪽 즉시 계산: Operating/Gross/Net Margin,
+  Net Debt to Equity, Cash Ratio, Capex to Revenue) + 그룹 B(야후 즉시·네이버 새 ACCODE
+  필요: Inventory Turnover, Quick Ratio, Effective Tax Rate, Receivables Turnover) **전부**.
+- 네이버 WiseFn ACCODE → **지금 확인**하기로 함. 삼성전자·SK하이닉스로 교차 검증해
+  매출원가 200360 / 세전이익 203120 / 법인세 203130 / 재고자산 112840 / 매출채권 190560
+  을 확정(기존 ACCODE 검증 방식과 동일).
+
+**이번 범위는 수집 영역만**(유저 지시): `CURATED_COLUMNS`에 10개 컬럼 추가 →
+`snapshot_factors`에 저장까지. 방향성·가중치(`analysis/factors.py`, 종합점수 수식)에는
+아직 연결하지 않았다. 마진·회전율은 업종 편차가 크고, 설비투자 집약도·유효법인세율은
+높/낮음으로 우열을 못 가려서, 스코어링 연결(특히 섹터 내 비교 반영 방식)은 다음 단계에서
+설계하기로 했다. FCF 마진은 기존 PFCR의 FCF 정의(OCF + |Capex|, 통상식과 부호 반대)를
+그대로 퍼뜨리게 되어 이번엔 제외하고 PROBLEMS에 관찰만 남긴다. 설명은 QUANT.md 9절.

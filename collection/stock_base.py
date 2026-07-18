@@ -80,6 +80,17 @@ CURATED_COLUMNS: list[tuple[str, str]] = [
     ("Asset Turnover", "asset_turnover"),
     ("PFCR", "pfcr"),
     ("Buyback to Income", "buyback_to_income"),
+    # --- 신규 팩터 (수집만, 아직 스코어링 미연결) ---
+    ("Operating Margin", "operating_margin"),
+    ("Net Margin", "net_margin"),
+    ("Gross Margin", "gross_margin"),
+    ("Net Debt to Equity", "net_debt_to_equity"),
+    ("Cash Ratio", "cash_ratio"),
+    ("Capex to Revenue", "capex_to_revenue"),
+    ("Inventory Turnover", "inventory_turnover"),
+    ("Quick Ratio", "quick_ratio"),
+    ("Effective Tax Rate", "effective_tax_rate"),
+    ("Receivables Turnover", "receivables_turnover"),
 ]
 
 _RAW_COLUMN_PREFIX: str = "raw_"
@@ -169,6 +180,17 @@ class BaseStock:
         self.asset_turnover: float | None = None
         self.pfcr: float | None = None
         self.buyback_to_income: float | None = None
+        # --- 신규 팩터 (수집만, 아직 스코어링 미연결) ---
+        self.operating_margin: float | None = None
+        self.net_margin: float | None = None
+        self.gross_margin: float | None = None
+        self.net_debt_to_equity: float | None = None
+        self.cash_ratio: float | None = None
+        self.capex_to_revenue: float | None = None
+        self.inventory_turnover: float | None = None
+        self.quick_ratio: float | None = None
+        self.effective_tax_rate: float | None = None
+        self.receivables_turnover: float | None = None
 
     def _compute_technical_factors(self) -> None:
         history = add_moving_averages(self.history)

@@ -31,19 +31,24 @@ from collection.constants import (
     NAVER_WISE_FRQ_QUARTER,
     NAVER_WISE_ACCODE_CAPEX,
     NAVER_WISE_ACCODE_CASH_AND_EQUIVALENTS,
+    NAVER_WISE_ACCODE_COGS,
     NAVER_WISE_ACCODE_CURRENT_ASSETS,
     NAVER_WISE_ACCODE_CURRENT_LIABILITIES,
     NAVER_WISE_ACCODE_DEPRECIATION,
     NAVER_WISE_ACCODE_GROSS_PROFIT,
+    NAVER_WISE_ACCODE_INCOME_TAX,
     NAVER_WISE_ACCODE_INTEREST_EXPENSE,
+    NAVER_WISE_ACCODE_INVENTORY,
     NAVER_WISE_ACCODE_NET_INCOME,
     NAVER_WISE_ACCODE_OPERATING_CASH_FLOW,
     NAVER_WISE_ACCODE_OPERATING_INCOME,
+    NAVER_WISE_ACCODE_PRETAX_INCOME,
     NAVER_WISE_ACCODE_REVENUE,
     NAVER_WISE_ACCODE_TOTAL_ASSETS,
     NAVER_WISE_ACCODE_TOTAL_DEBT,
     NAVER_WISE_ACCODE_TOTAL_EQUITY,
     NAVER_WISE_ACCODE_TOTAL_LIABILITIES,
+    NAVER_WISE_ACCODE_TRADE_RECEIVABLES,
     NAVER_WISE_ACCODE_TREASURY_STOCK_ACQUISITION,
     NAVER_WISE_ACCODE_TREASURY_STOCK_DISPOSAL,
     NAVER_WISE_RPT_BALANCE_SHEET,
@@ -317,6 +322,11 @@ class NaverStock(BaseStock):
         # 그대로 옮긴 것이 아니다.
         capex = won(balance(NAVER_WISE_ACCODE_CAPEX))
         total_equity = won(balance(NAVER_WISE_ACCODE_TOTAL_EQUITY))
+        inventory = won(balance(NAVER_WISE_ACCODE_INVENTORY))
+        receivables = won(balance(NAVER_WISE_ACCODE_TRADE_RECEIVABLES))
+        cogs = won(income(NAVER_WISE_ACCODE_COGS))
+        income_tax = won(income(NAVER_WISE_ACCODE_INCOME_TAX))
+        pretax_income = won(income(NAVER_WISE_ACCODE_PRETAX_INCOME))
 
         operating_cashflow = won(cash_flow(NAVER_WISE_ACCODE_OPERATING_CASH_FLOW))
         depreciation = won(cash_flow(NAVER_WISE_ACCODE_DEPRECIATION))
@@ -380,6 +390,29 @@ class NaverStock(BaseStock):
         if self.market_cap:
             net_buyback = -treasury_acquisition + treasury_disposal
             self.buyback_yield = -(net_buyback / self.market_cap) * 100
+
+        # --- 신규 팩터 (수익성/재무건전성/효율성). 비율이라 억원 스케일은 서로 상쇄된다. ---
+        if operating_income is not None and self.revenue not in (None, 0):
+            self.operating_margin = operating_income / self.revenue
+        if gross_profit is not None and self.revenue not in (None, 0):
+            self.gross_margin = gross_profit / self.revenue
+        if self.net_income is not None and self.revenue not in (None, 0):
+            self.net_margin = self.net_income / self.revenue
+        if total_debt is not None and cash is not None and total_equity not in (None, 0):
+            self.net_debt_to_equity = (total_debt - cash) / total_equity
+        if cash is not None and current_liabilities not in (None, 0):
+            self.cash_ratio = cash / current_liabilities
+        # 네이버 CAPEX는 양수(지출 규모)라 매출 대비 절대규모로 바로 쓴다.
+        if capex is not None and self.revenue not in (None, 0):
+            self.capex_to_revenue = capex / self.revenue
+        if cogs is not None and inventory not in (None, 0):
+            self.inventory_turnover = cogs / inventory
+        if current_assets is not None and inventory is not None and current_liabilities not in (None, 0):
+            self.quick_ratio = (current_assets - inventory) / current_liabilities
+        if income_tax is not None and pretax_income not in (None, 0):
+            self.effective_tax_rate = income_tax / pretax_income
+        if self.revenue is not None and receivables not in (None, 0):
+            self.receivables_turnover = self.revenue / receivables
 
         if previous_period is not None:
             total_debt_prev = won(balance(NAVER_WISE_ACCODE_TOTAL_DEBT, previous_period))

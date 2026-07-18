@@ -25,6 +25,9 @@
 
 ## collection/stock_base.py
 - `CURATED_COLUMNS`: 표의 컬럼명 ↔ `BaseStock` 속성명 매핑 (원래 `stock.py`에 있던 것을 이동).
+  끝에 신규 팩터 10종(Operating/Gross/Net Margin, Net Debt to Equity, Cash Ratio,
+  Capex to Revenue, Inventory Turnover, Quick Ratio, Effective Tax Rate,
+  Receivables Turnover)이 추가됐다 — 수집·저장만 하고 아직 스코어링 미연결(QUANT.md 9절).
 - `split_raw_and_curated(row)`: `to_row()` 결과를 `raw_` 접두사 여부로 나누는 함수.
   DuckDB에 저장할 때 curated+점수(넓은 typed 테이블)와 raw 원본(JSON 테이블)을 분리하는
   지점으로 쓰인다 (`Andys_QIP2.py`의 `_persist_ticker_data` 참고).
@@ -95,7 +98,12 @@ PFCR/Coverage Ratio/NCAV/Current Ratio/ROC/GPTOA/ARP/Interest Ratio/Debt Growth/
     Buyback Yield/Depreciation Capex Ratio/Coverage Ratio/NCAV/Current Ratio/ROC/GPTOA/
     Asset Turnover/ARP/Interest Ratio/Debt Growth/EV·EBITDA/EV·Revenue를 계산하고, 가능하면
     Asset to Equity/ROA를 자산총계/자본총계 기반 정확한 값으로 덮어쓴다. 계정과목 코드(ACCODE)는
-    `collection/constants.py`의 `NAVER_WISE_ACCODE_*` 상수로 고정.
+    `collection/constants.py`의 `NAVER_WISE_ACCODE_*` 상수로 고정. 신규 팩터 10종(마진 3종·
+    순부채비율·현금비율·당좌비율·재고/매출채권 회전율·설비투자 집약도·유효법인세율)도 여기서
+    채운다 — 추가 계정(매출원가 200360·세전이익 203120·법인세 203130·재고자산 112840·
+    매출채권 190560)을 읽어 야후와 동일 의미로 계산. 야후 쪽은 `stock.py`의
+    `_compute_financials_factors`(마진·유효세율)와 `_compute_balance_sheet_factors`(현금 계정
+    읽기 + 나머지)가 담당.
   - 여전히 없는 것: 내부자거래/기관투자자 비중(Insider Buy Ratio/Institutionpercent/Insiderpercent).
   - 업종(Sector/Industry)은 한글 업종명 API를 찾지 못해 숫자 업종 코드를 임시로 사용한다.
 - `basic_information.py`: `get_naver_stock_information(tickers, on_ticker_collected=None)` — 야후 경로와
