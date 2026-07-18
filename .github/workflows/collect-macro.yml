@@ -1,5 +1,10 @@
 name: Collect Macro Indicators
 
+# 매크로 경제지표를 수집해 macro DB에 채운 뒤, 홈 페이지 경제지표 카드에 바로 반영되도록
+# 수집 직후 사이트도 재빌드·커밋한다(collect-news.yml과 동일한 방식). 재빌드를 붙이기 전에는
+# 매크로 지표가 그 주의 시장별 수집이 사이트를 재빌드할 때까지 최대 며칠 지연됐다
+# (.claude/PROBLEMS.md #31 참고).
+
 on:
   schedule:
     # 매일 23:30 UTC
@@ -33,11 +38,16 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Restore macro DuckDB from data-store release
-        run: bash .github/scripts/restore_db.sh "andys_qip_macro.duckdb"
+      # build_site.py가 KR·US 주식 DB도 읽으므로 전체 DuckDB를 복원한다(기본 패턴 *.duckdb).
+      # 매크로만 복원하면 재빌드 단계에서 주식 데이터가 없어 EmptySiteError로 실패한다.
+      - name: Restore DuckDB from data-store release
+        run: bash .github/scripts/restore_db.sh
 
       - name: Collect macro indicators
         run: python collect_macro.py
 
       - name: Save macro DuckDB to data-store release
         run: bash .github/scripts/save_db.sh qipinfos/andys_qip_macro.duckdb
+
+      - name: Rebuild site and commit
+        run: bash .github/scripts/build_and_commit_site.sh
