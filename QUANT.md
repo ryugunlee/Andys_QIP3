@@ -4,6 +4,10 @@
 점수 산출 방식과 수집 데이터를 정리한다. `CLAUDE.md`가 언급하는 "선별 요건 및 방식"의
 저장 위치가 이 파일이다. 값/가중치가 바뀌면 이 문서도 함께 갱신한다.
 
+> **병행 체계 안내:** 이 문서의 Vscore/Mscore/Fscore/Finalscore/goodstock과 **별개로**,
+> 규모 무관 비율형 지표 기반의 **QIP3 5요인 점수 체계**(안정성/재무건전성/성장성/가치성/모멘텀
+> → 시장별 상위 10% 선별)가 병행 운영된다. 방법론·근거·팩터 구성은 `QUANT2.md` 참고.
+
 관련 코드의 단일 소스(Single Source of Truth):
 - 팩터 목록·방향성: `analysis/factors.py`
 - 가중치·임계값: `analysis/weights.py`
@@ -124,6 +128,7 @@ yfinance 경로에서는 방어적으로 걸러진다(`collection/tickers.py`).
 | 컬럼 | 의미 | 계산식 |
 |---|---|---|
 | 3M/6M/1Y Ratio | 3개월/6개월/1년 수익률(%) | (현재 종가 / N일 전 종가) × 100 − 100 |
+| 12-1Y Ratio ⓝ | 12-1 모멘텀(%): 최근 1개월 제외 12개월 수익률 | (21일 전 종가 / 252일 전 종가) × 100 − 100 |
 | 3M/1Y/10D Turnover | 거래대금/시가총액 | 기간 평균 거래대금 / 시가총액 |
 | 10D Overheat | 단기 과열도 | 10일 Turnover / 3개월 Turnover |
 | 3M Overheat | 중기 과열도 | 3개월 Turnover / 1년 Turnover |
