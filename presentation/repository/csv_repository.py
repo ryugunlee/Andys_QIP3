@@ -79,6 +79,10 @@ class CsvStockRepository:
             good = good.head(limit)
         return [rows.summary_from_row(row) for _, row in good.iterrows()]
 
+    def qip3_stocks(self, limit: int | None = None) -> list[StockSummary]:
+        """CSV 폴백에는 QIP3 점수 산출물이 없다 — QIP3 섹션은 표시되지 않는다."""
+        return []
+
     def top_by_market_cap(self, region: str, limit: int) -> list[StockSummary]:
         stocks = self._all()
         if stocks.empty or rows.COL_MARKET_CAP not in stocks.columns:

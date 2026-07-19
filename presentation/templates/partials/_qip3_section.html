@@ -1,0 +1,59 @@
+{# QIP3 5요인 선별 섹션. 컨텍스트: qip3_recommended, qip3_total,
+   qip3_by_sector, qip3_by_market (ConcentrationRow), root #}
+{% if qip3_recommended %}
+<section class="page-section">
+  <div class="section-head">
+    <h2>QIP3 5요인 선별</h2>
+    <span class="section-sub">
+      안정성 하위 20%를 제외하고 가치성·성장성·모멘텀·재무건전성을 종합해 시장별 상위 10%를 뽑은 종목
+      (선별 {{ qip3_total }}개 중 {{ qip3_recommended | length }}개 표시)
+    </span>
+  </div>
+  <div class="card-grid">
+    {% for stock in qip3_recommended %}
+    <a class="stock-card" href="{{ root }}/stocks/{{ stock.ticker | urlencode }}.html">
+      <div class="card-top">
+        <span class="stock-name">{{ stock.name or stock.ticker }}</span>
+        <span class="badge">{{ stock.market }}</span>
+      </div>
+      <div class="card-body">
+        <div>
+          <div class="stock-price">{{ stock.close | price(stock.market) }}</div>
+          <div class="stock-cap">시총 {{ stock.market_cap | money(stock.market) }}</div>
+        </div>
+        {% if stock.ratio_3m is not none %}
+        <div class="stock-change {{ stock.ratio_3m | change_class }}">
+          {{ stock.ratio_3m | signed_percent }}
+          <span class="stock-cap">3개월</span>
+        </div>
+        {% endif %}
+      </div>
+      {% if stock.qip3_score is not none %}
+      <div class="card-score score-meter">
+        <span class="meter-label">QIP3 점수</span>
+        <div class="meter-track">
+          <div class="meter-fill" style="width: {{ stock.qip3_score | meter_width }}%"></div>
+        </div>
+        <span class="meter-value">{{ stock.qip3_score | score }}</span>
+      </div>
+      {% endif %}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% if qip3_by_sector or qip3_by_market %}
+  <div class="concentration-grid">
+    {% if qip3_by_sector %}
+    {% with title = "섹터 쏠림", rows = qip3_by_sector %}
+    {% include "partials/_concentration_panel.html" %}
+    {% endwith %}
+    {% endif %}
+    {% if qip3_by_market %}
+    {% with title = "시장 쏠림", rows = qip3_by_market %}
+    {% include "partials/_concentration_panel.html" %}
+    {% endwith %}
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}

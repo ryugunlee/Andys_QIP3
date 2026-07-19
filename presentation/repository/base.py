@@ -21,6 +21,13 @@ class StockRepository(Protocol):
         """추천 종목(분석 영역이 선별한 goodstock)을 Finalscore 내림차순으로 반환."""
         ...
 
+    def qip3_stocks(self, limit: int | None = None) -> list[StockSummary]:
+        """QIP3 5요인 선별 종목(get_goodstock2)을 QIP3 종합점수 내림차순으로 반환.
+
+        QIP3 점수가 없는 데이터(CSV 폴백·재점수 이전 DB)면 빈 리스트.
+        """
+        ...
+
     def chart_bundle(self, ticker: str, market: str) -> StockCharts | None:
         """종목 상세 차트용 시계열(일봉·연간 실적). 데이터가 없으면 None.
 

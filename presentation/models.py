@@ -21,6 +21,7 @@ class StockSummary:
     ratio_3m: float | None  # 최근 3개월 수익률 (%)
     final_score: float | None
     reliability: float | None
+    qip3_score: float | None = None  # QIP3 5요인 종합 점수 (없으면 미표시)
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,15 @@
+{# 선별 종목 쏠림 패널 하나. 컨텍스트: title, rows (ConcentrationRow 목록) #}
+<div class="concentration-panel">
+  <h3 class="concentration-title">{{ title }}</h3>
+  <ul class="concentration-list">
+    {% for row in rows %}
+    <li class="concentration-row">
+      <span class="concentration-label">{{ row.label }}</span>
+      <div class="meter-track">
+        <div class="meter-fill" style="width: {{ row.percent | meter_width }}%"></div>
+      </div>
+      <span class="concentration-value">{{ row.count }}개 · {{ "%.0f" | format(row.percent) }}%</span>
+    </li>
+    {% endfor %}
+  </ul>
+</div>

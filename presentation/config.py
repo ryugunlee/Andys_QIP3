@@ -47,6 +47,8 @@ APP_BACKGROUND_COLOR: str = "#ffffff"
 # 목록 화면에 노출하는 종목 개수
 TOP_MARKET_CAP_LIMIT: int = 10  # 시가총액 상위 표
 RECOMMENDED_DISPLAY_LIMIT: int = 12  # 주식 분석 페이지의 추천 종목 카드
+QIP3_DISPLAY_LIMIT: int = 12  # 주식 분석 페이지의 QIP3 5요인 선별 종목 카드
+QIP3_CONCENTRATION_TOP_N: int = 6  # 선별 결과 섹터/시장 쏠림에서 보여줄 상위 항목 수
 INDEX_RECOMMENDED_PREVIEW_LIMIT: int = 6  # 메인 페이지의 추천 종목 미리보기
 
 # 뉴스 섹션(홈/주식 분석 페이지 공용, _news_section.html)에 노출하는 기사 수
