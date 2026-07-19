@@ -29,8 +29,30 @@ from collection.constants import (
     RATIO_LOOKBACK_1Y_DAYS,
     REQUEST_THROTTLE_SECONDS,
 )
+from collection.financial_trend import evaluate_uptrend
 from collection.stock_base import BaseStock
 from collection.technical import lookback_index
+
+# yfinance 손익계산서(항목 x 기간)의 다년간 오름세 판정에 쓰는 항목 라벨.
+# to_financial_statement_rows()가 long format으로 바꿀 때 쓰는 것과 같은 원본 라벨이다.
+_REVENUE_ITEM = "Total Revenue"
+_OPERATING_INCOME_ITEM = "Operating Income"
+
+
+def _annual_series(financials: pd.DataFrame, item: str) -> dict[str, float]:
+    """야후 손익계산서(항목 x 기간)의 한 행을 {회계기간(YYYYMM): 값}으로 변환한다.
+
+    기간 라벨 규칙은 to_financial_statement_rows()와 동일(Timestamp -> "%Y%m").
+    """
+    if item not in financials.index:
+        return {}
+    series: dict[str, float] = {}
+    for period, value in financials.loc[item].items():
+        if pd.isna(value):
+            continue
+        label = period.strftime("%Y%m") if hasattr(period, "strftime") else str(period)
+        series[label] = float(value)
+    return series
 
 
 class YahooStock(BaseStock):
@@ -225,6 +247,10 @@ class YahooStock(BaseStock):
             tax_provision / pretax_income
             if tax_provision is not None and pretax_income not in (None, 0)
             else None
+        )
+        self.revenue_trend_5y = evaluate_uptrend(_annual_series(financials, _REVENUE_ITEM))
+        self.operating_income_trend_5y = evaluate_uptrend(
+            _annual_series(financials, _OPERATING_INCOME_ITEM)
         )
 
     def _compute_balance_sheet_factors(self) -> None:

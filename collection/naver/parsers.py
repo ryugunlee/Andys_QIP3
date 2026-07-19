@@ -179,6 +179,20 @@ def get_wise_value(statements: pd.DataFrame, period: str, accode: str) -> float 
     return match["value"].iloc[0] if not match.empty else None
 
 
+def series_by_accode(statements: pd.DataFrame, accode: str) -> dict[str, float]:
+    """ACCODE 하나의 전체 회계기간 값을 {period: value}로 반환한다 (컨센서스 제외).
+
+    get_wise_value이 기간 하나만 조회하는 것과 달리, 다년간 추세 판정
+    (collection/financial_trend.py)처럼 전체 이력이 필요할 때 쓴다.
+    """
+    if statements.empty:
+        return {}
+    prefix = f"{accode}:"
+    actual = statements[~statements["is_consensus"]]
+    matched = actual[actual["item"].str.startswith(prefix)]
+    return dict(zip(matched["period"], matched["value"]))
+
+
 def latest_period_wise_values(statements: pd.DataFrame) -> dict[str, float]:
     """가장 최근 실제(비컨센서스) 회계기간의 {item: value} 딕셔너리를 반환한다
     (raw 데이터 보관용 — 5개년 전체가 아니라 최신 한 기간만)."""

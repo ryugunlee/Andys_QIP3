@@ -55,6 +55,7 @@ from collection.constants import (
     NAVER_WISE_RPT_CASH_FLOW,
     NAVER_WISE_RPT_INCOME_STATEMENT,
 )
+from collection.financial_trend import evaluate_uptrend
 from collection.naver import client
 from collection.naver.parsers import (
     get_statement_value,
@@ -66,6 +67,7 @@ from collection.naver.parsers import (
     parse_price_history,
     parse_wise_financial_statement,
     parse_won_amount,
+    series_by_accode,
 )
 from collection.stock_base import BaseStock
 
@@ -206,6 +208,7 @@ class NaverStock(BaseStock):
         self._compute_technical_factors()
         self._compute_financial_statement_factors()
         self._compute_wise_factors()
+        self._compute_financial_trend_factors()
         self._compute_buyback_to_income()
 
     def _compute_valuation_factors(self) -> None:
@@ -421,6 +424,15 @@ class NaverStock(BaseStock):
                 if total_debt is not None and total_debt_prev not in (None, 0)
                 else None
             )
+
+    def _compute_financial_trend_factors(self) -> None:
+        """5개년 손익계산서(컨센서스 제외)로 매출·영업이익 오름세를 판정한다."""
+        revenue_series = series_by_accode(self.wise_income_statement, NAVER_WISE_ACCODE_REVENUE)
+        operating_income_series = series_by_accode(
+            self.wise_income_statement, NAVER_WISE_ACCODE_OPERATING_INCOME
+        )
+        self.revenue_trend_5y = evaluate_uptrend(revenue_series)
+        self.operating_income_trend_5y = evaluate_uptrend(operating_income_series)
 
     def _integration_totals(self) -> dict:
         return {

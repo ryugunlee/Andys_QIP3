@@ -39,6 +39,9 @@ _SIGNAL_LABELS: dict[str, str] = {
     # Value risk / Growth risk의 O/X
     "O": "있음",
     "X": "없음",
+    # 매출·영업이익 5년 오름세(Revenue/Operating Income Trend)의 Y/N
+    "Y": "오름세 확실",
+    "N": "오름세 불확실",
 }
 
 

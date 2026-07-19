@@ -79,6 +79,12 @@ yfinance 경로에서는 방어적으로 걸러진다(`collection/tickers.py`).
 |---|---|---|
 | EPSgrowth | EPS 성장률(%) | earningsGrowth × 100 |
 | Revenuegrowth | 매출 성장률(%) | revenueGrowth × 100 |
+| Revenue Trend (5Y) | 매출 5년 오름세 (Y/N/결측) | `collection/financial_trend.py` — 연간 매출 시계열의 순증가·하락 연수 판정 |
+| Operating Income Trend (5Y) | 영업이익 5년 오름세 (Y/N/결측) | 위와 동일(영업이익 시계열). 적자에서 시작해도 무방 |
+
+> **Revenue/Operating Income Trend (5Y)**는 Value risk/Growth risk처럼 percentile/standard
+> 스코어링 대상이 아닌 Y/N 판정 전용 팩터다(수치가 아니라 범주값이라 애초에 방향성 개념이
+> 없다). 연간 실적이 4개년 미만이면 결측(None)으로 남는다 — 판단 기준은 9.2절 참고.
 
 **재무 건전성**
 

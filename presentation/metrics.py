@@ -80,6 +80,10 @@ METRIC_SPECS: list[MetricSpec] = [
     # --- 성장성 ---
     MetricSpec("EPSgrowth", "EPS 성장률", MetricFormat.PERCENT, MetricGroup.GROWTH),
     MetricSpec("Revenuegrowth", "매출 성장률", MetricFormat.PERCENT, MetricGroup.GROWTH),
+    MetricSpec("Revenue Trend (5Y)", "매출 5년 오름세", MetricFormat.TEXT, MetricGroup.GROWTH),
+    MetricSpec(
+        "Operating Income Trend (5Y)", "영업이익 5년 오름세", MetricFormat.TEXT, MetricGroup.GROWTH
+    ),
     # --- 재무 건전성 ---
     MetricSpec("Debt to Equity", "부채비율", MetricFormat.PERCENT, MetricGroup.STABILITY),
     MetricSpec("Net Debt to Equity", "순부채비율 (순부채/자본)", MetricFormat.FRACTION_PERCENT, MetricGroup.STABILITY),

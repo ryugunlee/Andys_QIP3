@@ -93,6 +93,9 @@ CURATED_COLUMNS: list[tuple[str, str]] = [
     ("Quick Ratio", "quick_ratio"),
     ("Effective Tax Rate", "effective_tax_rate"),
     ("Receivables Turnover", "receivables_turnover"),
+    # --- 다년간 실적 오름세 판정 (Y/N/None, collection/financial_trend.py) ---
+    ("Revenue Trend (5Y)", "revenue_trend_5y"),
+    ("Operating Income Trend (5Y)", "operating_income_trend_5y"),
 ]
 
 _RAW_COLUMN_PREFIX: str = "raw_"
@@ -194,6 +197,9 @@ class BaseStock:
         self.quick_ratio: float | None = None
         self.effective_tax_rate: float | None = None
         self.receivables_turnover: float | None = None
+        # --- 다년간 실적 오름세 판정 (Y/N, 데이터 4개년 미만이면 None) ---
+        self.revenue_trend_5y: str | None = None
+        self.operating_income_trend_5y: str | None = None
 
     def _compute_technical_factors(self) -> None:
         history = add_moving_averages(self.history)
