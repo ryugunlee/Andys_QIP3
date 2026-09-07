@@ -120,9 +120,43 @@ CURATED_COLUMNS: list[tuple[str, str]] = [
     ("QIP4 Average Operating CF", "qip4_average_operating_cf"),
     ("QIP4 Tangible Equity Ratio", "qip4_tangible_equity_ratio"),
     ("QIP4 Goodwill to Assets", "qip4_goodwill_to_assets"),
+    # --- QIP4 성장성 (collection/qip4/growth_metrics.py) ---
+    ("QIP4 Revenue Growth Volatility", "qip4_revenue_growth_volatility"),
+    ("QIP4 Capital Intensity", "qip4_capital_intensity"),
+    ("QIP4 Growth Self Funding", "qip4_growth_self_funding"),
+    ("QIP4 Revenue CAGR", "qip4_revenue_cagr"),
+    ("QIP4 Margin Direction", "qip4_margin_direction"),
+    ("QIP4 Growth Continuity", "qip4_growth_continuity"),
+    ("QIP4 Growth Continuity Basis", "qip4_growth_continuity_basis"),
+    # --- QIP4 가치 (collection/qip4/value_metrics.py) ---
+    ("QIP4 FCF Yield", "qip4_fcf_yield"),
+    ("QIP4 EV to EBIT", "qip4_ev_to_ebit"),
+    ("QIP4 Dividend Payout Yield", "qip4_dividend_payout_yield"),
+    ("QIP4 Net Cash Years", "qip4_net_cash_years"),
+    # --- QIP4 효율성 경보 (collection/qip4/efficiency_metrics.py) ---
+    # 경보는 True/False/None인데 pandas에서 None이 섞이면 object dtype이 되어
+    # DuckDB 컬럼이 VARCHAR로 굳는다. 이후 실수 UPDATE가 실패하므로 1.0/0.0/None
+    # 실수로 저장한다 (storage/snapshot_repository.py의 _duckdb_type_for 참고).
+    ("QIP4 Inventory Alarm", "qip4_inventory_alarm"),
+    ("QIP4 Receivables Alarm", "qip4_receivables_alarm"),
+    ("QIP4 CCC Deteriorating", "qip4_ccc_deteriorating"),
+    ("QIP4 Accrual Ratio", "qip4_accrual_ratio"),
+    ("QIP4 Advances Growing", "qip4_advances_growing"),
+    # --- QIP4 섹터군 분류 (collection/sector_groups.py) ---
+    ("QIP4 Sector Group", "qip4_sector_group"),
+    ("QIP4 Leverage Tolerant", "qip4_leverage_tolerant"),
 ]
 
 _RAW_COLUMN_PREFIX: str = "raw_"
+
+
+def _as_float(value: bool | int | None) -> float | None:
+    """불리언·정수를 실수로 바꾼다(None은 그대로).
+
+    True/False/None이 섞인 컬럼은 pandas에서 object dtype이 되고, 그러면 DuckDB
+    컬럼이 VARCHAR로 굳어 이후 실수 UPDATE가 실패한다. 실수로 통일해 그 함정을 피한다.
+    """
+    return None if value is None else float(value)
 
 
 def split_raw_and_curated(row: dict) -> tuple[dict, dict]:
@@ -233,6 +267,24 @@ class BaseStock:
         self.qip4_average_operating_cf: float | None = None
         self.qip4_tangible_equity_ratio: float | None = None
         self.qip4_goodwill_to_assets: float | None = None
+        self.qip4_revenue_growth_volatility: float | None = None
+        self.qip4_capital_intensity: float | None = None
+        self.qip4_growth_self_funding: float | None = None
+        self.qip4_revenue_cagr: float | None = None
+        self.qip4_margin_direction: str | None = None
+        self.qip4_growth_continuity: float | None = None
+        self.qip4_growth_continuity_basis: str | None = None
+        self.qip4_fcf_yield: float | None = None
+        self.qip4_ev_to_ebit: float | None = None
+        self.qip4_dividend_payout_yield: float | None = None
+        self.qip4_net_cash_years: float | None = None
+        self.qip4_inventory_alarm: float | None = None
+        self.qip4_receivables_alarm: float | None = None
+        self.qip4_ccc_deteriorating: float | None = None
+        self.qip4_accrual_ratio: float | None = None
+        self.qip4_advances_growing: float | None = None
+        self.qip4_sector_group: str | None = None
+        self.qip4_leverage_tolerant: float | None = None
 
     def _compute_technical_factors(self) -> None:
         history = add_moving_averages(self.history)
@@ -343,20 +395,51 @@ class BaseStock:
         """
         # 순환 import를 피하려고 지연 import한다 (qip4가 stock_base를 참조하지는
         # 않지만, 수집 계층 안에서 의존 방향을 단순하게 유지하기 위함).
+        from collection.qip4.efficiency_metrics import compute_efficiency_metrics
+        from collection.qip4.growth_metrics import compute_growth_metrics
         from collection.qip4.series_adapter import FinancialSeries
         from collection.qip4.stability_metrics import compute_stability_metrics
+        from collection.qip4.value_metrics import compute_value_metrics
+        from collection.sector_groups import is_leverage_tolerant, sector_group
 
         series = FinancialSeries(self.to_financial_statement_rows(), self.SOURCE_NAME)
-        metrics = compute_stability_metrics(series, self.SOURCE_NAME)
 
-        self.qip4_ocf_negative_years = metrics.operating_cf_negative_years
-        self.qip4_cash_conversion_3y = metrics.cash_conversion_3y
-        self.qip4_interest_coverage_fail_years = metrics.interest_coverage_below_one_years
-        self.qip4_adjusted_net_debt = metrics.adjusted_net_debt
-        self.qip4_debt_repayment_years = metrics.debt_repayment_years
-        self.qip4_average_operating_cf = metrics.average_operating_cash_flow
-        self.qip4_tangible_equity_ratio = metrics.tangible_equity_ratio
-        self.qip4_goodwill_to_assets = metrics.goodwill_to_assets
+        stability = compute_stability_metrics(series, self.SOURCE_NAME)
+        self.qip4_ocf_negative_years = stability.operating_cf_negative_years
+        self.qip4_cash_conversion_3y = stability.cash_conversion_3y
+        self.qip4_interest_coverage_fail_years = stability.interest_coverage_below_one_years
+        self.qip4_adjusted_net_debt = stability.adjusted_net_debt
+        self.qip4_debt_repayment_years = stability.debt_repayment_years
+        self.qip4_average_operating_cf = stability.average_operating_cash_flow
+        self.qip4_tangible_equity_ratio = stability.tangible_equity_ratio
+        self.qip4_goodwill_to_assets = stability.goodwill_to_assets
+
+        growth = compute_growth_metrics(series)
+        self.qip4_revenue_growth_volatility = growth.revenue_growth_volatility
+        self.qip4_capital_intensity = growth.capital_intensity
+        self.qip4_growth_self_funding = growth.growth_self_funding
+        self.qip4_revenue_cagr = growth.revenue_cagr
+        self.qip4_margin_direction = growth.margin_direction
+        self.qip4_growth_continuity = growth.growth_continuity
+        self.qip4_growth_continuity_basis = growth.growth_continuity_basis
+
+        value = compute_value_metrics(series, self.market_cap)
+        self.qip4_fcf_yield = value.fcf_yield
+        self.qip4_ev_to_ebit = value.ev_to_ebit
+        self.qip4_dividend_payout_yield = value.dividend_payout_yield
+        self.qip4_net_cash_years = _as_float(value.net_cash_years)
+
+        efficiency = compute_efficiency_metrics(series)
+        self.qip4_inventory_alarm = _as_float(efficiency.inventory_alarm)
+        self.qip4_receivables_alarm = _as_float(efficiency.receivables_alarm)
+        self.qip4_ccc_deteriorating = _as_float(efficiency.ccc_deteriorating)
+        self.qip4_accrual_ratio = efficiency.accrual_ratio
+        self.qip4_advances_growing = _as_float(efficiency.advances_growing)
+
+        self.qip4_sector_group = sector_group(self.sector, self.industry)
+        self.qip4_leverage_tolerant = _as_float(
+            is_leverage_tolerant(self.sector, self.industry)
+        )
 
     def to_consensus_rows(self, observed_on: date) -> pd.DataFrame:
         """관측일이 붙은 컨센서스 추정치를 long format으로 반환한다.
