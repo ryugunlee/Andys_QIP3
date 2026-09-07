@@ -83,6 +83,10 @@ class CsvStockRepository:
         """CSV 폴백에는 QIP3 점수 산출물이 없다 — QIP3 섹션은 표시되지 않는다."""
         return []
 
+    def qip4_stocks(self, limit: int | None = None) -> list[StockSummary]:
+        """CSV 폴백에는 QIP4 점수가 없다 — 사이트가 해당 섹션을 숨긴다."""
+        return []
+
     def top_by_market_cap(self, region: str, limit: int) -> list[StockSummary]:
         stocks = self._all()
         if stocks.empty or rows.COL_MARKET_CAP not in stocks.columns:

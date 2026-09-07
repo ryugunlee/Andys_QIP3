@@ -22,6 +22,8 @@ class StockSummary:
     final_score: float | None
     reliability: float | None
     qip3_score: float | None = None  # QIP3 5요인 종합 점수 (없으면 미표시)
+    qip4_score: float | None = None  # QIP4 정량 규칙 종합 점수 (없으면 미표시)
+    qip4_execution_rate: float | None = None  # 모멘텀이 정한 집행률(%)
 
 
 @dataclass(frozen=True)

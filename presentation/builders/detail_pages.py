@@ -23,6 +23,7 @@ from presentation.metrics import (
     MetricGroup,
     specs_by_group,
 )
+from presentation.qip4_view import build_gate_view
 from presentation.models import AnnualFinancials, StockCharts, StockDetail
 from presentation.repository.base import StockRepository
 
@@ -171,6 +172,7 @@ def build_detail_pages(
             headline_scores=_headline_scores(detail),
             metric_groups=_metric_groups(detail),
             chart_data=_chart_data(charts),
+            qip4_gate=build_gate_view(detail.values),
             financial_table=_financial_table(charts, detail.market),
             financial_table_quarterly=_financial_table_quarterly(charts, detail.market),
         )

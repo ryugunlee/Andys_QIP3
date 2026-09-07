@@ -23,6 +23,8 @@ COL_RATIO_3M = "3M Ratio"
 COL_FINALSCORE = "Finalscore"
 COL_RELIABILITY = "reliability"
 COL_QIP3_SCORE = "QIP3 Score"
+COL_QIP4_SCORE = "QIP4 Score"
+COL_QIP4_EXECUTION_RATE = "QIP4 Execution Rate"
 
 # 시장 통합 시 구현체가 덧붙이는 컬럼 (산출물 원본에는 없음)
 COL_MARKET = "Market"
@@ -75,6 +77,8 @@ def summary_from_row(row: pd.Series) -> StockSummary:
         final_score=to_float(row_value(row, COL_FINALSCORE)),
         reliability=to_float(row_value(row, COL_RELIABILITY)),
         qip3_score=to_float(row_value(row, COL_QIP3_SCORE)),
+        qip4_score=to_float(row_value(row, COL_QIP4_SCORE)),
+        qip4_execution_rate=to_float(row_value(row, COL_QIP4_EXECUTION_RATE)),
     )
 
 

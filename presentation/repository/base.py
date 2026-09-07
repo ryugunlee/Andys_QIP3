@@ -28,6 +28,13 @@ class StockRepository(Protocol):
         """
         ...
 
+    def qip4_stocks(self, limit: int | None = None) -> list[StockSummary]:
+        """QIP4 선별 종목(get_goodstock3)을 QIP4 종합점수 내림차순으로 반환.
+
+        QIP4 점수가 없는 데이터(CSV 폴백·재점수 이전 DB)면 빈 리스트.
+        """
+        ...
+
     def chart_bundle(self, ticker: str, market: str) -> StockCharts | None:
         """종목 상세 차트용 시계열(일봉·연간 실적). 데이터가 없으면 None.
 

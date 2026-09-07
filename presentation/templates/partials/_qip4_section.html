@@ -1,0 +1,11 @@
+{# QIP4 정량 규칙 선별 섹션. 컨텍스트: qip4_recommended, qip4_total,
+   qip4_by_sector, qip4_by_market (ConcentrationRow), root #}
+{% with selection_heading = "QIP4 정량 규칙 선별",
+        selection_sub = "안정성 관문을 통과하고 효율성 감사에서 살아남은 종목을 가치·성장으로 채점해 시장별 상위 10%를 뽑았다. 모멘텀은 선정이 아니라 집행률에만 관여한다 (선별 " ~ qip4_total ~ "개 중 " ~ (qip4_recommended | length) ~ "개 표시)",
+        selection_stocks = qip4_recommended,
+        score_field = "qip4_score",
+        score_label = "QIP4 점수",
+        selection_by_sector = qip4_by_sector,
+        selection_by_market = qip4_by_market %}
+{% include "partials/_selection_section.html" %}
+{% endwith %}

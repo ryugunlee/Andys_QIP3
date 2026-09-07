@@ -35,6 +35,7 @@ from storage.financial_repository import get_financial_statements
 from storage.group_summary_repository import get_group_summary
 from storage.price_repository import get_price_history
 from storage.qip3_selection import get_goodstock2
+from storage.qip4_selection import get_goodstock3
 from storage.report_export import get_goodstock, get_run_snapshot
 
 DEFAULT_STOCK_DB_PATHS: tuple[str, ...] = (KR_STOCK_DB_PATH, US_STOCK_DB_PATH)
@@ -59,6 +60,7 @@ class DuckDbStockRepository:
         self._all_stocks: pd.DataFrame | None = None
         self._good_stocks: pd.DataFrame | None = None
         self._qip3_stocks: pd.DataFrame | None = None
+        self._qip4_stocks: pd.DataFrame | None = None
         # 차트용 종목별 시계열 조회는 종목 수만큼 반복되므로 DB 연결을 캐시한다.
         self._chart_conns: dict[Path, duckdb.DuckDBPyConnection] = {}
 
@@ -122,6 +124,14 @@ class DuckDbStockRepository:
             self._qip3_stocks = qip3.reset_index(drop=True)
         return self._qip3_stocks
 
+    def _qip4(self) -> pd.DataFrame:
+        if self._qip4_stocks is None:
+            qip4 = self._load_runs(get_goodstock3)
+            if rows.COL_QIP4_SCORE in qip4.columns:
+                qip4 = qip4.sort_values(by=rows.COL_QIP4_SCORE, ascending=False)
+            self._qip4_stocks = qip4.reset_index(drop=True)
+        return self._qip4_stocks
+
     # --- StockRepository 계약 구현 ---
 
     def good_stocks(self, limit: int | None = None) -> list[StockSummary]:
@@ -135,6 +145,12 @@ class DuckDbStockRepository:
         if limit is not None:
             qip3 = qip3.head(limit)
         return [rows.summary_from_row(row) for _, row in qip3.iterrows()]
+
+    def qip4_stocks(self, limit: int | None = None) -> list[StockSummary]:
+        qip4 = self._qip4()
+        if limit is not None:
+            qip4 = qip4.head(limit)
+        return [rows.summary_from_row(row) for _, row in qip4.iterrows()]
 
     def chart_bundle(self, ticker: str, market: str) -> StockCharts | None:
         path = Path(

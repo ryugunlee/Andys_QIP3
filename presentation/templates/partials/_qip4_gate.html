@@ -1,0 +1,55 @@
+{# QIP4 안정성 관문 결과. 컨텍스트: qip4_gate (GateView 또는 None)
+   기존 QIP3는 탈락 사유를 전혀 보여주지 않고 생존 종목만 노출했다. 여기서는
+   왜 걸렸는지를 항목별로 보여준다 — 판단을 돕는 자료를 충분히 제공한다는 목표에 맞춘다. #}
+{% if qip4_gate %}
+<section class="page-section gate-block">
+  <div class="section-head">
+    <h2>QIP4 안정성 관문</h2>
+    <span class="gate-verdict {{ 'gate-pass' if qip4_gate.passed else 'gate-fail' }}">
+      {{ qip4_gate.verdict_label }}
+    </span>
+  </div>
+
+  {% if qip4_gate.gate_reasons %}
+  <div class="gate-panel gate-panel-fail">
+    <h3>탈락 사유</h3>
+    <ul>
+      {% for reason in qip4_gate.gate_reasons %}<li>{{ reason }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if qip4_gate.warnings %}
+  <div class="gate-panel gate-panel-warn">
+    <h3>자산 품질 경고</h3>
+    <ul>
+      {% for warning in qip4_gate.warnings %}<li>{{ warning }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="gate-panel">
+    <h3>효율성 감사</h3>
+    {% if qip4_gate.alarm_reasons %}
+    <ul>
+      {% for alarm in qip4_gate.alarm_reasons %}<li>{{ alarm }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="gate-note">경보 없음</p>
+    {% endif %}
+    {% if qip4_gate.efficiency_multiplier is not none %}
+    <p class="gate-note">
+      경보 {{ qip4_gate.alarm_count }}개 → 점수 승수 {{ "%.1f" | format(qip4_gate.efficiency_multiplier) }}
+      {%- if qip4_gate.efficiency_multiplier == 0 %} (경보 3개 이상이라 탈락){% endif %}
+    </p>
+    {% endif %}
+  </div>
+
+  {% if qip4_gate.execution_rate is not none %}
+  <p class="gate-note">
+    모멘텀이 정한 집행률 <strong>{{ "%.0f" | format(qip4_gate.execution_rate) }}%</strong>
+    — 무엇을 살지가 아니라 얼마나 살지에만 관여하는 값이다.
+  </p>
+  {% endif %}
+</section>
+{% endif %}

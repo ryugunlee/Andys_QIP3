@@ -1,6 +1,6 @@
 """주식 분석 페이지(stocks/index.html) 빌더.
 
-추천 종목 카드(기존 goodstock), QIP3 5요인 선별 종목·섹터/시장 쏠림,
+추천 종목 카드(기존 goodstock), QIP3 5요인 선별과 QIP4 정량 규칙 선별(각각 섹터/시장 쏠림),
 한국/미국 시가총액 상위 표(CSS 탭), 뉴스 placeholder를 담는다.
 """
 
@@ -33,6 +33,7 @@ def build_stocks_page(
     stocks_dir.mkdir(parents=True, exist_ok=True)
 
     qip3_all = repository.qip3_stocks()
+    qip4_all = repository.qip4_stocks()
 
     template = env.get_template("stocks.html")
     html = template.render(
@@ -45,6 +46,10 @@ def build_stocks_page(
         qip3_total=len(qip3_all),
         qip3_by_sector=_concentration(qip3_all, lambda s: s.sector),
         qip3_by_market=_concentration(qip3_all, lambda s: s.market),
+        qip4_recommended=qip4_all[: config.QIP4_DISPLAY_LIMIT],
+        qip4_total=len(qip4_all),
+        qip4_by_sector=_concentration(qip4_all, lambda s: s.sector),
+        qip4_by_market=_concentration(qip4_all, lambda s: s.market),
         top_kr=repository.top_by_market_cap(
             config.REGION_KR, config.TOP_MARKET_CAP_LIMIT
         ),

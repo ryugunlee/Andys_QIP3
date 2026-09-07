@@ -150,13 +150,50 @@ METRIC_SPECS: list[MetricSpec] = [
     MetricSpec("QIP3 Health", "QIP3 재무건전성", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("QIP3 Stability", "QIP3 안정성", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("QIP3 Stability Filter", "QIP3 안정성 필터 (시장·섹터)", MetricFormat.SCORE, MetricGroup.SCORES),
+    # --- QIP4 정량 규칙 (analysis/qip4_*가 계산, .claude/투자 규칙.md 참고) ---
+    # 관문 결과·사유는 _qip4_gate.html이 전용 블록으로 따로 보여주므로 여기 넣지 않는다.
+    MetricSpec("QIP4 Score", "QIP4 종합 점수", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("QIP4 ScoreSec", "QIP4 종합 점수 (섹터 내)", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("QIP4 Value", "QIP4 가치", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("QIP4 Growth", "QIP4 성장성", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("QIP4 Momentum", "QIP4 모멘텀 (집행률 산정용)", MetricFormat.SCORE, MetricGroup.SCORES),
+    MetricSpec("QIP4 Sector Group", "QIP4 섹터군", MetricFormat.TEXT, MetricGroup.SCORES),
+    # 관문 원시값 — 왜 걸렸는지 숫자로 확인할 수 있게 노출한다.
+    MetricSpec("QIP4 Cash Conversion 3Y", "누적 현금전환율 (3년)", MetricFormat.NUMBER, MetricGroup.STABILITY),
+    MetricSpec("QIP4 Debt Repayment Years", "상환연수", MetricFormat.NUMBER, MetricGroup.STABILITY),
+    MetricSpec("QIP4 Tangible Equity Ratio", "실질 자기자본 비율", MetricFormat.FRACTION_PERCENT, MetricGroup.STABILITY),
+    MetricSpec("QIP4 Goodwill to Assets", "영업권 비중", MetricFormat.FRACTION_PERCENT, MetricGroup.STABILITY),
+    # 성장성·가치 원시값
+    MetricSpec("QIP4 Growth Self Funding", "성장 자기조달률", MetricFormat.NUMBER, MetricGroup.GROWTH),
+    MetricSpec("QIP4 Capital Intensity", "자본집약도", MetricFormat.NUMBER, MetricGroup.GROWTH),
+    MetricSpec("QIP4 Revenue CAGR", "매출 CAGR", MetricFormat.FRACTION_PERCENT, MetricGroup.GROWTH),
+    MetricSpec("QIP4 Growth Continuity Basis", "성장 연속성 판정 기준", MetricFormat.TEXT, MetricGroup.GROWTH),
+    MetricSpec("QIP4 Margin Direction", "성장 중 마진 방향", MetricFormat.TEXT, MetricGroup.GROWTH),
+    MetricSpec("QIP4 FCF Yield", "FCF 수익률", MetricFormat.FRACTION_PERCENT, MetricGroup.VALUATION),
+    MetricSpec("QIP4 EV to EBIT", "EV/EBIT", MetricFormat.MULTIPLE, MetricGroup.VALUATION),
+    MetricSpec("QIP4 Earnings Revision", "이익 모멘텀 (3개월 컨센서스 변화율)", MetricFormat.PERCENT, MetricGroup.MOMENTUM),
 ]
 
 # 상세 페이지 상단에 게이지로 강조하는 대표 점수 (표시 순서대로)
 HEADLINE_SCORE_COLUMNS: tuple[str, ...] = ("Finalscore", "Vscore", "Mscore", "Fscore")
 
+# QIP4 안정성 관문 전용 컬럼. 지표 표에 줄로 늘어놓으면 읽기 어려워 METRIC_SPECS에는
+# 넣지 않고, `_qip4_gate.html`이 전용 블록으로 해석해 보여준다. 다만 상세 페이지가
+# 값을 쥐고 있어야 하므로 DETAIL_VALUE_COLUMNS에는 포함시킨다.
+GATE_VALUE_COLUMNS: list[str] = [
+    "QIP4 Stability Gate",
+    "QIP4 Gate Reasons",
+    "QIP4 Warnings",
+    "QIP4 Efficiency Alarms",
+    "QIP4 Efficiency Reasons",
+    "QIP4 Efficiency Multiplier",
+    "QIP4 Execution Rate",
+]
+
 # StockDetail.values에 담아야 하는 전체 컬럼 목록 (repository가 사용)
-DETAIL_VALUE_COLUMNS: list[str] = [spec.column for spec in METRIC_SPECS]
+DETAIL_VALUE_COLUMNS: list[str] = [
+    spec.column for spec in METRIC_SPECS
+] + GATE_VALUE_COLUMNS
 
 
 def specs_by_group() -> dict[MetricGroup, list[MetricSpec]]:

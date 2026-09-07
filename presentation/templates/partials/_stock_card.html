@@ -1,4 +1,8 @@
-{# 종목 카드. 컨텍스트: stock (StockSummary), root #}
+{# 종목 카드. 컨텍스트: stock (StockSummary), root
+   선택 컨텍스트: score_field(표시할 점수 속성명), score_label(미터 라벨).
+   주지 않으면 기존과 동일하게 final_score를 "종합 점수"로 보여준다. #}
+{% set card_score = stock | attr(score_field) if score_field is defined else stock.final_score %}
+{% set card_score_label = score_label if score_label is defined else "종합 점수" %}
 <a class="stock-card" href="{{ root }}/stocks/{{ stock.ticker | urlencode }}.html">
   <div class="card-top">
     <span class="stock-name">{{ stock.name or stock.ticker }}</span>
@@ -16,13 +20,13 @@
     </div>
     {% endif %}
   </div>
-  {% if stock.final_score is not none %}
+  {% if card_score is not none %}
   <div class="card-score score-meter">
-    <span class="meter-label">종합 점수</span>
+    <span class="meter-label">{{ card_score_label }}</span>
     <div class="meter-track">
-      <div class="meter-fill" style="width: {{ stock.final_score | meter_width }}%"></div>
+      <div class="meter-fill" style="width: {{ card_score | meter_width }}%"></div>
     </div>
-    <span class="meter-value">{{ stock.final_score | score }}</span>
+    <span class="meter-value">{{ card_score | score }}</span>
   </div>
   {% endif %}
 </a>

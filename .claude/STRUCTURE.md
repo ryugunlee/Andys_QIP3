@@ -527,6 +527,12 @@ QIP4 정량 규칙(`.claude/투자 규칙.md`). QIP3와 **병행**하며 QIP3는
   성장률, 주주환원수익률) → 관문 판정 → 채점 → 6계열 부착 → 집행률.
   컬럼 네이밍은 QIP3와 동일 규약: `QIP4 Value{PS|SS|""}` / `QIP4 ValueSec…` / `QIP4 Score…`.
 
+## presentation/qip4_view.py
+- `build_gate_view(values)` → `GateView` — QIP4 관문·경보 **코드를 한국어 문구로** 바꾼다.
+  분석 계층은 사유를 코드로만 남기고(`"S1_OCF|REPAYMENT_YEARS"`), 언어는 표현 계층 책임이라
+  변환표를 이 파일 한 곳에만 둔다 (`korean_names.py`가 종목명을 맡는 것과 같은 층위).
+  QIP4가 아직 계산되지 않은 데이터면 None → 화면이 블록을 통째로 숨긴다.
+
 ## analysis/group_summary.py
 - `compute_group_summary(scored, group_column)`: 섹터/산업 자체 평가. 그룹별 팩터 **중앙값**을
   집계해 "그룹이 행"인 표를 만들고, 그 표를 모집단으로 퍼센타일+스탠다드 점수 적용 → 그룹 간

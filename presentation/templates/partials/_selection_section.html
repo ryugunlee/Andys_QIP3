@@ -1,0 +1,31 @@
+{# 선별 결과 섹션 공용 틀. QIP3·QIP4가 같은 모양을 쓰므로 카드 마크업을 복제하지 않는다.
+   컨텍스트: selection_heading, selection_sub, selection_stocks,
+             score_field, score_label, selection_by_sector, selection_by_market, root #}
+{% if selection_stocks %}
+<section class="page-section">
+  <div class="section-head">
+    <h2>{{ selection_heading }}</h2>
+    <span class="section-sub">{{ selection_sub }}</span>
+  </div>
+  <div class="card-grid">
+    {% for stock in selection_stocks %}
+    {% include "partials/_stock_card.html" %}
+    {% endfor %}
+  </div>
+
+  {% if selection_by_sector or selection_by_market %}
+  <div class="concentration-grid">
+    {% if selection_by_sector %}
+    {% with title = "섹터 쏠림", rows = selection_by_sector %}
+    {% include "partials/_concentration_panel.html" %}
+    {% endwith %}
+    {% endif %}
+    {% if selection_by_market %}
+    {% with title = "시장 쏠림", rows = selection_by_market %}
+    {% include "partials/_concentration_panel.html" %}
+    {% endwith %}
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
