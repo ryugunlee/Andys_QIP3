@@ -38,6 +38,15 @@ from collection.technical import lookback_index
 _REVENUE_ITEM = "Total Revenue"
 _OPERATING_INCOME_ITEM = "Operating Income"
 
+# 재무제표 statement_type. 분기는 네이버(WiseFn) 쪽 규약과 같이 "_q" 접미사로 구분한다
+# (collection/naver/naver_stock.py의 _WISE_*_Q_TYPE 참고).
+_CASHFLOW_TYPE = "cashflow"
+_FINANCIALS_TYPE = "financials"
+_BALANCE_SHEET_TYPE = "balance_sheet"
+_CASHFLOW_Q_TYPE = "cashflow_q"
+_FINANCIALS_Q_TYPE = "financials_q"
+_BALANCE_SHEET_Q_TYPE = "balance_sheet_q"
+
 
 def _annual_series(financials: pd.DataFrame, item: str) -> dict[str, float]:
     """야후 손익계산서(항목 x 기간)의 한 행을 {회계기간(YYYYMM): 값}으로 변환한다.
@@ -69,6 +78,11 @@ class YahooStock(BaseStock):
         self.financials: pd.DataFrame = pd.DataFrame()
         self.balance_sheet: pd.DataFrame = pd.DataFrame()
         self.insider_purchases: pd.DataFrame = pd.DataFrame()
+        # 분기 재무제표(연간과 별도 조회). 수집 시점에는 5~7개 분기뿐이지만
+        # financial_statements의 PK에 period가 있어 수집을 거듭할수록 누적된다.
+        self.quarterly_cashflow: pd.DataFrame = pd.DataFrame()
+        self.quarterly_financials: pd.DataFrame = pd.DataFrame()
+        self.quarterly_balance_sheet: pd.DataFrame = pd.DataFrame()
 
         # --- 계산 과정에서만 쓰이는 중간값 (표에는 직접 나가지 않음) ---
         self._capex: float | None = None
@@ -101,7 +115,24 @@ class YahooStock(BaseStock):
         self.financials = ticker_obj.financials
         self.balance_sheet = ticker_obj.balance_sheet
         self.insider_purchases = ticker_obj.insider_purchases
+        self._fetch_quarterly_statements(ticker_obj)
         self.is_valid = True
+
+    def _fetch_quarterly_statements(self, ticker_obj: yf.Ticker) -> None:
+        """분기 손익계산서/재무상태표/현금흐름표를 가져온다.
+
+        연간과 같은 fundamentals 응답에서 나오므로 추가 세션 비용이 거의 없다.
+        조회에 실패해도 종목을 무효화하지 않는다 — 재무 팩터 계산은 연간 데이터만
+        쓰므로 분기 시계열만 비게 될 뿐이다(네이버 쪽과 같은 원칙).
+        """
+        try:
+            self.quarterly_cashflow = ticker_obj.quarterly_cashflow
+            self.quarterly_financials = ticker_obj.quarterly_financials
+            self.quarterly_balance_sheet = ticker_obj.quarterly_balance_sheet
+        except Exception:
+            # yfinance는 분기 데이터가 없는 종목에서 다양한 예외를 던진다.
+            # 분기는 부가 데이터라 종목 수집 전체를 실패시키지 않는다.
+            pass
 
     def compute_curated_factors(self) -> None:
         """raw 데이터로부터 curated 팩터들을 계산해 속성에 채운다."""
@@ -443,11 +474,14 @@ class YahooStock(BaseStock):
         return row
 
     def to_financial_statement_rows(self) -> pd.DataFrame:
-        """cashflow/financials/balance_sheet 전체 회계기간을 long format으로 변환한다."""
+        """연간·분기 cashflow/financials/balance_sheet를 long format으로 변환한다."""
         frames = [
-            self._statement_to_long_format("cashflow", self.cashflow),
-            self._statement_to_long_format("financials", self.financials),
-            self._statement_to_long_format("balance_sheet", self.balance_sheet),
+            self._statement_to_long_format(_CASHFLOW_TYPE, self.cashflow),
+            self._statement_to_long_format(_FINANCIALS_TYPE, self.financials),
+            self._statement_to_long_format(_BALANCE_SHEET_TYPE, self.balance_sheet),
+            self._statement_to_long_format(_CASHFLOW_Q_TYPE, self.quarterly_cashflow),
+            self._statement_to_long_format(_FINANCIALS_Q_TYPE, self.quarterly_financials),
+            self._statement_to_long_format(_BALANCE_SHEET_Q_TYPE, self.quarterly_balance_sheet),
         ]
         non_empty = [frame for frame in frames if not frame.empty]
         if not non_empty:

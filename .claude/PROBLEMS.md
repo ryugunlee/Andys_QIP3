@@ -165,12 +165,25 @@ indicators_provider는 금리·괴리율 같은 %단위 지표의 전일 대비�
 MAX_PAGES=21로 5년을 커버한다. 이 역시 문서화되지 않은 내부 API라 구조 변경 시
 깨질 수 있다 (#12와 같은 성격).
 
-## 20. 섹터/산업 자체 평가 시 한국 종목의 업종이 숫자 코드
+## 20. (해결 완료) 섹터/산업 자체 평가 시 한국 종목의 업종이 숫자 코드
 
 group_summary는 Sector/Industry 컬럼 값으로 그룹을 묶는데, 네이버 경로의 한국
-종목은 아직 한글 업종명이 아니라 숫자 업종 코드다(#: collection 후속 과제).
-그룹핑·점수 계산 자체는 코드로도 정상 동작하지만, 섹터 페이지의 그룹 이름이
-숫자로 보인다. 한글 업종명 수집이 붙으면 표현은 자동으로 개선된다.
+종목은 한글 업종명이 아니라 숫자 업종 코드였다. 그룹핑·점수 계산 자체는 코드로도
+정상 동작하지만, 섹터 페이지의 그룹 이름이 숫자로 보였다.
+
+### (2026-09-07 해결) 업종 목록 페이지에서 코드→한글명 매핑을 얻는다
+
+종목 API(`integration`)에는 업종명이 없지만, 업종 목록 페이지
+`finance.naver.com/sise/sise_group.naver?type=upjong`(euc-kr)이 **요청 1회로 79개 업종의
+코드→한글명 전체**를 준다. `collection/naver/industry_names.py`가 이걸 `lru_cache`로
+한 번만 받아 수집 실행 전체가 공유한다.
+
+`sector`와 `industry`는 종전처럼 같은 값을 쓴다 — **그룹 분할 자체는 그대로이고 라벨만
+숫자에서 한글로 바뀌므로 기존 섹터/산업 점수는 수치가 변하지 않는다.**
+
+남은 정리 작업: `group_summary`는 `(group_type, group_value, factor)` upsert라
+**옛 숫자 코드 행이 삭제되지 않고 잔류한다.** 한국 시장을 한 번 재수집한 뒤
+해당 행을 1회 정리해야 섹터 페이지에 숫자 그룹이 같이 뜨지 않는다.
 
 ## 21. 통화권 점수 모집단이 "DB의 시장별 최신 run"이라 시장 갱신 시점이 섞일 수 있음
 
@@ -194,12 +207,15 @@ score_pipeline.MIN_GROUP_POPULATION(=5) 미만 그룹은 팩터 점수·종합�
 `financial_statements`에 `wise_income_statement_q` 등으로 저장되고, 상세 페이지 실적
 막대그래프의 "연간/분기" 토글로 확인할 수 있다.
 
-미국(yfinance)은 여전히 연간 `financials`/`cashflow`/`balance_sheet`만 사용한다
-(`quarterly_financials` 등 분기 속성 미사용) — 필요해지면 yfinance 쪽에서
-`quarterly_financials` 등을 추가로 수집해 `financial_statements`에 statement_type을
-구분해(예: `financials_q`) 저장하면 된다. 표현 계층(`quarterly_financials_from_df`,
-`renderBars`)은 소스가 분기를 제공하지 않으면 빈 리스트를 반환하도록 설계해서, 지금은
-토글이 자동으로 숨겨지고(빈 리스트) 미국 쪽을 나중에 추가해도 UI 변경 없이 그대로 연결된다.
+### (2026-09-07) 미국(yfinance) 분기 수집도 추가 — 수집·저장은 해결, 표현은 남음
+
+`YahooStock.fetch()`가 `quarterly_cashflow`/`quarterly_financials`/`quarterly_balance_sheet`를
+함께 받아 `cashflow_q`/`financials_q`/`balance_sheet_q` statement_type으로 저장한다
+(네이버의 `_q` 접미사 규약과 통일). 종목당 5~7개 분기가 들어오고,
+`financial_statements`의 PK에 period가 있어 수집을 거듭할수록 누적된다.
+
+표현 계층은 아직 `quarterly_financials_from_df`가 `source == "naver"`일 때만 분기를
+반환하므로 미국 상세 페이지의 분기 토글은 여전히 숨겨져 있다 — 이 가드를 풀면 바로 살아난다.
 
 ## 24. 로컬/커밋된 DB 샘플이 실제로는 yfinance 경로로 수집된 한국 종목을 담고 있음
 
@@ -401,3 +417,31 @@ population 전체를 처음부터 다시 채점하므로 옛 점수 값을 버�
 입력(population)으로 재사용되는 구조에서는 "출력 컬럼이 입력에 섞여 들어올 수 있다"는
 가능성을 항상 열어두고 입력 경계에서 명시적으로 걸러야 한다. `_ensure_snapshot_columns`처럼
 스키마가 실행마다 넓어지는 테이블일수록 이 위험이 크다.
+
+
+## 33. 미국 분기 재무제표 수집이 실행 시간을 종목당 약 1초 늘린다
+
+분기 3종(`quarterly_cashflow`/`quarterly_financials`/`quarterly_balance_sheet`)은 연간과
+**같은 응답을 공유하지 않는다.** 순서를 바꿔 측정해도 대칭적으로 비용이 붙는다:
+
+```
+PG : 분기먼저 1.11s -> 연간나중 0.91s
+XOM: 분기먼저 0.91s -> 연간나중 0.96s
+```
+
+즉 별도 네트워크 왕복이며 종목당 약 1.0초가 추가된다.
+
+실측 기준 추정(개발 환경, 종목당 3.66초):
+
+| 시장 | 분기 미수집 | 분기 수집 | CI 예산 |
+|---|---|---|---|
+| NASDAQ(약 4,000종목) | 약 174분 | **약 244분** | 340분 |
+| NYSE(약 2,400종목) | 약 104분 | **약 146분** | 340분 |
+
+아직 예산 안이지만 여유가 51%→72% 소모로 줄었다. **GitHub 호스팅 러너의 작업 상한이
+6시간(360분)이라 타임아웃을 340분보다 의미 있게 더 올릴 수 없다** — 즉 이 여유가 사실상
+마지막 완충이다. CI 러너가 개발 환경보다 40% 이상 느리면 NASDAQ이 타임아웃에 닿는다.
+
+관찰만 해두고 미수정. 실제 CI 실행 시간을 확인한 뒤, 필요하면
+`REQUEST_THROTTLE_SECONDS`(현재 0.5초, 4,000종목 기준 순수 대기만 33분) 조정이나
+NASDAQ 워크플로 분할을 검토한다.

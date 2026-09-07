@@ -54,8 +54,12 @@
 ## collection/stock.py (야후 경로)
 - `YahooStock(BaseStock)`: yfinance 전용 raw 데이터 수집 + 재무 팩터 계산. `Stock`은 이 클래스의
   하위 호환 별칭이다 (`collection/basic_information.py` 등이 `Stock`을 참조).
-  - **raw 속성**: `info`, `cashflow`, `financials`, `balance_sheet`, `insider_purchases` — yfinance 원본 그대로.
+  - **raw 속성**: `info`, `cashflow`, `financials`, `balance_sheet`, `insider_purchases`,
+    `quarterly_cashflow`, `quarterly_financials`, `quarterly_balance_sheet` — yfinance 원본 그대로.
   - `fetch()`: yfinance에서 raw 데이터를 채움 (필수 데이터 없으면 `is_valid=False`). `history(period="5y")`.
+  - `_fetch_quarterly_statements(ticker_obj)`: 분기 손익계산서/재무상태표/현금흐름표를 받는다.
+    실패해도 종목을 무효화하지 않는다(재무 팩터는 연간만 쓴다) — 네이버 쪽과 같은 원칙.
+    **연간과 응답을 공유하지 않아 종목당 약 1초가 추가된다** (PROBLEMS #33).
   - `compute_curated_factors()`: `_compute_valuation_factors` → `_compute_technical_factors`(BaseStock) →
     `_compute_cashflow_factors` → `_compute_financials_factors` → `_compute_balance_sheet_factors` →
     `_compute_insider_factors` → `_compute_buyback_to_income`(BaseStock) 순서 (원본 순서/의존관계 유지).
@@ -63,8 +67,10 @@
     전환 전에는 `iloc[0]`이 곧 1년 전이었으나, 지금은 그렇지 않다).
   - `_raw_row()`: `raw_info__`/`raw_cashflow__`/`raw_financials__`/`raw_balance_sheet__`/`raw_insider__`/
     `raw_history__` 접두사 dict를 조합. 복잡한 info 필드는 JSON 문자열로 변환.
-  - `to_financial_statement_rows()`: cashflow/financials/balance_sheet 전체 회계기간을
+  - `to_financial_statement_rows()`: 연간·분기 cashflow/financials/balance_sheet 전체 회계기간을
     long format(ticker, source, statement_type, period, item, value, is_consensus)으로 변환.
+    statement_type은 연간 `cashflow`/`financials`/`balance_sheet`, 분기는 `_q` 접미사를 붙인
+    `cashflow_q`/`financials_q`/`balance_sheet_q` (네이버 WiseFn의 `_q` 규약과 통일).
   - `_annual_series(financials, item)` + `_compute_financials_factors`의 마지막 두 줄: `self.financials`의
     "Total Revenue"/"Operating Income" 행 전체를 {기간: 값}으로 뽑아
     `financial_trend.evaluate_uptrend`에 넘겨 `revenue_trend_5y`/`operating_income_trend_5y`를 채운다.
@@ -76,7 +82,13 @@ WiseFn(`navercomp.wisereport.co.kr`, 네이버 coinfo 페이지의 "재무분석
 PFCR/Coverage Ratio/NCAV/Current Ratio/ROC/GPTOA/ARP/Interest Ratio/Debt Growth/EV 계열까지
 계산할 수 있다. 자세한 배경과 리스크는 `.claude/PROBLEMS.md` #9~#12 참고.
 
+- `industry_names.py`: 업종 코드(숫자) → 한글 업종명 매핑 (PROBLEMS #20 해결).
+  - `industry_names()`: 업종 목록 페이지를 1회 요청해 `{코드: 한글명}` 전체를 만든다.
+    `lru_cache(maxsize=1)`이라 수집 실행 전체가 요청 하나를 공유한다. 실패 시 빈 dict.
+  - `industry_name(code)`: 코드를 한글명으로 변환. **매핑이 없으면 코드를 그대로 반환한다**
+    — 이름을 못 찾았다고 업종을 잃으면 섹터/산업 모집단이 통째로 사라지기 때문.
 - `endpoints.py`: URL 템플릿. siseJson(일봉), basic/integration/finance-annual(모바일 API),
+  `INDUSTRY_LIST_URL`(업종 목록, euc-kr),
   `WISE_COMPANY_PAGE_URL_TEMPLATE`(`c1030001.aspx`, encparam 토큰 추출용)와
   `WISE_FINANCIAL_STATEMENT_URL`(`cF3002.aspx`, 실제 재무제표 JSON).
 - `client.py`: User-Agent 헤더 + 요청 간 스로틀 + 429 재시도 HTTP 클라이언트. 404/409(잘못된
@@ -87,6 +99,7 @@ PFCR/Coverage Ratio/NCAV/Current Ratio/ROC/GPTOA/ARP/Interest Ratio/Debt Growth/
   encparam, rpt, frq=NAVER_WISE_FRQ_ANNUAL)`: rpt=0(손익계산서)/1(재무상태표)/2(현금흐름표) JSON을
   가져온다. frq=0(연간)/1(분기, `NAVER_WISE_FRQ_QUARTER`) — 응답 형태(YYMM 6개=실적 5개+컨센서스
   1개)는 frq와 무관하게 동일함을 확인했다(`.claude/PROBLEMS.md` #10).
+  `fetch_industry_list()`: 업종 목록 페이지 HTML을 euc-kr로 디코딩해 반환 (업종 코드→한글명 매핑용).
 - `parsers.py`: `parse_number`/`parse_won_amount`(한글 숫자 표기 "23.04배"/"1,666조 1,894억" 파싱),
   `parse_price_history`(siseJson 응답 → OHLCV DataFrame), `parse_financial_statements`(finance/annual
   응답 → long format DataFrame), `latest_actual_periods`/`get_statement_value`(컨센서스 제외 최신

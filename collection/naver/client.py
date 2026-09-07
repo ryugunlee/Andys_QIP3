@@ -19,6 +19,7 @@ from collection.constants import (
 )
 from collection.naver.endpoints import (
     BASIC_URL_TEMPLATE,
+    INDUSTRY_LIST_URL,
     FINANCE_ANNUAL_URL_TEMPLATE,
     INTEGRATION_URL_TEMPLATE,
     MARKET_INDEX_PRICES_URL,
@@ -140,3 +141,16 @@ def fetch_wise_financial_statement(
     if response is None or not response.text:
         return None
     return response.json()
+
+
+def fetch_industry_list() -> str | None:
+    """업종 목록 페이지 HTML을 euc-kr로 디코딩해 반환한다.
+
+    종목 API는 업종을 숫자 코드로만 주므로(PROBLEMS #20) 코드→한글명 매핑은
+    이 페이지에서만 얻을 수 있다. 요청 1회로 전체 업종을 준다.
+    """
+    response = _get(INDUSTRY_LIST_URL)
+    if response is None:
+        return None
+    response.encoding = "euc-kr"
+    return response.text

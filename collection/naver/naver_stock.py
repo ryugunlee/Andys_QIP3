@@ -57,6 +57,7 @@ from collection.constants import (
 )
 from collection.financial_trend import evaluate_uptrend
 from collection.naver import client
+from collection.naver.industry_names import industry_name
 from collection.naver.parsers import (
     get_statement_value,
     get_wise_value,
@@ -215,8 +216,11 @@ class NaverStock(BaseStock):
         totals = self._integration_totals()
 
         self.company_name = self.basic_payload.get("stockName")
-        # 네이버가 한글 업종명을 주는 공개 API를 찾지 못해 숫자 코드를 임시로 쓴다.
-        self.sector = str(self.integration_payload.get("industryCode") or "") or None
+        # 업종 목록 페이지에서 얻은 코드→한글명 매핑으로 업종명을 채운다(PROBLEMS #20).
+        # sector와 industry는 종전과 같이 같은 값을 쓴다 — 그룹 분할 자체는 바뀌지 않고
+        # 라벨만 숫자 코드에서 한글명으로 바뀌므로 기존 섹터/산업 점수는 영향받지 않는다.
+        industry_code = str(self.integration_payload.get("industryCode") or "") or None
+        self.sector = industry_name(industry_code)
         self.industry = self.sector
         self.country = "South Korea"
 
