@@ -23,6 +23,7 @@ from presentation.models import AnnualFinancials
 _NAVER_ANNUAL_STATEMENT = "wise_income_statement"
 _NAVER_QUARTERLY_STATEMENT = "wise_income_statement_q"
 _YAHOO_STATEMENT = "financials"
+_YAHOO_QUARTERLY_STATEMENT = "financials_q"
 
 # WiseFn 원본 값은 "억원" 단위로 온다(collection/naver/naver_stock.py가 스냅샷
 # 팩터에 적용하는 것과 같은 상수) — financial_statements에는 원 단위 미변환으로
@@ -117,12 +118,15 @@ def annual_financials_from_df(df: pd.DataFrame, source: str) -> list[AnnualFinan
 def quarterly_financials_from_df(df: pd.DataFrame, source: str) -> list[AnnualFinancials]:
     """재무제표 long DataFrame에서 분기 3계열을 뽑아 기간 오름차순으로 반환한다.
 
-    분기 수집은 현재 네이버(WiseFn frq=1)만 지원한다(.claude/PROBLEMS.md #10) — 그 외
-    소스는 빈 리스트를 반환해 상세 페이지에서 분기 토글이 자동으로 숨겨지게 한다.
+    네이버(WiseFn frq=1)와 야후(quarterly_financials) 양쪽을 지원한다. 아직 분기가
+    수집되지 않은 옛 스냅샷은 빈 리스트가 되어 상세 페이지에서 분기 토글이 자동으로 숨겨진다.
     """
-    if df.empty or source != "naver":
+    if df.empty:
         return []
-    by_period = _period_series(df, _NAVER_QUARTERLY_STATEMENT, source)
+    statement_type = (
+        _NAVER_QUARTERLY_STATEMENT if source == "naver" else _YAHOO_QUARTERLY_STATEMENT
+    )
+    by_period = _period_series(df, statement_type, source)
 
     result: list[AnnualFinancials] = []
     for period in sorted(by_period):

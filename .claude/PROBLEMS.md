@@ -201,7 +201,7 @@ score_pipeline.MIN_GROUP_POPULATION(=5) 미만 그룹은 팩터 점수·종합�
 의미이지 "평균 수준"이 아니라는 점을 표현 계층에서 언젠가 구분해주면 좋다
 (현재는 값만 저장, UI 구분 없음).
 
-## 23. (부분 해결) 재무 실적 시계열은 연간만 존재, 분기 데이터는 수집·저장 어디에도 없음
+## 23. (해결 완료) 재무 실적 시계열은 연간만 존재, 분기 데이터는 수집·저장 어디에도 없음
 
 한국(네이버 WiseFn)은 #10에서 분기(frq=1) 수집을 추가해 해결했다 —
 `financial_statements`에 `wise_income_statement_q` 등으로 저장되고, 상세 페이지 실적
@@ -214,8 +214,12 @@ score_pipeline.MIN_GROUP_POPULATION(=5) 미만 그룹은 팩터 점수·종합�
 (네이버의 `_q` 접미사 규약과 통일). 종목당 5~7개 분기가 들어오고,
 `financial_statements`의 PK에 period가 있어 수집을 거듭할수록 누적된다.
 
-표현 계층은 아직 `quarterly_financials_from_df`가 `source == "naver"`일 때만 분기를
-반환하므로 미국 상세 페이지의 분기 토글은 여전히 숨겨져 있다 — 이 가드를 풀면 바로 살아난다.
+표현 계층도 `quarterly_financials_from_df`가 소스에 따라 `wise_income_statement_q` /
+`financials_q`를 고르도록 바꿔 **미국 상세 페이지의 분기 실적 토글이 살아났다**
+(CAT 실측: 연간 4개 + 분기 5개 렌더). 분기가 아직 수집되지 않은 옛 스냅샷은 빈 리스트가
+되어 토글이 자동으로 숨겨지는 기존 동작을 그대로 유지한다.
+
+→ #23 해결 완료.
 
 ## 24. 로컬/커밋된 DB 샘플이 실제로는 yfinance 경로로 수집된 한국 종목을 담고 있음
 
