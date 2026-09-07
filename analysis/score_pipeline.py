@@ -107,6 +107,13 @@ def compute_scores(stockdata: pd.DataFrame) -> pd.DataFrame:
 
     scored = compute_qip3_scores(scored)
 
+    # 6) QIP4 정량 규칙(안정성 관문 / 성장·가치 선정 / 효율성 승수 / 모멘텀 집행률)을
+    #    다시 병행 부착한다. QIP3와 마찬가지로 독립된 컬럼 패밀리(QIP4 *)라
+    #    기존 점수에는 영향이 없다.
+    from analysis.qip4_pipeline import compute_qip4_scores
+
+    scored = compute_qip4_scores(scored)
+
     return scored
 
 

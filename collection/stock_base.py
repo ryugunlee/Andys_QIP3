@@ -145,6 +145,11 @@ CURATED_COLUMNS: list[tuple[str, str]] = [
     # --- QIP4 섹터군 분류 (collection/sector_groups.py) ---
     ("QIP4 Sector Group", "qip4_sector_group"),
     ("QIP4 Leverage Tolerant", "qip4_leverage_tolerant"),
+    # --- QIP4 이익 모멘텀 ---
+    # 야후는 eps_trend가 90일 전 추정치를 직접 줘서 수집 시점에 채워진다.
+    # 네이버는 과거 추정치를 주지 않아 여기서는 비고, consensus_history에 쌓인
+    # 관측 이력으로 채점 직전에 채운다.
+    ("QIP4 Earnings Revision", "qip4_earnings_revision"),
 ]
 
 _RAW_COLUMN_PREFIX: str = "raw_"
@@ -285,6 +290,7 @@ class BaseStock:
         self.qip4_advances_growing: float | None = None
         self.qip4_sector_group: str | None = None
         self.qip4_leverage_tolerant: float | None = None
+        self.qip4_earnings_revision: float | None = None
 
     def _compute_technical_factors(self) -> None:
         history = add_moving_averages(self.history)

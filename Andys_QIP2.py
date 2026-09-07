@@ -90,8 +90,13 @@ def main(stockmarket):
     # 점수는 이 DB(통화권)의 시장별 최신 run 전체를 모집단으로 계산한다.
     # (예: KOSPI 수집 직후라도 KOSDAQ 최신 run과 합쳐 한국 전체에서 점수를 냄)
     population = storage.get_latest_snapshots(conn)
+    # 저장 대상 컬럼은 "compute_scores가 새로 만든 것"을 집합 차집합으로 정한다.
+    # 상대강도·이익 모멘텀을 population에 먼저 붙이면 신규 컬럼으로 인식되지 않아
+    # 영구히 저장되지 않으므로, 붙이기 전에 원래 컬럼 목록을 캡처해 둔다.
+    snapshot_columns = list(population.columns)
+    population = storage.attach_qip4_inputs(conn, population)
     scored = compute_scores(population)
-    new_score_columns = score_output_columns(scored, population.columns)
+    new_score_columns = score_output_columns(scored, snapshot_columns)
     storage.update_snapshot_scores(conn, scored[["run_id", "Ticker"] + new_score_columns])
     this_run = scored[scored["run_id"] == run_id]
     print(

@@ -30,8 +30,12 @@ def rescore_db(region: str, db_path: str) -> None:
         if population.empty:
             print(f"[scores] {region}: 스냅샷 데이터 없음 — 건너뜀 ({db_path})")
             return
+        # 원래 컬럼 목록을 먼저 캡처한다 — attach_qip4_inputs가 붙인 컬럼이
+        # population.columns에 들어가면 신규 컬럼으로 인식되지 않아 저장되지 않는다.
+        snapshot_columns = list(population.columns)
+        population = storage.attach_qip4_inputs(conn, population)
         scored = compute_scores(population)
-        new_columns = score_output_columns(scored, population.columns)
+        new_columns = score_output_columns(scored, snapshot_columns)
         storage.update_snapshot_scores(conn, scored[["run_id", "Ticker"] + new_columns])
 
         latest_run_id = int(scored["run_id"].max())

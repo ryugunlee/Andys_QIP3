@@ -47,6 +47,10 @@ _CASHFLOW_Q_TYPE = "cashflow_q"
 _FINANCIALS_Q_TYPE = "financials_q"
 _BALANCE_SHEET_Q_TYPE = "balance_sheet_q"
 
+# eps_trend에서 읽을 행/열. 당해 회계연도(0y) 추정치의 90일 전 대비 변화를 본다.
+_EPS_TREND_PERIOD: str = "0y"
+_EPS_TREND_PAST_COLUMN: str = "90daysAgo"
+
 
 def _annual_series(financials: pd.DataFrame, item: str) -> dict[str, float]:
     """야후 손익계산서(항목 x 기간)의 한 행을 {회계기간(YYYYMM): 값}으로 변환한다.
@@ -83,6 +87,10 @@ class YahooStock(BaseStock):
         self.quarterly_cashflow: pd.DataFrame = pd.DataFrame()
         self.quarterly_financials: pd.DataFrame = pd.DataFrame()
         self.quarterly_balance_sheet: pd.DataFrame = pd.DataFrame()
+        # 애널리스트 EPS 추정치의 시점별 스냅샷(현재/7·30·60·90일 전).
+        # 한국은 과거 추정치를 안 줘서 DB에 쌓아야 하지만, 야후는 90일 전 값을
+        # 직접 주므로 이익 모멘텀을 수집 시점에 바로 계산할 수 있다.
+        self.eps_trend: pd.DataFrame = pd.DataFrame()
 
         # --- 계산 과정에서만 쓰이는 중간값 (표에는 직접 나가지 않음) ---
         self._capex: float | None = None
@@ -129,6 +137,7 @@ class YahooStock(BaseStock):
             self.quarterly_cashflow = ticker_obj.quarterly_cashflow
             self.quarterly_financials = ticker_obj.quarterly_financials
             self.quarterly_balance_sheet = ticker_obj.quarterly_balance_sheet
+            self.eps_trend = ticker_obj.eps_trend
         except Exception:
             # yfinance는 분기 데이터가 없는 종목에서 다양한 예외를 던진다.
             # 분기는 부가 데이터라 종목 수집 전체를 실패시키지 않는다.
@@ -143,6 +152,7 @@ class YahooStock(BaseStock):
         self._compute_balance_sheet_factors()
         self._compute_insider_factors()
         self._compute_buyback_to_income()
+        self._compute_earnings_revision()
         self.compute_qip4_factors()
 
     def _compute_valuation_factors(self) -> None:
@@ -473,6 +483,29 @@ class YahooStock(BaseStock):
             for column in value_columns:
                 row[f"raw_insider__{label}__{column}"] = record[column]
         return row
+
+    def _compute_earnings_revision(self) -> None:
+        """3개월간 EPS 컨센서스가 몇 % 바뀌었는가 — 이익 모멘텀.
+
+        가격에서 나온 다른 모멘텀 지표와 달리 애널리스트 추정치라는 **다른 원천**에서
+        오기 때문에, 가격 모멘텀이 테마성 급등을 잡을 때 브레이크 역할을 한다.
+
+        적자 기업은 분모가 작은 음수라 변화율이 폭주한다(실측: -133%). 신호가 아니라
+        잡음이므로 기준 추정치가 0 이하이면 산출하지 않는다. 커버리지가 없는 종목도
+        `eps_trend`가 비어 있어 결측이 된다 — 이 지표는 **애널리스트가 보는 흑자 기업**
+        에서만 살아있는 신호다.
+        """
+        trend = self.eps_trend
+        if trend.empty or _EPS_TREND_PERIOD not in trend.index:
+            return
+        row = trend.loc[_EPS_TREND_PERIOD]
+        current = row.get("current")
+        past = row.get(_EPS_TREND_PAST_COLUMN)
+        if current is None or past is None or pd.isna(current) or pd.isna(past):
+            return
+        if past <= 0:
+            return
+        self.qip4_earnings_revision = (float(current) - float(past)) / abs(float(past)) * 100
 
     def to_financial_statement_rows(self) -> pd.DataFrame:
         """연간·분기 cashflow/financials/balance_sheet를 long format으로 변환한다."""

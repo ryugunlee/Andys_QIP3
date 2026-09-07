@@ -22,8 +22,10 @@ from storage.macro_repository import (
 )
 from storage.news_repository import get_latest_news, prune_news, upsert_news
 from storage.price_repository import get_price_history, upsert_price_history
+from storage.qip4_inputs import attach_qip4_inputs
 from storage.raw_repository import get_raw_latest, upsert_raw_latest
 from storage.qip3_selection import get_goodstock2
+from storage.qip4_selection import get_goodstock3
 from storage.report_export import (
     get_goodstock,
     get_latest_snapshots,
@@ -51,6 +53,7 @@ __all__ = [
     "upsert_consensus_history",
     "get_consensus_revisions",
     "build_group_indices",
+    "attach_qip4_inputs",
     "get_group_index",
     "get_index_returns",
     "upsert_raw_latest",
@@ -64,6 +67,7 @@ __all__ = [
     "get_group_summary",
     "get_goodstock",
     "get_goodstock2",
+    "get_goodstock3",
     "upsert_news",
     "prune_news",
     "get_latest_news",

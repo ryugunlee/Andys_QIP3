@@ -316,6 +316,23 @@ git에 커밋하지 않는다.
   비교한다. **기준 추정치가 0 이하인 종목은 제외** — 적자 기업은 분모가 작은 음수라
   변화율이 폭주해 신호가 아니라 잡음이 된다(실측 -133%).
 
+## storage/qip4_inputs.py
+- `attach_qip4_inputs(conn, population)`: DB에 쌓인 이력에서만 나오는 QIP4 채점 입력을 붙인다.
+  - `QIP4 Relative Strength` = 종목 6개월 수익률 − **자체 산출 업종지수** 6개월 수익률.
+  - `QIP4 Earnings Revision`(한국) = 영업이익 컨센서스 3개월 변화율. 네이버는 과거 추정치를
+    주지 않아 `consensus_history`에 쌓아야 하므로 **쌓기 시작 후 3개월이 지나야** 값이 나온다.
+    미국은 `eps_trend`가 90일 전 값을 직접 줘서 수집 시점에 이미 채워져 있고, 이력 기반 값으로
+    **덮어쓰지 않는다**(비어 있는 자리만 채운다).
+  - ⚠️ **호출 순서 주의**: `score_output_columns`가 집합 차집합으로 저장 대상을 정하므로,
+    이 함수가 붙인 컬럼이 `population.columns`에 있으면 신규 컬럼으로 인식되지 않아 **영구히
+    저장되지 않는다.** 호출부는 이 함수를 부르기 전에 원래 컬럼 목록을 캡처해서 넘긴다
+    (`Andys_QIP2.py`/`compute_scores.py`의 `snapshot_columns`).
+
+## storage/qip4_selection.py
+- `get_goodstock3(conn, run_id)`: QIP4 선별. 관문 PASS + 효율성 승수 > 0 + 신뢰도 통과 후
+  `QIP4 Score` 상위 10%. QIP3와 달리 안정성이 **분위수 컷이 아니라 절대 기준**이라
+  시장이 전반적으로 부실해도 기준이 내려가지 않는다.
+
 ## storage/financial_repository.py
 - `upsert_financial_statements(conn, statements)`: long format 재무제표 DataFrame을 upsert.
 - `get_financial_statements(conn, ticker, source)`: 종목의 저장된 재무제표 조회.
@@ -478,6 +495,37 @@ QIP3 5요인 점수 체계(안정성/재무건전성/성장성/가치성/모멘�
   6계열(S/SS × 3모집단)로 요인·종합점수를 부착, 평균 산출. `QIP3_STABILITY_FILTER`(시장·섹터
   블렌드)와 옛 스냅샷 결측 컬럼 가드(`_ensure_raw_factor_columns`) 포함.
   컬럼 네이밍: `QIP3 Value{PS|SS|""}` / `QIP3 ValueSec…` / `QIP3 Score…` / `QIP3 Stability Filter`.
+
+## analysis/qip4_factors.py · qip4_weights.py · qip4_gate.py · qip4_composites.py · qip4_pipeline.py
+QIP4 정량 규칙(`.claude/투자 규칙.md`). QIP3와 **병행**하며 QIP3는 건드리지 않는다.
+네 축의 역할이 서로 다른 것이 QIP3와의 결정적 차이다:
+
+    안정성  관문   Pass / Fail (절대 기준. 분위수 컷이 아니다)
+    성장성  선정   0~100
+    가치    선정   0~100 (섹터군별 가중치)
+    효율성  감사   승수 0.8~1.0, 경보 3개 이상이면 0.0
+    모멘텀  비중   집행률만 결정 — 선정 점수에 들어가지 않는다
+
+- `qip4_weights.py`: 모든 임계값·가중치의 단일 소스. **수집 계층은 원시 숫자만 내고 임계값
+  판정은 분석 계층이 하므로, 규칙이 바뀌어도 몇 시간짜리 재수집 없이 재채점만으로 반영된다.**
+  섹터군별 가치 가중치 표(`VALUE_WEIGHTS_BY_GROUP`, 각 행 합 1.0) 포함.
+- `qip4_factors.py`: `QIP4_SCORED_FACTORS`(11종) 방향성 + `QIP4_RAW_FACTOR_NAMES`(옛 스냅샷
+  결측 가드용) + `QIP4_TEXT_COLUMNS`. **문자열 컬럼은 채점 팩터에 넣지 않는다**(엔진이 죽는다).
+- `qip4_gate.py`: `attach_gate_columns(df)` — S1~S3·상환연수로 `QIP4 Stability Gate`("PASS"/"FAIL")와
+  사유 코드, 자산 품질 경고, 효율성 경보 개수·승수, 밸류 트랩 승수를 만든다.
+  - **탈락을 불리언이 아니라 승수 0.0으로 표현한다** — 이 저장소의 분석 계층은 연속값만
+    다루므로 새 규약을 만들지 않고 종합점수가 자동으로 0이 되게 한다.
+  - 값이 없으면(None/NaN) 판정을 **유보하고 통과**시킨다 — 데이터 부족만으로 죽이지 않는다.
+  - 상환연수 임계는 유틸리티·리츠·인프라만 완화(5년→8년).
+  - 재고 경보는 **선수금이 늘고 있으면 해제**(원 규칙의 수주잔고는 수집 불가한 대체).
+  - 발생액 경보만 업종 상위 10%라 횡단면이며, 표본 5개 미만 업종에서는 끄지 않는다.
+  - 사유는 **코드**로만 남기고 한국어 변환은 표현 계층이 맡는다.
+- `qip4_composites.py`: `compute_qip4_value/growth/momentum(df, suffix)` + `compute_qip4_total` +
+  `compute_execution_rate`. 가치만 **행마다 섹터군 가중치를 골라** 적용한다(은행에 FCF Yield를
+  묻는 것은 무의미하므로). 종합점수 = (가치·성장) × 효율성 승수, 모멘텀 미포함.
+- `qip4_pipeline.py`: `compute_qip4_scores(scored)` — 결측 가드 → 파생 원천 팩터(업종 대비 상대
+  성장률, 주주환원수익률) → 관문 판정 → 채점 → 6계열 부착 → 집행률.
+  컬럼 네이밍은 QIP3와 동일 규약: `QIP4 Value{PS|SS|""}` / `QIP4 ValueSec…` / `QIP4 Score…`.
 
 ## analysis/group_summary.py
 - `compute_group_summary(scored, group_column)`: 섹터/산업 자체 평가. 그룹별 팩터 **중앙값**을
