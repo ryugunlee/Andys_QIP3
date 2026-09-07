@@ -445,3 +445,23 @@ XOM: 분기먼저 0.91s -> 연간나중 0.96s
 관찰만 해두고 미수정. 실제 CI 실행 시간을 확인한 뒤, 필요하면
 `REQUEST_THROTTLE_SECONDS`(현재 0.5초, 4,000종목 기준 순수 대기만 33분) 조정이나
 NASDAQ 워크플로 분할을 검토한다.
+
+## 34. (해결 완료) 우선주가 수집 단계에서 통째로 유실되고 있었다
+
+WiseFn(cF3002.aspx)은 우선주처럼 재무제표를 제공하지 않는 종목에 대해 `YYMM`/`DATA` 키를
+**값이 `None`인 채로** 돌려준다. `payload.get("DATA", [])`는 키가 없을 때만 기본값을 쓰므로
+`None`이 그대로 나와 `TypeError: 'NoneType' object is not iterable`로 `fetch()`가 죽었다.
+
+`get_naver_stock_information`이 예외를 잡아 errortickers에 넣고 넘어가긴 하지만, 결과적으로
+**삼성전자우 같은 우선주가 한국 유니버스에서 전부 빠져 있었다.** 시총 160조 규모 종목이
+분석 대상에서 조용히 사라지는 문제다.
+
+### (2026-09-07 해결) `get(key) or []`로 None까지 흡수
+
+`parse_wise_financial_statement`의 두 줄을 `payload.get("YYMM") or []` /
+`payload.get("DATA") or []`로 바꿨다. 이제 우선주는 WiseFn 의존 팩터(ROC/GPTOA/QIP4 관문값 등)만
+결측인 채로 정상 수집된다 — encparam 발급 실패 시 "종목 자체는 유효하게 남긴다"는 기존
+설계 원칙과 같은 동작이다. QIP4 관문은 결측을 "판정 유보 = 통과"로 다루므로 우선주가
+관문에서 억울하게 탈락하지도 않는다.
+
+검증: 005935(삼성전자우) 수집 성공, 업종·시가총액 정상, WiseFn 팩터만 None.

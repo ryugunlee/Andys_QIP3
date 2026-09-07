@@ -135,7 +135,9 @@ def parse_wise_financial_statement(payload: dict, statement_type: str) -> pd.Dat
     구분할 수 없기 때문이다. ACCODE는 종목·기간과 무관하게 고정된 값임을 확인했다
     (collection/constants.py의 NAVER_WISE_ACCODE_* 참고).
     """
-    yymm_labels = payload.get("YYMM", [])[:_WISE_ANNUAL_PERIOD_COUNT]
+    # 우선주처럼 WiseFn이 재무제표를 주지 않는 종목은 키가 있어도 값이 None이라
+    # get(key, [])의 기본값이 적용되지 않는다. `or []`로 None까지 흡수한다.
+    yymm_labels = (payload.get("YYMM") or [])[:_WISE_ANNUAL_PERIOD_COUNT]
     periods: list[str | None] = []
     is_consensus_flags: list[bool] = []
     for label in yymm_labels:
@@ -144,7 +146,7 @@ def parse_wise_financial_statement(payload: dict, statement_type: str) -> pd.Dat
         is_consensus_flags.append("(E)" in label)
 
     rows = []
-    for entry in payload.get("DATA", []):
+    for entry in payload.get("DATA") or []:
         item = f"{entry['ACCODE']}:{entry['ACC_NM']}"
         for index, period in enumerate(periods, start=1):
             if period is None:
