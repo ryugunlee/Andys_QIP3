@@ -143,6 +143,7 @@ class YahooStock(BaseStock):
         self._compute_balance_sheet_factors()
         self._compute_insider_factors()
         self._compute_buyback_to_income()
+        self.compute_qip4_factors()
 
     def _compute_valuation_factors(self) -> None:
         info = self.info

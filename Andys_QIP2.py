@@ -1,7 +1,7 @@
 # Andy`s Quantitative Investment Program II
 
 import pandas as pd
-from datetime import datetime
+from datetime import date, datetime
 import schedule
 import sys
 import time
@@ -36,6 +36,9 @@ def _persist_ticker_data(conn: duckdb.DuckDBPyConnection, stock: BaseStock, sour
     `on_ticker_collected` 콜백으로 전달된다."""
     storage.upsert_price_history(conn, stock.ticker, source, stock.history)
     storage.upsert_financial_statements(conn, stock.to_financial_statement_rows())
+    # 컨센서스는 재수집 때마다 값이 바뀌므로 관측일과 함께 따로 쌓는다
+    # (financial_statements에 넣으면 덮어써져 과거 추정치가 사라진다).
+    storage.upsert_consensus_history(conn, stock.to_consensus_rows(date.today()))
     raw_payload, _ = split_raw_and_curated(stock.to_row())
     storage.upsert_raw_latest(conn, stock.ticker, source, raw_payload)
 
@@ -77,6 +80,12 @@ def main(stockmarket):
     run_id = storage.record_collection_run(conn, stockmarket, source, len(stockdata), errortickers)
     curated_columns = [column for column in stockdata.columns if not column.startswith("raw_")]
     storage.save_snapshot_factors(conn, run_id, stockdata[curated_columns])
+
+    # 시가총액 가중 지수(시장/섹터/산업)를 갱신한다. 스냅샷이 저장된 뒤여야
+    # 이번 run의 시가총액이 주식수 역산에 반영되고, 상대강도가 이 지수를 쓰므로
+    # 채점(compute_scores)보다 앞서야 한다.
+    index_rows = storage.build_group_indices(conn)
+    print(f"Group indices updated: {index_rows} rows")
 
     # 점수는 이 DB(통화권)의 시장별 최신 run 전체를 모집단으로 계산한다.
     # (예: KOSPI 수집 직후라도 KOSDAQ 최신 run과 합쳐 한국 전체에서 점수를 냄)

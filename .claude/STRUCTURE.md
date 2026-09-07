@@ -245,11 +245,42 @@ git에 커밋하지 않는다.
   `standard_cutlines`(전체/섹터/국가 percentile 커트라인, long format),
   `macro_daily`((indicator,date) upsert), `group_summary`((group_type,group_value,factor)
   upsert — 섹터/산업 자체 평가), `news`(url 기준 upsert — 세계 경제 뉴스 헤드라인,
-  `origin` 컬럼으로 Google News/연합뉴스 구분).
+  `origin` 컬럼으로 Google News/연합뉴스 구분),
+  `group_index_daily`((group_type,group_value,date) upsert — 자체 산출 시총가중 지수),
+  `consensus_history`((ticker,source,observed_on,fiscal_period,item) upsert — 컨센서스
+  추정치의 **관측일 이력**. `financial_statements`는 같은 회계기간을 덮어쓰기 때문에
+  시간에 따라 변하는 추정치를 보존할 수 없어 테이블을 분리했다).
 
 ## storage/price_repository.py
 - `upsert_price_history(conn, ticker, source, ohlcv)`: OHLCV DataFrame을 (ticker,date) 기준 upsert.
 - `get_price_history(conn, ticker)`: 저장된 일봉을 날짜순 DataFrame으로 조회.
+
+## storage/index_repository.py
+자체 산출 시가총액 가중 지수의 저장·조회. 상대강도(종목 6개월 − 업종 6개월)의 기준점이
+필요한데 외부 업종지수 수집 경로가 없어 직접 만든다.
+- `INDEX_BASE_VALUE`(1000): 지수 기준값. 절대 수준은 의미가 없고 구간 수익률만 쓴다.
+- `MIN_INDEX_MEMBERS`(5): 이보다 적은 종목의 지수는 개별 종목 움직임과 구분되지 않아
+  저장하지 않는다 (`score_pipeline.MIN_GROUP_POPULATION`과 같은 취지).
+- `upsert_group_indices(conn, indices)`: 지수 시계열 upsert.
+- `get_group_index(conn, group_type, group_value)`: 지수 하나의 전체 시계열.
+- `get_index_returns(conn, lookback_days)`: **모든 지수의 구간 수익률(%)을 한 쿼리로** 반환.
+  상대강도가 종목 수천 개를 도는데 지수별로 조회하면 왕복이 너무 많아진다.
+
+## storage/group_index_builder.py
+- `build_group_indices(conn)`: 시장/섹터/산업 지수를 산출·저장하고 저장 행 수를 반환.
+  `price_daily`(일봉) + `snapshot_factors`(run별 시가총액·종가·섹터·산업)만으로 만든다.
+  - 주식수를 `Market Cap / Close`로 역산하고, 각 거래일에 **그 날짜 이전 가장 최근 run의
+    주식수**를 ASOF JOIN으로 붙인다 → 미래 시가총액을 과거에 적용하는 look-ahead가 없다.
+    첫 run 이전 구간만 최초 run의 주식수를 소급 적용한다(그 이전은 알 방법이 없음).
+  - 그룹별 `Σ(주식수 × 종가)`를 최초일 1000으로 정규화.
+  - 전 종목 × 5년이면 수백만 행이라 파이썬 루프가 아니라 **DuckDB 집계 쿼리 하나**로 끝낸다.
+
+## storage/consensus_repository.py
+- `upsert_consensus_history(conn, rows)`: 관측일이 붙은 컨센서스 추정치를 append-only로 upsert.
+- `get_consensus_revisions(conn, item, lookback_days)`: 전 종목의 구간 컨센서스 변화율(%)을
+  한 쿼리로 계산. 각 종목의 **가장 먼 미래 회계기간**을 기준으로 최신 관측치와 과거 관측치를
+  비교한다. **기준 추정치가 0 이하인 종목은 제외** — 적자 기업은 분모가 작은 음수라
+  변화율이 폭주해 신호가 아니라 잡음이 된다(실측 -133%).
 
 ## storage/financial_repository.py
 - `upsert_financial_statements(conn, statements)`: long format 재무제표 DataFrame을 upsert.

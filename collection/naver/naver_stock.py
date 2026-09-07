@@ -19,7 +19,7 @@ Insider Buy Ratio/Institutionpercent/Insiderpercent는 결측(None)으로 남는
 """
 
 import json
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pandas as pd
 
@@ -70,9 +70,12 @@ from collection.naver.parsers import (
     parse_won_amount,
     series_by_accode,
 )
-from collection.stock_base import BaseStock
+from collection.stock_base import CONSENSUS_COLUMNS, BaseStock
 
 _ANNUAL_STATEMENT_TYPE = "finance_annual"
+# 컨센서스 이력으로 쌓을 항목 (finance/annual의 한글 항목명 그대로).
+# 이익 모멘텀은 영업이익 추정치의 3개월 변화율을 쓴다.
+_CONSENSUS_ITEMS: tuple[str, ...] = ("영업이익", "당기순이익", "EPS")
 _WISE_INCOME_STATEMENT_TYPE = "wise_income_statement"
 _WISE_BALANCE_SHEET_TYPE = "wise_balance_sheet"
 _WISE_CASH_FLOW_TYPE = "wise_cash_flow"
@@ -211,6 +214,7 @@ class NaverStock(BaseStock):
         self._compute_wise_factors()
         self._compute_financial_trend_factors()
         self._compute_buyback_to_income()
+        self.compute_qip4_factors()
 
     def _compute_valuation_factors(self) -> None:
         totals = self._integration_totals()
@@ -462,6 +466,34 @@ class NaverStock(BaseStock):
                 value = json.dumps(value, default=str)
             row[f"{prefix}__{key}"] = value
         return row
+
+    def to_consensus_rows(self, observed_on: date) -> pd.DataFrame:
+        """finance/annual의 컨센서스(추정) 회계기간 값을 관측일과 함께 반환한다.
+
+        네이버는 "현재 시점의 추정치"만 주고 과거 추정치는 주지 않는다. 그래서
+        수집할 때마다 관측일을 붙여 쌓아야 3개월 뒤에 변화율을 계산할 수 있다.
+        """
+        statements = self.annual_statements
+        if statements.empty:
+            return pd.DataFrame(columns=CONSENSUS_COLUMNS)
+
+        estimates = statements[
+            statements["is_consensus"] & statements["item"].isin(_CONSENSUS_ITEMS)
+        ]
+        if estimates.empty:
+            return pd.DataFrame(columns=CONSENSUS_COLUMNS)
+
+        return pd.DataFrame(
+            {
+                "ticker": self.ticker,
+                "source": self.SOURCE_NAME,
+                "observed_on": observed_on,
+                "fiscal_period": estimates["period"].values,
+                "item": estimates["item"].values,
+                "value": estimates["value"].values,
+            },
+            columns=CONSENSUS_COLUMNS,
+        )
 
     def to_financial_statement_rows(self) -> pd.DataFrame:
         frames = [

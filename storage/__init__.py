@@ -10,7 +10,10 @@ from storage.database import (
     connect,
     stock_db_path_for_market,
 )
+from storage.consensus_repository import get_consensus_revisions, upsert_consensus_history
 from storage.financial_repository import get_financial_statements, upsert_financial_statements
+from storage.group_index_builder import build_group_indices
+from storage.index_repository import get_group_index, get_index_returns
 from storage.group_summary_repository import get_group_summary, upsert_group_summary
 from storage.macro_repository import (
     get_latest_macro_pairs,
@@ -45,6 +48,11 @@ __all__ = [
     "get_latest_macro_pairs",
     "upsert_financial_statements",
     "get_financial_statements",
+    "upsert_consensus_history",
+    "get_consensus_revisions",
+    "build_group_indices",
+    "get_group_index",
+    "get_index_returns",
     "upsert_raw_latest",
     "get_raw_latest",
     "record_collection_run",

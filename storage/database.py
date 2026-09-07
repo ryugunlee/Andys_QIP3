@@ -130,6 +130,27 @@ _SCHEMA_STATEMENTS: list[str] = [
     )
     """,
     """
+    CREATE TABLE IF NOT EXISTS group_index_daily (
+        group_type TEXT,
+        group_value TEXT,
+        date DATE,
+        index_value DOUBLE,
+        member_count INTEGER,
+        PRIMARY KEY (group_type, group_value, date)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS consensus_history (
+        ticker TEXT,
+        source TEXT,
+        observed_on DATE,
+        fiscal_period TEXT,
+        item TEXT,
+        value DOUBLE,
+        PRIMARY KEY (ticker, source, observed_on, fiscal_period, item)
+    )
+    """,
+    """
     CREATE TABLE IF NOT EXISTS news (
         url TEXT PRIMARY KEY,
         title TEXT,

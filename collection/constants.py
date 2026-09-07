@@ -85,6 +85,20 @@ NAVER_WISE_ACCODE_INCOME_TAX: str = "203130"  # 법인세비용
 NAVER_WISE_ACCODE_INVENTORY: str = "112840"  # 재고자산 (유동자산 하위)
 NAVER_WISE_ACCODE_TRADE_RECEIVABLES: str = "190560"  # 매출채권 (19xxxx 정규화 계열)
 
+# QIP4 정량 규칙이 새로 쓰는 계정과목 (2026-09-07 삼성전자로 확인).
+# 야후(yfinance)보다 한국 WiseFn 쪽이 훨씬 세밀해서, 조정 순부채·실질 자기자본은
+# 한국이 더 정확하게 계산된다 (`.claude/투자 규칙.md`의 시장별 정의 차이 참고).
+NAVER_WISE_ACCODE_LEASE_LIABILITY: str = "190780"  # (금융)리스부채 (비유동)
+NAVER_WISE_ACCODE_LEASE_LIABILITY_CURRENT: str = "131850"  # 유동성 (금융)리스부채
+NAVER_WISE_ACCODE_GOODWILL: str = "190170"  # 영업권
+NAVER_WISE_ACCODE_DEFERRED_TAX_ASSETS: str = "112340"  # 이연법인세자산
+NAVER_WISE_ACCODE_EMPLOYEE_BENEFIT_OBLIGATION: str = "130880"  # 비유동종업원급여충당부채
+NAVER_WISE_ACCODE_PENSION_PLAN_ASSETS: str = "190400"  # 퇴직보험,연금등 (사외적립자산 근사)
+NAVER_WISE_ACCODE_TRADE_PAYABLES: str = "132010"  # 매입채무 (CCC의 DPO)
+NAVER_WISE_ACCODE_INTEREST_PAID: str = "402100"  # 이자지급(-) — 발생주의가 아닌 실제 현금 유출
+NAVER_WISE_ACCODE_DIVIDENDS_PAID: str = "404320"  # 배당금지급(-)
+NAVER_WISE_ACCODE_ADVANCES_RECEIVED: str = "401820"  # 선수금의증가 (수주잔고 대리 변수)
+
 # --- 경제지표(매크로, collection/macro) 전용 상수 ---
 # 히스토리 적재 기간은 주식 일봉(HISTORY_PERIOD)과 동일한 5년을 쓴다.
 

@@ -6,6 +6,8 @@ raw 데이터 수집(fetch)과 소스 고유 팩터 계산(재무제표 기반)�
 지표와 curated 컬럼 표현은 이 클래스가 전담해 두 소스가 동일한 로직을 공유한다.
 """
 
+from datetime import date
+
 import pandas as pd
 
 from collection.constants import (
@@ -20,6 +22,17 @@ from collection.constants import (
 from collection.technical import add_macd, add_moving_averages, add_rsi, lookback_index
 
 # 표의 컬럼명 -> Stock 인스턴스 속성명. to_row()가 이 순서대로 curated 컬럼을 만든다.
+# 컨센서스 이력(consensus_history) long format 컬럼 순서.
+# storage/consensus_repository.py의 _CONSENSUS_COLUMNS와 반드시 같아야 한다.
+CONSENSUS_COLUMNS: list[str] = [
+    "ticker",
+    "source",
+    "observed_on",
+    "fiscal_period",
+    "item",
+    "value",
+]
+
 CURATED_COLUMNS: list[tuple[str, str]] = [
     ("Ticker", "ticker"),
     ("Company Name", "company_name"),
@@ -96,6 +109,17 @@ CURATED_COLUMNS: list[tuple[str, str]] = [
     # --- 다년간 실적 오름세 판정 (Y/N/None, collection/financial_trend.py) ---
     ("Revenue Trend (5Y)", "revenue_trend_5y"),
     ("Operating Income Trend (5Y)", "operating_income_trend_5y"),
+    # --- QIP4 안정성 관문 입력값 (collection/qip4/stability_metrics.py) ---
+    # 여기 등록하지 않으면 storage/report_export.py의 _POPULATION_COLUMNS
+    # 화이트리스트에서 걸러져 재채점 시 조용히 사라진다.
+    ("QIP4 OCF Negative Years", "qip4_ocf_negative_years"),
+    ("QIP4 Cash Conversion 3Y", "qip4_cash_conversion_3y"),
+    ("QIP4 Interest Coverage Fail Years", "qip4_interest_coverage_fail_years"),
+    ("QIP4 Adjusted Net Debt", "qip4_adjusted_net_debt"),
+    ("QIP4 Debt Repayment Years", "qip4_debt_repayment_years"),
+    ("QIP4 Average Operating CF", "qip4_average_operating_cf"),
+    ("QIP4 Tangible Equity Ratio", "qip4_tangible_equity_ratio"),
+    ("QIP4 Goodwill to Assets", "qip4_goodwill_to_assets"),
 ]
 
 _RAW_COLUMN_PREFIX: str = "raw_"
@@ -200,6 +224,15 @@ class BaseStock:
         # --- 다년간 실적 오름세 판정 (Y/N, 데이터 4개년 미만이면 None) ---
         self.revenue_trend_5y: str | None = None
         self.operating_income_trend_5y: str | None = None
+        # QIP4 안정성 관문 입력값 (수집 후 _compute_qip4_factors가 채운다)
+        self.qip4_ocf_negative_years: float | None = None
+        self.qip4_cash_conversion_3y: float | None = None
+        self.qip4_interest_coverage_fail_years: float | None = None
+        self.qip4_adjusted_net_debt: float | None = None
+        self.qip4_debt_repayment_years: float | None = None
+        self.qip4_average_operating_cf: float | None = None
+        self.qip4_tangible_equity_ratio: float | None = None
+        self.qip4_goodwill_to_assets: float | None = None
 
     def _compute_technical_factors(self) -> None:
         history = add_moving_averages(self.history)
@@ -300,6 +333,45 @@ class BaseStock:
         재무제표를 반환한다. `storage.upsert_financial_statements`가 그대로 저장할 수
         있는 형태다. 하위 클래스가 구현해야 한다."""
         raise NotImplementedError
+
+    def compute_qip4_factors(self) -> None:
+        """QIP4 안정성 관문 입력값을 채운다. 두 소스가 공유한다.
+
+        `to_financial_statement_rows()`가 이미 소스 차이를 흡수한 long format을 주므로,
+        여기서는 소스 이름만 넘기면 `FinancialSeries`가 나머지를 처리한다.
+        관문 판정(임계값 비교)은 하지 않는다 — 그건 `analysis/qip4_gate.py`의 일이다.
+        """
+        # 순환 import를 피하려고 지연 import한다 (qip4가 stock_base를 참조하지는
+        # 않지만, 수집 계층 안에서 의존 방향을 단순하게 유지하기 위함).
+        from collection.qip4.series_adapter import FinancialSeries
+        from collection.qip4.stability_metrics import compute_stability_metrics
+
+        series = FinancialSeries(self.to_financial_statement_rows(), self.SOURCE_NAME)
+        metrics = compute_stability_metrics(series, self.SOURCE_NAME)
+
+        self.qip4_ocf_negative_years = metrics.operating_cf_negative_years
+        self.qip4_cash_conversion_3y = metrics.cash_conversion_3y
+        self.qip4_interest_coverage_fail_years = metrics.interest_coverage_below_one_years
+        self.qip4_adjusted_net_debt = metrics.adjusted_net_debt
+        self.qip4_debt_repayment_years = metrics.debt_repayment_years
+        self.qip4_average_operating_cf = metrics.average_operating_cash_flow
+        self.qip4_tangible_equity_ratio = metrics.tangible_equity_ratio
+        self.qip4_goodwill_to_assets = metrics.goodwill_to_assets
+
+    def to_consensus_rows(self, observed_on: date) -> pd.DataFrame:
+        """관측일이 붙은 컨센서스 추정치를 long format으로 반환한다.
+
+        컬럼: ticker, source, observed_on, fiscal_period, item, value —
+        `storage.upsert_consensus_history`가 그대로 저장할 수 있는 형태다.
+
+        컨센서스는 재수집할 때마다 값이 바뀌므로 `financial_statements`처럼
+        덮어쓰면 과거 추정치가 사라진다. 이익 모멘텀이 그 과거 값을 쓰기 때문에
+        관측일과 함께 따로 쌓는다.
+
+        기본 구현은 빈 DataFrame이다 — 컨센서스를 주지 않는 소스도 있고,
+        yfinance처럼 과거 추정치를 직접 주는 소스는 누적이 필요 없다.
+        """
+        return pd.DataFrame(columns=CONSENSUS_COLUMNS)
 
     def _with_identity_columns(self, rows: pd.DataFrame) -> pd.DataFrame:
         """long format 재무제표 앞에 ticker/source 컬럼을 붙인다."""
