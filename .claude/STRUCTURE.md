@@ -51,6 +51,34 @@
   - `_with_identity_columns(rows)`: long format 재무제표 DataFrame 앞에 ticker/source 컬럼을 붙이는 헬퍼.
   - `to_row()`: `_raw_row()` + `_curated_row()`를 하나의 dict(표의 한 행)로 병합 (기존 `Stock.to_row()`와 동일한 계약).
 
+## collection/qip4/ (QIP4 다년 지표)
+`analysis/`가 횡단면 전용이라 다년 시계열을 다룰 수 없어서, "3년 누적 영업CF"·"상환연수"·
+"5년 CAGR" 같은 계산을 여기서 스칼라로 압축해 curated 컬럼으로 넘긴다
+(`financial_trend.evaluate_uptrend`와 같은 방식). **임계값 판정은 하지 않는다** —
+0.7/5년/0.75 같은 값은 `analysis/`가 판정해야 규칙이 바뀌어도 재수집 없이 재채점만으로 반영된다.
+
+- `series_adapter.py`: `FinancialSeries(statements, source)` — `to_financial_statement_rows()`가
+  주는 long format을 정규화된 시계열로 바꾼다. 야후 영문 라벨 ↔ WiseFn ACCODE 차이와
+  **억원→원 단위 환산**을 여기서 전부 흡수한다(환산이 없으면 FCF Yield가 1억 배 틀린다).
+  현금 유출 항목(설비투자·배당·이자)은 소스마다 부호 규약이 달라 **절대값으로 통일**한다.
+  `annual(metric)`/`quarterly(metric)`/`latest_annual(metric)`, `recent_values(series, n)`.
+- `stability_metrics.py`: `compute_stability_metrics(series, source)` → S1~S3 원시값, 조정 순부채,
+  상환연수(재원 없으면 `inf`), 실질 자기자본 비율, 영업권 비중. **조정 순부채는 시장별 정의가
+  다르다** — 야후 `Total Debt`에 리스가 이미 포함돼 있어 별도 가산하면 이중계상(CAT 실측 확인).
+- `growth_metrics.py`: `compute_growth_metrics(series)` → 매출 성장률 변동계수, 자본집약도,
+  성장 자기조달률, 매출 CAGR, 마진 방향(Y/N), 성장 연속성(연간 대체 기준).
+- `value_metrics.py`: `compute_value_metrics(series, market_cap)` → FCF Yield, EV/EBIT,
+  배당수익률, 순현금 연수. 자사주 매입분은 기존 `Buyback Yield`가 담당해 중복하지 않는다.
+- `efficiency_metrics.py`: `compute_efficiency_metrics(series)` → 재고·채권 경보, CCC 악화 여부,
+  발생액 원시값, 선수금 증가 여부. 분기가 6개 이상이면 분기(YoY), 아니면 연간으로 판정한다.
+  **발생액의 "업종 상위 10%" 판정만 횡단면이라 `analysis/`가 맡는다.**
+
+## collection/sector_groups.py
+- `sector_group(sector, industry)`: 업종명 → 가치 가중치용 4분류
+  (`일반`/`자산형`/`무형자산형`/`자본집약사이클`). 한국 한글 업종명과 미국 영문 sector/industry를
+  같은 키워드 표로 받는다. 분류 실패 시 `일반` — 분류 실패로 종목을 잃는 것보다 낫다.
+- `is_leverage_tolerant(sector, industry)`: 상환연수 완화(5년→8년) 대상(유틸리티·리츠·인프라) 판정.
+
 ## collection/stock.py (야후 경로)
 - `YahooStock(BaseStock)`: yfinance 전용 raw 데이터 수집 + 재무 팩터 계산. `Stock`은 이 클래스의
   하위 호환 별칭이다 (`collection/basic_information.py` 등이 `Stock`을 참조).
