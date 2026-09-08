@@ -158,6 +158,8 @@ METRIC_SPECS: list[MetricSpec] = [
     MetricSpec("QIP4 Growth", "QIP4 성장성", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("QIP4 Momentum", "QIP4 모멘텀 (집행률 산정용)", MetricFormat.SCORE, MetricGroup.SCORES),
     MetricSpec("QIP4 Sector Group", "QIP4 섹터군", MetricFormat.TEXT, MetricGroup.SCORES),
+    # 밸류 트랩 보정 승수. 1.0 미만이면 "싸 보이는 이유"가 있다는 뜻이라 정성 검토 신호다.
+    MetricSpec("QIP4 Value Trap Multiplier", "밸류 트랩 승수", MetricFormat.NUMBER, MetricGroup.SCORES),
     # 관문 원시값 — 왜 걸렸는지 숫자로 확인할 수 있게 노출한다.
     MetricSpec("QIP4 Cash Conversion 3Y", "누적 현금전환율 (3년)", MetricFormat.NUMBER, MetricGroup.STABILITY),
     MetricSpec("QIP4 Debt Repayment Years", "상환연수", MetricFormat.NUMBER, MetricGroup.STABILITY),
