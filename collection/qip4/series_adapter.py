@@ -68,6 +68,15 @@ _NAVER_ACCODES: dict[str, str] = {
 _YAHOO_ANNUAL = ("financials", "balance_sheet", "cashflow")
 _YAHOO_QUARTERLY = ("financials_q", "balance_sheet_q", "cashflow_q")
 _NAVER_ANNUAL = ("wise_income_statement", "wise_balance_sheet", "wise_cash_flow")
+# 네이버 모바일 API(finance/annual)는 WiseFn과 달리 **이미 계산된 항목**을 한글 이름으로 준다.
+# 금융사는 손익계산서 계정 트리가 달라 WiseFn ACCODE 203170(당기순이익)이 아예 없는데,
+# 이쪽에는 은행·보험·증권도 당기순이익이 나온다. 그래서 폴백 경로로 쓴다.
+_NAVER_FALLBACK_STATEMENT = ("finance_annual",)
+_NAVER_FALLBACK_ITEMS: dict[str, str] = {
+    "net_income": "당기순이익",
+    "operating_income": "영업이익",
+    "revenue": "매출액",
+}
 _NAVER_QUARTERLY = (
     "wise_income_statement_q",
     "wise_balance_sheet_q",
@@ -124,8 +133,32 @@ class FinancialSeries:
         }
 
     def annual(self, metric: str) -> dict[str, float]:
-        """연간 시계열 {회계기간: 값}."""
-        return self._series(metric, self._annual_types)
+        """연간 시계열 {회계기간: 값}.
+
+        WiseFn에서 못 찾으면 모바일 API(finance/annual) 항목으로 한 번 더 시도한다 —
+        금융사는 WiseFn 손익계산서 계정 트리가 달라 당기순이익 등이 잡히지 않기 때문이다.
+        """
+        series = self._series(metric, self._annual_types)
+        if series or not self._is_naver:
+            return series
+        return self._fallback_series(metric)
+
+    def _fallback_series(self, metric: str) -> dict[str, float]:
+        """finance/annual의 한글 항목명으로 시계열을 찾는다 (네이버 전용)."""
+        item = _NAVER_FALLBACK_ITEMS.get(metric)
+        if item is None or self._statements.empty:
+            return {}
+        rows = self._statements[
+            self._statements["statement_type"].isin(_NAVER_FALLBACK_STATEMENT)
+            & (self._statements["item"] == item)
+        ]
+        if rows.empty:
+            return {}
+        deduped = rows.drop_duplicates(subset="period", keep="first")
+        return {
+            str(period): float(value) * self._scale
+            for period, value in zip(deduped["period"], deduped["value"])
+        }
 
     def quarterly(self, metric: str) -> dict[str, float]:
         """분기 시계열 {회계기간: 값}."""

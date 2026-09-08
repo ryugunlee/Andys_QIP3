@@ -13,6 +13,8 @@ from analysis.qip4_gate import (
     ALARM_INVENTORY,
     ALARM_RECEIVABLES,
     GATE_FAIL,
+    REASON_F1,
+    REASON_F2,
     REASON_REPAYMENT,
     REASON_S1,
     REASON_S2,
@@ -28,6 +30,9 @@ _GATE_REASON_LABELS: dict[str, str] = {
     REASON_S2: "누적 현금전환율이 0.7 미만 (이익이 현금으로 들어오지 않음)",
     REASON_S3: "이자보상배율이 2년 연속 1 미만 (영업이익으로 이자를 못 냄)",
     REASON_REPAYMENT: "상환연수 초과 (영업현금흐름으로 순부채를 감당하기 어려움)",
+    # 자산형(은행·보험·증권·지주) 전용
+    REASON_F1: "최근 3년 중 당기순손실이 2년 이상",
+    REASON_F2: "자기자본비율이 4% 미만 (자본적정성 미달)",
 }
 
 # 자산 품질 경고 (탈락이 아니라 주의)

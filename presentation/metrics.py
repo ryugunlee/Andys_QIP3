@@ -163,6 +163,9 @@ METRIC_SPECS: list[MetricSpec] = [
     MetricSpec("QIP4 Debt Repayment Years", "상환연수", MetricFormat.NUMBER, MetricGroup.STABILITY),
     MetricSpec("QIP4 Tangible Equity Ratio", "실질 자기자본 비율", MetricFormat.FRACTION_PERCENT, MetricGroup.STABILITY),
     MetricSpec("QIP4 Goodwill to Assets", "영업권 비중", MetricFormat.FRACTION_PERCENT, MetricGroup.STABILITY),
+    # 자산형(은행·보험·증권·지주) 전용 관문 지표 — 관문 사유를 숫자로 확인할 수 있게 노출한다.
+    MetricSpec("QIP4 Equity Ratio", "자기자본비율 (자본÷자산)", MetricFormat.FRACTION_PERCENT, MetricGroup.STABILITY),
+    MetricSpec("QIP4 Net Loss Years", "최근 3년 순손실 연수", MetricFormat.NUMBER, MetricGroup.STABILITY),
     # 성장성·가치 원시값
     MetricSpec("QIP4 Growth Self Funding", "성장 자기조달률", MetricFormat.NUMBER, MetricGroup.GROWTH),
     MetricSpec("QIP4 Capital Intensity", "자본집약도", MetricFormat.NUMBER, MetricGroup.GROWTH),

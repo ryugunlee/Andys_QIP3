@@ -40,6 +40,11 @@ class StabilityMetrics:
     average_operating_cash_flow: float | None
     tangible_equity_ratio: float | None
     goodwill_to_assets: float | None
+    # --- 자산형(은행·보험·증권·지주) 전용 ---
+    # 현금흐름 기반 조건(S1~S3·상환연수)이 금융사에 맞지 않아 면제하는 대신,
+    # 금융사에도 의미가 살아있는 두 지표로 관문을 대체한다.
+    equity_ratio: float | None
+    net_loss_years: int | None
 
 
 def _sum_or_none(values: list[float], required: int) -> float | None:
@@ -172,6 +177,32 @@ def _average_operating_cash_flow(series: FinancialSeries) -> float | None:
     return sum(cash_flows) / len(cash_flows)
 
 
+def _equity_ratio(series: FinancialSeries) -> float | None:
+    """자본총계 ÷ 자산총계 — 금융사의 자본적정성 대용치.
+
+    은행의 BIS 비율(위험가중자산 대비 자기자본)은 공시 주석에만 있어 수집할 수 없다.
+    자기자본비율은 위험가중을 하지 않은 거친 근사지만, 바젤III 레버리지비율
+    (기본자본 ÷ 총익스포저)과 같은 종류의 지표라 방향은 맞다.
+    """
+    equity = series.latest_annual("total_equity")
+    assets = series.latest_annual("total_assets")
+    if equity is None or assets is None or assets <= 0:
+        return None
+    return equity / assets
+
+
+def _net_loss_years(series: FinancialSeries) -> int | None:
+    """최근 3년 중 당기순손실이 난 연도 수.
+
+    금융사는 영업현금흐름이 대출·투자자산 잔액 변동으로 흔들려 S1을 쓸 수 없다.
+    순손익은 업종과 무관하게 의미가 살아있어 그 자리를 대신한다.
+    """
+    values = recent_values(series.annual("net_income"), GATE_YEARS)
+    if len(values) < MIN_YEARS_REQUIRED:
+        return None
+    return sum(1 for value in values if value < 0)
+
+
 def compute_stability_metrics(series: FinancialSeries, source: str) -> StabilityMetrics:
     """안정성 관문 입력값을 한 번에 계산한다."""
     adjusted_net_debt = _adjusted_net_debt(series, source)
@@ -184,4 +215,6 @@ def compute_stability_metrics(series: FinancialSeries, source: str) -> Stability
         average_operating_cash_flow=_average_operating_cash_flow(series),
         tangible_equity_ratio=_tangible_equity_ratio(series),
         goodwill_to_assets=_goodwill_to_assets(series),
+        equity_ratio=_equity_ratio(series),
+        net_loss_years=_net_loss_years(series),
     )

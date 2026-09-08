@@ -120,6 +120,9 @@ CURATED_COLUMNS: list[tuple[str, str]] = [
     ("QIP4 Average Operating CF", "qip4_average_operating_cf"),
     ("QIP4 Tangible Equity Ratio", "qip4_tangible_equity_ratio"),
     ("QIP4 Goodwill to Assets", "qip4_goodwill_to_assets"),
+    # 자산형 전용 관문 입력값 (현금흐름 조건을 대체한다)
+    ("QIP4 Equity Ratio", "qip4_equity_ratio"),
+    ("QIP4 Net Loss Years", "qip4_net_loss_years"),
     # --- QIP4 성장성 (collection/qip4/growth_metrics.py) ---
     ("QIP4 Revenue Growth Volatility", "qip4_revenue_growth_volatility"),
     ("QIP4 Capital Intensity", "qip4_capital_intensity"),
@@ -272,6 +275,8 @@ class BaseStock:
         self.qip4_average_operating_cf: float | None = None
         self.qip4_tangible_equity_ratio: float | None = None
         self.qip4_goodwill_to_assets: float | None = None
+        self.qip4_equity_ratio: float | None = None
+        self.qip4_net_loss_years: float | None = None
         self.qip4_revenue_growth_volatility: float | None = None
         self.qip4_capital_intensity: float | None = None
         self.qip4_growth_self_funding: float | None = None
@@ -419,6 +424,8 @@ class BaseStock:
         self.qip4_average_operating_cf = stability.average_operating_cash_flow
         self.qip4_tangible_equity_ratio = stability.tangible_equity_ratio
         self.qip4_goodwill_to_assets = stability.goodwill_to_assets
+        self.qip4_equity_ratio = stability.equity_ratio
+        self.qip4_net_loss_years = _as_float(stability.net_loss_years)
 
         growth = compute_growth_metrics(series)
         self.qip4_revenue_growth_volatility = growth.revenue_growth_volatility

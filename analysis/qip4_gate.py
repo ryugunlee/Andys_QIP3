@@ -7,12 +7,19 @@
 불리언이 아니라 **승수 0.0**으로 표현한다 — 그러면 종합점수가 자동으로 0이 되어
 순위에서 자연히 밀려나고, 분석 계층은 여전히 "연속값의 곱"만 하게 된다.
 
-**자산형(은행·보험·증권·지주)은 현금흐름 기반 4개 조건을 면제한다.** 은행에게 이자비용은
-예금 조달원가라 이자보상배율이 1 미만인 것이 정상이고, 영업현금흐름도 대출 잔액 변동에
-따라 크게 흔들려 부실 신호로 읽을 수 없다. 면제하지 않으면 금융 섹터 전체가 구조적으로
-탈락한다(실측: 은행·증권 5종목 전부 S3 탈락). 원 규칙이 자산형에 완전히 다른 가치 가중치를
-주는 것과 같은 이유다 — 자산형은 애초에 다른 종류의 사업이다.
-자산 품질 경고(실질 자기자본·영업권)는 자산형에도 그대로 적용한다.
+**자산형(은행·보험·증권·지주)은 현금흐름 기반 4개 조건 대신 전용 조건 2개를 쓴다.**
+은행에게 이자비용은 예금 조달원가라 이자보상배율이 1 미만인 것이 정상이고, 영업현금흐름도
+대출 잔액 변동에 따라 크게 흔들려 부실 신호로 읽을 수 없다. 그대로 두면 금융 섹터 전체가
+구조적으로 탈락한다(실측: 은행·증권 5종목 전부 S3 탈락).
+
+다만 **면제만 하면 자산형에 관문이 비어버리므로**, 금융사에도 의미가 살아있는 두 조건으로
+대체한다:
+
+    F1  최근 3년 중 당기순손실 2년 이상        (S1의 대응물)
+    F2  자기자본비율(자본총계÷자산총계) < 4%   (자본적정성 하한)
+
+자산 품질 경고(실질 자기자본·영업권)는 자산형에도 그대로 적용한다 — 현금흐름이 아니라
+자산의 실체를 묻는 지표라 업종과 무관하게 유효하다.
 
 관문 결과와 사유는 문자열 컬럼으로 낸다. `analysis/detail_score.py`가 이미
 `Value risk`를 "O"/"X"로 내보내고 있어 새 규약이 아니다. 사유는 **코드**로만 남기고
@@ -47,6 +54,8 @@ REASON_S1: str = "S1_OCF"
 REASON_S2: str = "S2_CASH_CONVERSION"
 REASON_S3: str = "S3_INTEREST"
 REASON_REPAYMENT: str = "REPAYMENT_YEARS"
+REASON_F1: str = "F1_NET_LOSS"
+REASON_F2: str = "F2_EQUITY_RATIO"
 WARN_TANGIBLE: str = "TANGIBLE_EQUITY"
 WARN_GOODWILL: str = "GOODWILL"
 ALARM_INVENTORY: str = "INVENTORY"
@@ -109,11 +118,12 @@ def _accrual_alarm(df: pd.DataFrame) -> pd.Series:
     return (accrual > cutoff) & accrual.notna() & cutoff.notna() & large_enough
 
 
-def _is_cash_flow_exempt(df: pd.DataFrame) -> pd.Series:
-    """현금흐름 기반 관문 조건(S1~S3·상환연수)을 면제받는 종목인가.
+def _is_asset_type(df: pd.DataFrame) -> pd.Series:
+    """자산형(은행·보험·증권·지주)인가.
 
-    은행·보험·증권·지주는 이자비용이 조달원가라 이자보상배율이 1 미만인 것이 정상이고,
-    영업현금흐름도 대출·투자자산 잔액 변동에 따라 흔들려 부실 신호로 읽을 수 없다.
+    이 종목들은 현금흐름 기반 조건(S1~S3·상환연수) 대신 자산형 전용 조건(F1·F2)을 쓴다.
+    이자비용이 조달원가라 이자보상배율이 1 미만인 것이 정상이고, 영업현금흐름도
+    대출·투자자산 잔액 변동에 따라 흔들려 부실 신호로 읽을 수 없기 때문이다.
     """
     if _SECTOR_GROUP_COLUMN not in df.columns:
         return pd.Series(False, index=df.index)
@@ -134,11 +144,15 @@ def attach_gate_columns(df: pd.DataFrame) -> pd.DataFrame:
     }
     fail_flags = {code: flag.fillna(False) for code, flag in fail_flags.items()}
 
-    # 자산형은 현금흐름 기반 조건을 면제한다(모듈 docstring의 근거 참고).
-    cash_flow_exempt = _is_cash_flow_exempt(df)
-    fail_flags = {
-        code: flag & ~cash_flow_exempt for code, flag in fail_flags.items()
-    }
+    # 자산형은 현금흐름 기반 조건을 끄고 전용 조건(F1·F2)으로 대체한다.
+    asset_type = _is_asset_type(df)
+    fail_flags = {code: flag & ~asset_type for code, flag in fail_flags.items()}
+    fail_flags[REASON_F1] = (
+        _column(df, "QIP4 Net Loss Years") >= w.GATE_MAX_NET_LOSS_YEARS
+    ).fillna(False) & asset_type
+    fail_flags[REASON_F2] = (
+        _column(df, "QIP4 Equity Ratio") < w.GATE_MIN_EQUITY_RATIO
+    ).fillna(False) & asset_type
 
     failed = pd.Series(False, index=df.index)
     for flag in fail_flags.values():

@@ -43,6 +43,8 @@ QIP4_RAW_FACTOR_NAMES: list[str] = [spec.name for spec in QIP4_SCORED_FACTORS] +
     "QIP4 Debt Repayment Years",
     "QIP4 Tangible Equity Ratio",
     "QIP4 Goodwill to Assets",
+    "QIP4 Equity Ratio",
+    "QIP4 Net Loss Years",
     "QIP4 Accrual Ratio",
     "QIP4 Inventory Alarm",
     "QIP4 Receivables Alarm",
