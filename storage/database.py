@@ -27,6 +27,9 @@ DB 파일은 용도별로 3개로 나뉜다 (점수 모집단 = 통화권 단위
   수집은 collection/news/, 저장/조회는 news_repository.py 참고. 현재는 시장 전체
   뉴스(ticker 없음)만 채운다. origin(google_news/yonhap)은 표현 계층이 "세계 경제"
   검색 결과(Google News)를 연합뉴스의 국내 경제 일반 기사보다 먼저 보여주는 데 쓴다.
+- qualitative_grades: 정성 등급 판정 결과(6축 등급·종합·배수·판정·유효기한). (ticker, graded_on)
+  upsert. 관측값·증거는 DB가 아니라 `qualitative/observations/*.json`(git 추적)에 있다 —
+  저장/조회는 qualitative_repository.py, 판정은 analysis/qualitative/ 참고.
 """
 
 import os
@@ -158,6 +161,26 @@ _SCHEMA_STATEMENTS: list[str] = [
         published_at TEXT,
         summary TEXT,
         origin TEXT
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS qualitative_grades (
+        ticker TEXT,
+        graded_on DATE,
+        observed_asof DATE,
+        sector_group TEXT,
+        axis_grades JSON,
+        composite TEXT,
+        score DOUBLE,
+        multiplier DOUBLE,
+        decision TEXT,
+        veto_reasons TEXT,
+        cap_reasons TEXT,
+        watch_items TEXT,
+        not_investigated_share DOUBLE,
+        valid_until DATE,
+        observations_path TEXT,
+        PRIMARY KEY (ticker, graded_on)
     )
     """,
 ]

@@ -252,6 +252,29 @@ FRED_API_KEY)를 읽는다. GitHub Actions에서는 `.env` 없이 리포지토�
 반환하고, `main()`이 macro DB에 upsert 후 `NEWS_KEEP_LIMIT` 기준으로 오래된 기사를
 정리한다(`storage.prune_news`).
 
+## collection/qualitative/ (정성 평가 원문 수집 L1 + 관측값 추출 L2)
+`.claude/정성 평가 규칙.md`의 L1·L2. 추출(사실)과 판정(등급)을 물리적으로 분리하는 것이 핵심이라
+판정은 `analysis/qualitative/`에 있고 여기는 **사실만** 만든다. 프로젝트의 유일한 LLM 의존 지점.
+- `items.py`: 33개 항목의 관측값 계약 `ItemSpec`(code/axis/title/automation A·B·C/fields/guidance).
+  raw 필드명이 곧 JSON 스키마이자 루브릭이 읽는 키다. `automated_items_of_axis(axis)`는 C급(수동
+  판독) 항목을 제외한다 — 프록시가 개념을 대체하는 오류를 막으려는 문서 3-3의 판단.
+  G5(결격)는 `counts_toward_axis=False`라 점수에 들어가지 않는다.
+- `sources.py`: `load_source(path)` → `SourceDocument(title, text|pdf_base64)`. txt/md/html은 본문을
+  보관해 인용 대조가 가능하고, pdf는 document 블록으로만 넘긴다(대조 불가, PROBLEMS #35).
+  `document_block()`이 프롬프트 캐시 경계를 원문에 둔다(축별 반복 질문에 원문 토큰은 1회만 정가).
+- `llm_client.py`: `create_client()` / `extract_structured(client, system, document, request_text,
+  schema)` — `claude-opus-5`, 스트리밍, 구조화 출력(`output_config.format`), 서버측 폴백
+  (`server-side-fallback-2026-07-01`). 거부·토큰 상한·인증 실패는 `ExtractionError`로. 키는 SDK가
+  환경변수(ANTHROPIC_API_KEY)/`ant auth` 프로필에서 해석한다.
+- `prompts.py`: 고정 `SYSTEM_PROMPT`(판정 금지·인용 의무·없음 허용·요약 금지·정량 점수 미포함),
+  `build_axis_schema(items)`/`build_axis_request(axis, items)`. 시스템 프롬프트에 종목·날짜를 넣지
+  않는 이유는 캐시가 접두 일치이기 때문.
+- `lexicon_filter.py`: 부록 B 자기참조 어휘 `BLOCKED_TERMS`, `find_blocked_terms(text)`.
+- `extractor.py`: `extract_observations(client, document, ticker, asof, sector_group, axes,
+  double_check)` — 축 단위 호출 → `Observation`. **인용 대조 실패 → weak, 핵심 항목(G1·G2) 2회
+  추출 불일치 → weak, 자기참조 어휘 검출 → not_investigated, 증거 없는 값 → missing.**
+  I5는 섹터군이 `자본집약사이클`일 때만 요청. `blank_observations()`는 수동 입력 템플릿.
+
 
 # 저장 함수 및 영역
 수집·분석 결과를 DuckDB에 저장하고 조회하는 영역이다. CSV/txt 산출물을 대체한다.
@@ -391,6 +414,12 @@ git에 커밋하지 않는다.
   피드에서 밀려난 오래된 기사를 정리해 DB가 무한정 커지지 않게 한다.
 - `get_latest_news(conn, limit)`: 최신 기사부터 limit건 반환.
 
+## storage/qualitative_repository.py
+- `upsert_qualitative_grade(conn, row)`: 정성 등급 결과 1행 upsert (ticker, graded_on). `axis_grades`는
+  JSON 문자열, 사유·감시 항목은 `|` 구분 코드. `observed_asof`인 이유: `asof`가 DuckDB 예약어.
+- `get_latest_qualitative_grades(conn)`: 종목별 최신 판정 1행. 유효기한(`valid_until`) 판단은 표현
+  계층 몫. 관측값·증거는 DB가 아니라 `qualitative/observations/*.json`(git 추적).
+
 ## storage/__init__.py
 - 위 함수들을 공개 API로 재노출.
 
@@ -412,6 +441,14 @@ git에 커밋하지 않는다.
 - 수집 없이 점수만 재계산한다(가중치·방식 변경 후 재산출용). `python compute_scores.py [KR|US|ALL]`.
   각 통화권 DB에서 `get_latest_snapshots`→`compute_scores`→`update_snapshot_scores`,
   커트라인·그룹 요약도 함께 갱신.
+
+# grade_qualitative.py (진입점)
+- 정성 평가 명령줄. `template <티커> [--sector-group]`(수동 입력용 빈 관측값 JSON) /
+  `extract <티커> <원문파일> [--asof] [--sector-group] [--axes GDI] [--no-double-check]`(LLM 추출) /
+  `grade <티커> [--market] [--no-save]`(등급카드 출력 + `qualitative_grades` 저장).
+  정량 DB는 저장 시점에만 연다 — 추출 단계에서 주가·정량 점수를 보지 않는 8-2 순서를 지키기 위해.
+  `format_grade_card()`는 9-1 양식 중 1단계 산출 칸만 채운다(배수는 집행률과 곱하지 않는다).
+  `load_dotenv()`로 ANTHROPIC_API_KEY를 읽는다.
 
 
 # 데이터 분석 함수 및 영역
@@ -532,6 +569,24 @@ QIP4 정량 규칙(`.claude/투자 규칙.md`). QIP3와 **병행**하며 QIP3는
 - `qip4_pipeline.py`: `compute_qip4_scores(scored)` — 결측 가드 → 파생 원천 팩터(업종 대비 상대
   성장률, 주주환원수익률) → 관문 판정 → 채점 → 6계열 부착 → 집행률.
   컬럼 네이밍은 QIP3와 동일 규약: `QIP4 Value{PS|SS|""}` / `QIP4 ValueSec…` / `QIP4 Score…`.
+
+## analysis/qualitative/ (정성 등급 판정 L3)
+`.claude/정성 평가 규칙.md` 5-1의 결정적 판정기. 같은 관측값이면 같은 등급 — 주관은 L2에만 있다.
+QIP4와 맞지 않는 규칙(태그 교차·티어·비중 계산·국면 가중치)은 1단계 보류(부록 D 번역표).
+- `schema.py`: `Evidence` / `Observation`(status: observed·weak·missing·not_investigated) /
+  `ObservationSet`(ticker, asof, sector_group, observations). `save_observations`/`load_observations`
+  → `qualitative/observations/<티커>.json`.
+- `weights.py`: 축 가중(G .20/C .15/D .25/P .15/I .15/X .10), 등급 밴드, 환산점수, 배수표, 하한 규칙,
+  결측 문턱(축 유효 절반 미만 → NA, 미조사 30% 초과 → 판정 미완료), 루브릭 임계값 전부. 문서가
+  "설계 추론"이라 밝힌 값들이라 여기만 고치면 관측값 그대로 재판정된다.
+- `rubric.py`: `RUBRIC[code](raw) → 0/1/2/None`. None은 "판정 불가 = 결측"이며 0점과 구분한다.
+  `pipeline_ratio()`(Σ 단계계수×규모), `veto_reasons_for_governance()`, `is_survival_veto()`.
+- `grader.py`: `qualitative_grade(ObservationSet) → GradeResult(axes, composite, score, multiplier,
+  decision, veto_reasons, cap_reasons, watch_items, not_investigated_share)`. 순서: 축 판정(weak는
+  상한 1점, I5는 사이클 섹터군만) → 결격(G5·I6=0 → F·기각) → 미조사 30% 초과면 판정 미완료 →
+  NA 축 제외 가중 재배분 → 종합 밴드 → 배수 + 하한 규칙(G/D ≤ C, D등급 2축 0.75·3축 보류, NA,
+  D1=0) → 판정(채택/제한 채택/보류/기각). 0·1점 항목은 `watch_items`(반증 조건표 자동 등재).
+  문서 9-2 계산 예시(종합 70.0 → B, 배수 1.0)를 그대로 재현한다.
 
 ## presentation/qip4_view.py
 - `build_gate_view(values)` → `GateView` — QIP4 관문·경보 **코드를 한국어 문구로** 바꾼다.
