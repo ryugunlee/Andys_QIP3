@@ -27,9 +27,10 @@ DB 파일은 용도별로 3개로 나뉜다 (점수 모집단 = 통화권 단위
   수집은 collection/news/, 저장/조회는 news_repository.py 참고. 현재는 시장 전체
   뉴스(ticker 없음)만 채운다. origin(google_news/yonhap)은 표현 계층이 "세계 경제"
   검색 결과(Google News)를 연합뉴스의 국내 경제 일반 기사보다 먼저 보여주는 데 쓴다.
-- qualitative_grades: 정성 등급 판정 결과(6축 등급·종합·배수·판정·유효기한). (ticker, graded_on)
-  upsert. 관측값·증거는 DB가 아니라 `qualitative/observations/*.json`(git 추적)에 있다 —
-  저장/조회는 qualitative_repository.py, 판정은 analysis/qualitative/ 참고.
+- qualitative_grades: 정성 등급 판정 결과(9항목 점수·종합·배수·판정·★ 플래그·유효기한).
+  (ticker, graded_on) upsert. 관측값·증거는 DB가 아니라 `qualitative/observations/*.json`(git 추적)에
+  있다 — 저장/조회는 qualitative_repository.py, 판정은 analysis/qualitative/ 참고. 구 6축 테이블은
+  connect()가 `qualitative_grades_legacy_6axis`로 이름을 바꿔 보존한다.
 """
 
 import os
@@ -169,7 +170,7 @@ _SCHEMA_STATEMENTS: list[str] = [
         graded_on DATE,
         observed_asof DATE,
         sector_group TEXT,
-        axis_grades JSON,
+        item_scores JSON,
         composite TEXT,
         score DOUBLE,
         multiplier DOUBLE,
@@ -177,13 +178,27 @@ _SCHEMA_STATEMENTS: list[str] = [
         veto_reasons TEXT,
         cap_reasons TEXT,
         watch_items TEXT,
-        not_investigated_share DOUBLE,
+        valid_items INTEGER,
+        trend_flag TEXT,
         valid_until DATE,
         observations_path TEXT,
         PRIMARY KEY (ticker, graded_on)
     )
     """,
 ]
+
+# 2026-09-11 6축 체계의 qualitative_grades(axis_grades 컬럼)는 2026-09-15 9항목 체계와 컬럼이
+# 달라 INSERT가 깨진다. 구 테이블은 지우지 않고 이름을 바꿔 두고 새 DDL이 다시 만들게 한다.
+_LEGACY_QUALITATIVE_COLUMN: str = "axis_grades"
+_LEGACY_QUALITATIVE_TABLE: str = "qualitative_grades_legacy_6axis"
+
+
+def _migrate_legacy_qualitative_grades(conn: duckdb.DuckDBPyConnection) -> None:
+    columns = conn.execute(
+        "SELECT column_name FROM information_schema.columns WHERE table_name = 'qualitative_grades'"
+    ).fetchall()
+    if any(column[0] == _LEGACY_QUALITATIVE_COLUMN for column in columns):
+        conn.execute(f"ALTER TABLE qualitative_grades RENAME TO {_LEGACY_QUALITATIVE_TABLE}")
 
 
 def connect(db_path: str) -> duckdb.DuckDBPyConnection:
@@ -196,6 +211,7 @@ def connect(db_path: str) -> duckdb.DuckDBPyConnection:
     if parent_dir:
         os.makedirs(parent_dir, exist_ok=True)
     conn = duckdb.connect(db_path)
+    _migrate_legacy_qualitative_grades(conn)
     for statement in _SCHEMA_STATEMENTS:
         conn.execute(statement)
     return conn

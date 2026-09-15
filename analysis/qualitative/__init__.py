@@ -1,6 +1,6 @@
-"""정성 등급 판정(L3) 공개 API."""
+"""정성 등급 판정 공개 API."""
 
-from analysis.qualitative.grader import AxisResult, GradeResult, qualitative_grade
+from analysis.qualitative.grader import GradeResult, ItemResult, qualitative_grade
 from analysis.qualitative.schema import (
     Evidence,
     Observation,
@@ -9,13 +9,16 @@ from analysis.qualitative.schema import (
     observation_path,
     save_observations,
 )
+from analysis.qualitative.trend_flag import TrendFlag, compute_trend_flag
 
 __all__ = [
-    "AxisResult",
     "Evidence",
     "GradeResult",
+    "ItemResult",
     "Observation",
     "ObservationSet",
+    "TrendFlag",
+    "compute_trend_flag",
     "load_observations",
     "observation_path",
     "qualitative_grade",

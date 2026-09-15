@@ -1,8 +1,8 @@
 """qualitative_grades 테이블 upsert/조회 (정성 등급 결과).
 
-관측값(증거 인용 포함)은 DB가 아니라 `qualitative/observations/<티커>.json`에 git으로
-추적한다 — 사람이 검토·수정한 이력이 diff로 남아야 재현성 검증이 되기 때문이다.
-여기에는 판정 결과만 들어가고, 표현 계층이 상세 페이지에 쓴다.
+관측값(점수·근거·증거 인용)은 DB가 아니라 `qualitative/observations/<티커>.json`에 git으로
+추적한다 — 사람이 검토·수정한 이력이 diff로 남아야 하기 때문이다. 여기에는 판정 결과만
+들어가고, 표현 계층이 상세 페이지에 쓴다.
 (ticker, graded_on) 기준 upsert라 같은 날 재판정하면 덮어쓰고, 다른 날이면 이력이 쌓인다.
 """
 
@@ -10,9 +10,9 @@ import duckdb
 import pandas as pd
 
 _GRADE_COLUMNS: list[str] = [
-    "ticker", "graded_on", "observed_asof", "sector_group", "axis_grades", "composite", "score",
-    "multiplier", "decision", "veto_reasons", "cap_reasons", "watch_items",
-    "not_investigated_share", "valid_until", "observations_path",
+    "ticker", "graded_on", "observed_asof", "sector_group", "item_scores", "composite", "score",
+    "multiplier", "decision", "veto_reasons", "cap_reasons", "watch_items", "valid_items",
+    "trend_flag", "valid_until", "observations_path",
 ]
 
 

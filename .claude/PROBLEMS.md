@@ -479,15 +479,16 @@ WiseFn(cF3002.aspx)은 우선주처럼 재무제표를 제공하지 않는 종�
 근본 해결은 PDF 텍스트 추출 의존성(pypdf 등)을 추가해 대조 경로를 여는 것이다. 이번 범위에서는
 의존성을 늘리지 않으려고 두었다.
 
-## 36. 정성 파이프라인의 L1(원문 자동 수집)과 표현 계층이 비어 있다
+## 36. 정성 파이프라인의 원문 자동 수집과 표현 계층이 비어 있다
 
-- DART OpenAPI·SEC EDGAR 연동이 없어 사업보고서·10-K는 사람이 파일로 넣는다. 문서 3-3의 A급
-  항목(G2·C1·D3·D4 등)도 지금은 LLM이 원문에서 읽어내는 B급 경로로 대체돼 있다. 2단계에서
-  `collection/qualitative/sources.py`에 로더를 추가하는 식으로 확장할 자리다.
-- `presentation/models.py`의 `qualitative: str | None`은 자유 문자열 한 칸이라 6축 등급카드를
-  담지 못한다. `qualitative_grades` 테이블을 읽어 상세 페이지에 등급·배수·감시 항목을 집행률과
-  나란히 보여주는 작업이 남아 있다(docs 워크플로 동반).
-- 등급 유효기간(6개월) 만료 시 보류 강등(7-3)은 `valid_until`만 저장하고 판단은 표현 계층으로
-  미뤄 두었다. L5 감시(이벤트 재판정·분기 점검 큐)는 미구현.
-- 문서 5-3 재현성 검증(두 세션 판정 일치율)은 절차만 있고 도구가 없다. 관측값 JSON diff로
-  수동 비교하는 것이 현재의 방법이다.
+- DART OpenAPI·SEC EDGAR 연동이 없어 사업보고서·10-K는 사람이 파일로 넣는다. Q2(점유율)·Q4(산업
+  수요·규제)·Q5(섹터 연결)는 사업보고서만으로는 얕아서 산업통계·규제 원문을 원문에 같이 넣거나
+  웹 검색 도구를 붙이는 것이 다음 단계다(`collection/qualitative/sources.py`에 로더 추가).
+- `presentation/models.py`의 `qualitative: str | None`은 자유 문자열 한 칸이라 9항목 등급카드를
+  담지 못한다. `qualitative_grades` 테이블(item_scores JSON·composite·multiplier·trend_flag)을 읽어
+  상세 페이지에 집행률과 나란히 보여주는 작업이 남아 있다(docs 워크플로 동반).
+- 등급 유효기간(6개월) 만료 시 처리는 `valid_until`만 저장하고 판단은 표현 계층으로 미뤄 두었다.
+- 매주 자동 실행(GitHub Actions 스케줄 + workflow_dispatch로 티커 입력)은 아직 워크플로가 없다.
+  원문 자동 수집이 없으면 스케줄을 걸어도 넣을 문서가 없어 그 뒤에 붙인다.
+- 2026-09-11 6축 체계의 `qualitative_grades` 테이블은 `connect()`가 `qualitative_grades_legacy_6axis`로
+  이름만 바꿔 둔다. 실제 저장된 행이 없다고 확인되면 지워도 된다.

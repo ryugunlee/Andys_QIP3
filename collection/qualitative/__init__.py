@@ -1,4 +1,4 @@
-"""정성 평가 원문 수집(L1)과 관측값 추출(L2) 공개 API."""
+"""정성 평가 원문 로더와 LLM 채점 추출 공개 API."""
 
 from collection.qualitative.extractor import blank_observations, extract_observations
 from collection.qualitative.llm_client import ExtractionError, create_client

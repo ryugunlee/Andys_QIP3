@@ -1,36 +1,18 @@
-"""정성 평가 33개 항목의 관측값 계약 — 어떤 사실(raw 필드)을 추출하는가.
+"""정성 평가 9항목의 계약 — 무엇을 묻고, 어떤 사실(raw)을 받고, 채점 앵커가 무엇인가.
 
-원문은 `.claude/정성 평가 규칙.md` 2절(축별 루브릭)과 부록 A. 여기에는 **판정 기준이 없다.**
-"사외이사 5명 중 3명"이라는 사실을 어떤 필드에 담을지만 정한다. 좋고 나쁨은
-`analysis/qualitative/rubric.py`가 정한다 — 추출과 판정을 물리적으로 분리하는 것이
-그 문서의 첫 번째 설계 원칙이다.
+원문은 `.claude/정성 평가 규칙.md` 1·2절. 여기가 raw 필드명·앵커 문구의 단일 소스다:
+- LLM 채점 프롬프트(`prompts.py`)가 이 앵커와 필드를 JSON 스키마로 요구하고,
+- 사람이 손으로 채울 때 같은 스키마를 따르며,
+- 수치 재계산 루브릭(`analysis/qualitative/rubric.py`)이 이 필드명으로 raw를 읽는다.
 
-이 계약은 세 곳이 함께 쓴다:
-- LLM 추출 프롬프트(`prompts.py`)가 이 필드를 JSON 스키마로 요구하고,
-- 사람이 파일럿 종목을 손으로 채울 때 같은 스키마를 따르며,
-- 루브릭이 이 필드명으로 raw를 읽는다.
-
-자동화 등급(A/B/C)은 문서 3-3의 분류다. **C급(판단·조사가 필요한 항목)은 LLM에게
-맡기지 않는다** — 프록시가 개념을 대체하는 오류가 서사 편향보다 나쁘다는 문서의 판단.
+가중치·임계값은 `analysis/qualitative/weights.py`에 있다. 여기에는 없다.
 """
 
 from dataclasses import dataclass
 
-AXIS_CODES: tuple[str, ...] = ("G", "C", "D", "P", "I", "X")
-AXIS_NAMES: dict[str, str] = {
-    "G": "지배구조·이해정합성",
-    "C": "자본배분 역량",
-    "D": "수익 영속성",
-    "P": "성장 파이프라인 실현성",
-    "I": "산업 구조 위치",
-    "X": "외부 충격 내성",
-}
+ITEM_CODES: tuple[str, ...] = ("Q1", "Q2", "Q3", "Q4", "Q5", "Q6", "Q7", "Q8", "Q9")
 
-AUTOMATION_API: str = "A"
-AUTOMATION_SEMI: str = "B"
-AUTOMATION_MANUAL: str = "C"
-
-# 파이프라인 확실성 5단계 (문서 2-4, 규칙서 ③-2). 계수는 analysis 쪽 상수가 갖는다.
+# 파이프라인 확실성 5단계 (문서 1절). 계수는 analysis 쪽 상수가 갖는다.
 PIPELINE_STAGE_MIN: int = 1
 PIPELINE_STAGE_MAX: int = 5
 
@@ -38,12 +20,14 @@ PIPELINE_STAGE_MAX: int = 5
 @dataclass(frozen=True)
 class ItemSpec:
     code: str
-    axis: str
     title: str
-    automation: str
+    short: str
+    question: str
+    anchor_s: str
+    anchor_b: str
+    anchor_f: str
+    sources: str
     fields: dict[str, dict]
-    guidance: str
-    counts_toward_axis: bool = True
 
 
 def _number(description: str) -> dict:
@@ -58,156 +42,152 @@ def _boolean(description: str) -> dict:
     return {"type": ["boolean", "null"], "description": description}
 
 
+def _string(description: str) -> dict:
+    return {"type": ["string", "null"], "description": description}
+
+
 def _enum(description: str, values: tuple[str, ...]) -> dict:
     return {"type": ["string", "null"], "enum": [*values, None], "description": description}
 
 
 TREND_VALUES: tuple[str, ...] = ("decreasing", "flat", "increasing")
-MOAT_TYPES: tuple[str, ...] = (
-    "brand", "network_effect", "switching_cost", "scale", "regulation", "patent_technology",
-)
+DIRECTION_VALUES: tuple[str, ...] = ("shrinking", "flat", "growing")
+REGULATION_VALUES: tuple[str, ...] = ("headwind", "uncertain", "favorable")
+SURVIVAL_VALUES: tuple[str, ...] = ("extinction_path", "uncertain", "no_extinction_path")
+SUBSTITUTABILITY_VALUES: tuple[str, ...] = ("low", "mid", "high")
+
+_PIPELINES_FIELD: dict = {
+    "type": ["array", "null"],
+    "description": "현매출 대비 5% 이상인 진행 사업·신사업 목록 (MOU·검토 중은 1단계)",
+    "items": {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "stage": {"type": "integer", "description": "확실성 단계 1(구상·MOU)~5(양산)"},
+            "revenue_ratio": {"type": "number", "description": "완전 가동 시 예상 매출 ÷ 현매출"},
+        },
+        "required": ["name", "stage", "revenue_ratio"],
+        "additionalProperties": False,
+    },
+}
 
 ITEM_SPECS: tuple[ItemSpec, ...] = (
-    # --- G 지배구조 ---
-    ItemSpec("G1", "G", "이사회 독립성", AUTOMATION_SEMI, {
-        "outside_directors": _integer("사외이사 수"),
-        "total_directors": _integer("총 이사 수"),
-        "dissent_votes_3y": _integer("최근 3년 이사회 반대·수정 의결 건수"),
-    }, "이사회 구성표와 의결 현황표에서 인원수와 반대·수정 의결 건수를 찾는다."),
-    ItemSpec("G2", "G", "특수관계자 거래", AUTOMATION_API, {
-        "related_party_ratio": _number("특수관계자 매출+매입액 ÷ 총매출 (0~1)"),
-        "trend_3y": _enum("최근 3년 비중 추세", TREND_VALUES),
-    }, "특수관계자 거래 주석의 매출·매입 합계를 총매출로 나눈다."),
-    ItemSpec("G3", "G", "주주환원의 명문화·이행", AUTOMATION_SEMI, {
-        "has_return_policy": _boolean("배당·주주환원 정책 공시 존재 여부"),
-        "years_policy_met_3y": _integer("최근 3년 중 정책대로 이행한 연수 (0~3)"),
-    }, "배당정책 공시 유무와 3년 배당·자사주 실적을 정책과 대조한다."),
-    ItemSpec("G4", "G", "인센티브 KPI 연동 대상", AUTOMATION_SEMI, {
-        "kpi_type": _enum("임원 성과급 연동 지표 유형",
-                          ("capital_efficiency", "mixed", "top_line", "undisclosed")),
-    }, "임원 보수 산정기준에서 ROIC·EPS·TSR(자본효율) 연동인지 매출·외형 연동인지 본다."),
-    ItemSpec("G5", "G", "자본거래 정합성 (결격)", AUTOMATION_MANUAL, {
-        "spinoff_relisting": _boolean("핵심 사업 물적분할 후 중복상장 이력"),
-        "executive_fraud_5y": _boolean("최근 5년 지배주주·경영진 배임·횡령·분식 확정 판결 또는 기소 진행"),
-        "unfair_merger_ratio": _boolean("소액주주에 불리한 합병·분할 비율 강행 이력"),
-    }, "합병·분할 공시와 판결·기소 이력. 점수가 아니라 결격 검사에만 쓴다.", counts_toward_axis=False),
-    # --- C 자본배분 ---
-    ItemSpec("C1", "C", "M&A 사후 성적", AUTOMATION_API, {
-        "goodwill_impairment_count_10y": _integer("최근 10년 영업권 손상차손 인식 횟수 (M&A 없음이면 0)"),
-    }, "영업권·무형자산 손상 주석에서 손상차손 인식 연도를 센다."),
-    ItemSpec("C2", "C", "증설 CAPEX 사후 ROIC", AUTOMATION_SEMI, {
-        "post_capex_roic_trend": _enum("대형 투자 후 3년 ROIC 방향", ("improved", "mixed", "declined")),
-    }, "CAPEX 급증 연도 이후 3년 ROIC·가동률이 개선·유지됐는지 하락했는지."),
-    ItemSpec("C3", "C", "자사주 정책", AUTOMATION_API, {
-        "buybacks_exist": _boolean("최근 5년 자기주식 취득 존재"),
-        "cancelled": _boolean("취득분 소각 여부"),
-        "purchase_band_position": _enum("매입 당시 PBR 밴드 위치", ("low", "mid", "high")),
-        "reissued_or_exchangeable": _boolean("재출연 또는 교환사채 활용 여부"),
-    }, "자기주식 취득·처분·소각 이력과 매입 시점 밸류에이션."),
-    ItemSpec("C4", "C", "배당의 원천", AUTOMATION_API, {
-        "years_dividend_exceeded_ocf_3y": _integer("최근 3년 중 배당총액이 영업CF를 초과한 연수 (0~3)"),
-        "funded_by_debt_or_asset_sale": _boolean("차입·자산매각으로 배당을 유지했는지"),
-    }, "배당총액과 영업현금흐름, 차입금 변동을 3년 대조한다."),
-    ItemSpec("C5", "C", "조달 목적-사용 일치", AUTOMATION_SEMI, {
-        "capital_raise_exists": _boolean("최근 3년 유상증자·CB 등 조달 존재"),
-        "use_matches_purpose": _enum("공시 목적 대비 실제 사용처", ("match", "partial", "mismatch")),
-        "repeated_raises_3y": _boolean("3년 내 반복 조달 여부"),
-    }, "조달 공시의 목적과 자금사용내역 보고를 대조한다."),
-    # --- D 수익 영속성 ---
-    ItemSpec("D1", "D", "해자 유형 특정", AUTOMATION_MANUAL, {
-        "moat_type": _enum("해자 유형", (*MOAT_TYPES, "none")),
-        "best_evidence_grade": _integer("근거 자료의 최고 증거 등급 (1~4)"),
-    }, "해자를 주장하려면 유형을 특정해야 한다. '경쟁력이 있다'는 서술은 인정하지 않는다."),
-    ItemSpec("D2", "D", "침식 신호 상태", AUTOMATION_MANUAL, {
-        "erosion_signals_worsening": _integer("유형별 지정 신호 3개 중 악화 개수 (0~3)"),
-    }, "해자 유형별 침식 지표(재계약률·점유율·광고비/매출 등) 중 악화 중인 것의 수."),
-    ItemSpec("D3", "D", "이익 집중도", AUTOMATION_API, {
-        "top_segment_op_income_share": _number("최대 세그먼트 영업이익 비중 (0~1)"),
-    }, "영업부문(세그먼트) 주석의 부문별 영업이익."),
-    ItemSpec("D4", "D", "고객 집중도", AUTOMATION_API, {
-        "top_customer_sales_share": _number("최대 고객 매출 비중 (0~1)"),
-    }, "주요 고객 정보 주석(매출 10% 이상 고객)."),
-    ItemSpec("D5", "D", "가격 전가력", AUTOMATION_SEMI, {
-        "margin_defense": _enum("최근 원가 상승기 마진 방어", ("defended", "recovered_within_2q", "eroded")),
-    }, "원재료 단가 상승 구간과 분기 영업이익률 시계열을 대조한다."),
-    ItemSpec("D6", "D", "계약·매출 구조", AUTOMATION_SEMI, {
-        "recurring_revenue_share": _number("장기계약·반복매출 비중 (0~1)"),
-    }, "수주잔고·계약 기간·구독/반복 매출 비중."),
-    # --- P 파이프라인 ---
-    ItemSpec("P1", "P", "유효 파이프라인 규모", AUTOMATION_SEMI, {
-        "pipelines": {
-            "type": ["array", "null"],
-            "description": "현매출 대비 5% 이상인 진행 사업 목록",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "stage": {"type": "integer", "description": "확실성 단계 1(구상)~5(양산)"},
-                    "revenue_ratio": {"type": "number", "description": "완전 가동 시 예상 매출 ÷ 현매출"},
-                },
-                "required": ["name", "stage", "revenue_ratio"],
-                "additionalProperties": False,
-            },
+    ItemSpec(
+        "Q1", "확정 이익 (수주잔고·계약)", "확정이익",
+        "수주잔고·장기계약·반복매출이 연매출 대비 얼마이고, 구속력이 있는가",
+        "확정 매출(수주잔고 + 1년 내 확정 반복매출) ÷ 연매출 1.0배 이상, 구속력 있는 계약",
+        "0.5배 안팎",
+        "0.2배 미만, 또는 MOU·구두 수준뿐(구속력 없음)",
+        "사업보고서 수주상황·주요계약, 공급계약 공시 / 10-K RPO·Backlog. 자산형은 여신 건전성으로 치환",
+        {
+            "committed_to_revenue": _number("(수주잔고 + 1년 내 확정 반복매출) ÷ 연매출"),
+            "binding_contracts": _boolean("확정분이 구속력 있는 계약(공급계약·수주 공시)에 근거하는가"),
         },
-    }, "사업별 예상 매출과 확실성 단계. MOU·검토 중은 1단계(계수 0)."),
-    ItemSpec("P2", "P", "최상위 파이프라인 확실성", AUTOMATION_SEMI, {
-        "top_stage": _integer("가장 진척된 파이프라인의 단계 (1~5)"),
-    }, "계약 공시·인허가 등록·CAPEX 집행 증거로 단계를 정한다."),
-    ItemSpec("P3", "P", "가이던스 달성 이력", AUTOMATION_MANUAL, {
-        "guidance_hit_rate_3y": _number("최근 3년 제시 목표 대비 달성률 (0~1)"),
-    }, "IR 자료·컨퍼런스콜의 과거 목표와 실적."),
-    ItemSpec("P4", "P", "자금 조달 정합성", AUTOMATION_SEMI, {
-        "funding": _enum("필요 CAPEX 조달 방식", ("internal_cash", "debt_capacity", "equity_needed")),
-    }, "필요 CAPEX 대비 보유현금·차입 여력."),
-    ItemSpec("P5", "P", "기존 역량 인접성", AUTOMATION_MANUAL, {
-        "adjacency": _enum("신사업의 기존 기술·고객·채널 인접도", ("adjacent", "partial", "unrelated")),
-    }, "사업 내용의 고객·기술 중복도."),
-    # --- I 산업 구조 ---
-    ItemSpec("I1", "I", "자사 점유율 추세", AUTOMATION_SEMI, {
-        "share_trend_3y": _enum("3년 점유율 방향", ("up", "flat", "down")),
-    }, "산업 총규모 대비 자사 매출 3년 추이."),
-    ItemSpec("I2", "I", "진입장벽 방향", AUTOMATION_MANUAL, {
-        "barrier_direction": _enum("진입장벽 방향", ("strengthening", "stable", "weakening")),
-    }, "신규 진입 건수, 규제·기술 변화."),
-    ItemSpec("I3", "I", "규제 방향", AUTOMATION_MANUAL, {
-        "regulation_direction": _enum("규제 방향", ("favorable_or_neutral", "uncertain", "headwind")),
-    }, "법안·고시 개정안, 규제기관 발표 원문."),
-    ItemSpec("I4", "I", "기술 대체 위협", AUTOMATION_MANUAL, {
-        "substitute_tech_stage": _integer("대체기술 상용화 단계 (1~5, ③-2 척도)"),
-    }, "대체 기술에 파이프라인 5단계 척도를 그대로 적용한다."),
-    ItemSpec("I5", "I", "사이클 위치 (사이클 산업만)", AUTOMATION_SEMI, {
-        "cycle_position": _enum("업계 재고·가동률 사이클 위치", ("trough_turning", "neutral", "peak")),
-    }, "업계 재고일수·가동률·증설 계획. 사이클 산업이 아니면 결측."),
-    ItemSpec("I6", "I", "10년 존속성 (결격)", AUTOMATION_MANUAL, {
-        "survival_10y": _enum("구조적 소멸 경로", ("no_extinction_path", "uncertain", "extinction_path")),
-    }, "산업 수요 장기 추세와 대체재. 소멸 경로 확인이면 결격."),
-    # --- X 외부 충격 ---
-    ItemSpec("X1", "X", "금리", AUTOMATION_SEMI, {
-        "has_interest_bearing_debt": _boolean("이자발생부채 존재 여부"),
-        "floating_rate_debt_share": _number("변동금리 부채 비중 (0~1)"),
-        "interest_coverage": _number("이자보상배율 (영업이익 ÷ 이자비용)"),
-    }, "차입금 금리 구조 주석과 이자보상배율."),
-    ItemSpec("X2", "X", "환율", AUTOMATION_SEMI, {
-        "fx_hedge": _enum("환위험 헤지 구조", ("natural_or_hedged_70", "partial", "unhedged_one_way")),
-    }, "금융위험관리 주석의 환위험 민감도와 헤지 비율."),
-    ItemSpec("X3", "X", "통상·관세", AUTOMATION_SEMI, {
-        "regions_count": _integer("생산지·매출지가 분산된 권역 수"),
-    }, "지역별 매출과 생산 설비 소재."),
-    ItemSpec("X4", "X", "원자재", AUTOMATION_MANUAL, {
-        "price_passthrough": _enum("판가 연동 조항", ("linked_within_1q", "lag_2q_plus", "none")),
-    }, "주요 계약 조건과 원재료 비중."),
-    ItemSpec("X5", "X", "지정학", AUTOMATION_SEMI, {
-        "top_country_share": _number("단일 국가 매출 또는 생산 비중 중 큰 값 (0~1)"),
-    }, "지역별 매출, 생산기지 위치."),
+    ),
+    ItemSpec(
+        "Q2", "시장 지위 (점유율·인지도)", "시장지위",
+        "점유율 순위·수준과 3년 추세, 고객·브랜드 인지도",
+        "점유율 1~2위이고 3년 상승, 인지도가 원문·통계로 확인",
+        "중위권 유지",
+        "하위권이거나 3년 하락",
+        "사업의 내용(시장 현황·경쟁), 산업통계",
+        {
+            "market_share": _number("주력 사업 점유율 (0~1)"),
+            "market_rank": _integer("주력 사업 점유율 순위"),
+            "share_trend_3y": _enum("3년 점유율 추세", TREND_VALUES),
+        },
+    ),
+    ItemSpec(
+        "Q3", "기술·제품 차별성", "기술",
+        "기술 세분화 수준, 경쟁사가 대체하기 어려운가, 특허·고객 인증",
+        "대체 난이도 높음 — 특허·인증·공정 세분화로 경쟁사가 단기 복제 불가",
+        "차별성 있으나 대체 가능",
+        "범용 제품·가격 경쟁",
+        "연구개발 실적, 특허·인증 현황, 사업의 내용",
+        {
+            "substitutability": _enum("경쟁사의 대체 용이성 (low=대체 어려움)", SUBSTITUTABILITY_VALUES),
+            "protections": _string("대체를 막는 요소 요약 (특허·인증·공정·표준 등)"),
+        },
+    ),
+    ItemSpec(
+        "Q4", "산업·섹터 전망", "산업전망",
+        "수요 방향, 규제 방향, 10년 존속성. 정량 산업 PER·섹터 지표와 대조",
+        "수요 성장 + 규제 우호·중립 + 10년 존속 의심 없음",
+        "수요 정체, 규제 불확실",
+        "수요 축소, 규제 역풍, 또는 소멸 경로 확인",
+        "산업통계, 규제 원문·개정안, 사업의 내용(산업 현황)",
+        {
+            "demand_direction": _enum("산업 수요 방향", DIRECTION_VALUES),
+            "regulation_direction": _enum("규제 방향", REGULATION_VALUES),
+            "survival_10y": _enum("10년 존속성", SURVIVAL_VALUES),
+        },
+    ),
+    ItemSpec(
+        "Q5", "확장 잠재력 (섹터 연결·신사업)", "잠재력",
+        "다른 산업의 수요와 연결돼 새 시장이 생기는가(예: 전력→데이터센터), 신사업의 단계",
+        "다른 산업의 확정 수요와 계약·양산 단계로 연결, 또는 신사업이 계약·양산(④⑤) 단계",
+        "개발·인허가(②③) 단계",
+        "구상·MOU(①) 단계뿐이거나 없음",
+        "수시공시(계약·투자), 인허가, CAPEX 집행, 사업의 내용(신규 사업)",
+        {
+            "pipelines": _PIPELINES_FIELD,
+            "linked_sectors": _string("연결되는 다른 산업·섹터와 연결 근거 요약"),
+        },
+    ),
+    ItemSpec(
+        "Q6", "지배구조·주주 정합성 (결격 보유)", "지배구조",
+        "이사회 독립성, 특수관계자 거래, 물적분할·배임 이력",
+        "사외이사 과반 + 특수관계자 거래 매출 5% 미만 + 결격 없음",
+        "과반 미달, 또는 특수관계자 거래 5~15%",
+        "15% 이상 또는 3년 증가 추세. 결격 해당 시 F 고정",
+        "이사회 등 회사의 기관, 대주주 등과의 거래, 합병·분할 공시, 판결·기소 / DEF 14A",
+        {
+            "outside_directors": _integer("사외이사 수"),
+            "total_directors": _integer("총 이사 수"),
+            "related_party_ratio": _number("특수관계자 매출+매입액 ÷ 총매출 (0~1)"),
+            "related_party_trend_3y": _enum("특수관계자 거래 비중 3년 추세", TREND_VALUES),
+            "spinoff_relisting": _boolean("핵심 사업 물적분할 후 중복상장 이력"),
+            "executive_fraud_5y": _boolean("최근 5년 지배주주·경영진 배임·횡령·분식 확정 판결 또는 기소 진행"),
+            "unfair_merger_ratio": _boolean("소액주주에 불리한 합병·분할 비율 강행 이력"),
+        },
+    ),
+    ItemSpec(
+        "Q7", "자본배분", "자본배분",
+        "자사주 소각 여부, 배당 원천(영업CF 내), M&A 손상 이력",
+        "소각 이력 + 배당이 영업CF 내 + 영업권 손상 0회",
+        "소각 없는 매입, 손상 1회",
+        "차입 배당, 또는 손상 2회 이상",
+        "자기주식 취득·소각 현황, 배당·현금흐름표, 영업권 손상 주석, 주요사항보고",
+        {
+            "buyback_cancelled": _boolean("최근 5년 취득한 자기주식을 소각했는가 (취득 없으면 null)"),
+            "dividend_within_ocf": _boolean("최근 3년 배당총액이 영업현금흐름 안에서 충당됐는가"),
+            "goodwill_impairment_count_10y": _integer("최근 10년 영업권 손상차손 인식 횟수 (M&A 없음이면 0)"),
+        },
+    ),
+    ItemSpec(
+        "Q8", "이익 집중도", "집중도",
+        "최대 고객·최대 세그먼트 의존도",
+        "최대 고객 10% 미만 그리고 최대 세그먼트 영업이익 60% 미만",
+        "고객 20% / 세그먼트 80%",
+        "고객 30% 이상 또는 세그먼트 90% 이상",
+        "영업부문(세그먼트) 주석, 주요 고객 정보 / ASC 280",
+        {
+            "top_customer_sales_share": _number("최대 고객 매출 비중 (0~1)"),
+            "top_segment_op_income_share": _number("최대 세그먼트 영업이익 비중 (0~1)"),
+        },
+    ),
+    ItemSpec(
+        "Q9", "외부 충격 노출", "외부충격",
+        "단일 국가 매출·생산 의존, 환위험 헤지",
+        "단일 국가 매출·생산 30% 미만이고 환위험 헤지",
+        "30~50%",
+        "50% 이상이고 미헤지",
+        "지역별 매출·생산 설비 소재, 금융위험관리 주석(환위험) / 10-K Item 7A",
+        {
+            "top_country_share": _number("단일 국가 매출 또는 생산 비중 중 큰 값 (0~1)"),
+            "fx_hedged": _boolean("자연 헤지 구조이거나 헤지 비율이 유의미한가"),
+        },
+    ),
 )
 
 ITEMS_BY_CODE: dict[str, ItemSpec] = {spec.code: spec for spec in ITEM_SPECS}
-
-
-def items_of_axis(axis: str) -> list[ItemSpec]:
-    return [spec for spec in ITEM_SPECS if spec.axis == axis]
-
-
-def automated_items_of_axis(axis: str) -> list[ItemSpec]:
-    """LLM 추출 대상 — C급(수동 판독)은 제외한다."""
-    return [spec for spec in items_of_axis(axis) if spec.automation != AUTOMATION_MANUAL]

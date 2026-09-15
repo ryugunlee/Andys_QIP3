@@ -1,14 +1,14 @@
-"""관측값 JSON(L2 산출물)의 자료구조와 파일 입출력.
+"""관측값 JSON(채점자 산출물)의 자료구조와 파일 입출력.
 
-`.claude/정성 평가 규칙.md` 4-1의 스키마를 그대로 옮겼다. 관측값 파일은
+`.claude/정성 평가 규칙.md` 5절의 스키마를 그대로 옮겼다. 관측값 파일은
 `qualitative/observations/<티커>.json`에 git으로 추적한다 — 사람이 검토·수정한 diff가
-남아야 재현성 검증(5-3)이 가능하기 때문이다. 등급 결과만 DuckDB에 들어간다.
+남아야 하기 때문이다. 등급 결과만 DuckDB에 들어간다.
 
 status 규약:
-- observed:         사실이 원문에서 확인됨
-- weak:             확인됐으나 증거가 3~4급뿐이거나 인용 대조 실패 → 점수 상한 1점
-- missing:          공시 자체에 없음 → 분자·분모 모두 제외
-- not_investigated: 확인하지 않음 → missing과 같이 제외하되 비율이 크면 판정 미완료
+- observed:         원문에서 확인됨, 점수·근거 있음
+- weak:             확인됐으나 증거가 3급뿐이거나 인용 대조 실패 → 점수 상한 65
+- missing:          원문에 없음 → 분모에서 제외
+- not_investigated: 아직 보지 않음 → 분모에서 제외
 """
 
 import json
@@ -21,7 +21,7 @@ STATUS_MISSING: str = "missing"
 STATUS_NOT_INVESTIGATED: str = "not_investigated"
 STATUSES: tuple[str, ...] = (STATUS_OBSERVED, STATUS_WEAK, STATUS_MISSING, STATUS_NOT_INVESTIGATED)
 
-# 증거 등급 (규칙서 ①-2). 3급 이하만 있으면 weak.
+# 증거 등급 (규칙서 ①-2). 3급뿐이면 weak.
 EVIDENCE_GRADE_PRIMARY: int = 1
 EVIDENCE_GRADE_SECONDARY: int = 2
 EVIDENCE_GRADE_WEAK_MIN: int = 3
@@ -42,6 +42,8 @@ class Evidence:
 class Observation:
     item: str
     status: str
+    score: int | None = None
+    rationale: str = ""
     raw: dict | None = None
     evidence: list[Evidence] = field(default_factory=list)
     note: str = ""
@@ -82,6 +84,8 @@ def load_observations(path: Path) -> ObservationSet:
         Observation(
             item=entry["item"],
             status=entry["status"],
+            score=entry.get("score"),
+            rationale=entry.get("rationale", ""),
             raw=entry.get("raw"),
             evidence=[Evidence(**evidence) for evidence in entry.get("evidence", [])],
             note=entry.get("note", ""),
