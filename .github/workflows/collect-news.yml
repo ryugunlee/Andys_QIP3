@@ -21,6 +21,9 @@ permissions:
 
 env:
   GH_TOKEN: ${{ github.token }}
+  # 관리자 화면(docs/admin/)이 읽을 Supabase 접속 정보 — presentation/builders/site_config.py
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
 jobs:
   collect:

@@ -29,6 +29,8 @@
     {% if updated_date %}
     <p class="footer-meta">데이터 기준일: {{ updated_date }}</p>
     {% endif %}
+    {# 정성 평가를 실행하는 관리자 화면. 로그인해야 쓸 수 있고, 권한은 Supabase가 판정한다. #}
+    <p class="footer-meta"><a href="{{ root }}/admin/index.html">관리자</a></p>
   </div>
 </footer>
 <script src="{{ root }}/static/search.js" defer></script>

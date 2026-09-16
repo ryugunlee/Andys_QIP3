@@ -687,7 +687,8 @@ QIP4 정량 규칙(`.claude/투자 규칙.md`). QIP3와 **병행**하며 QIP3는
 `presentation/` 폴더 안에 있으며, 진입점은 최상위 `build_site.py`다
 (`python build_site.py` → `docs/`에 정적 사이트 생성, GitHub Pages는 main/docs 설정).
 3층 분리: **repository(어디서 읽나) / models·metrics(무엇을 보여주나) /
-builders·templates(어떻게 보여주나)**. JS는 검색용 `search.js` 하나뿐이다.
+builders·templates(어떻게 보여주나)**. 공개 페이지의 JS는 검색용 `search.js`와 PWA 보조
+스크립트뿐이고, 관리자 화면(`admin/`)만 ES 모듈(`supabase.js`·`admin.js`·생성된 `config.js`)을 쓴다.
 
 ## build_site.py (진입점)
 - `select_repository(db_path, data_dir)`: DuckDB 파일이 있으면 `DuckDbStockRepository`,
@@ -913,11 +914,108 @@ builders·templates(어떻게 보여주나)**. JS는 검색용 `search.js` 하�
   않는다(읽기 전용). presentation 코드만 바꿔도 사이트를 갱신할 수 있게 한다. `push` paths에서
   `docs/**`는 제외한다 — build_and_commit_site가 docs/만 커밋하므로 넣으면 자기 자신을 무한
   재실행한다 (`.claude/DECISIONS.md` 2026-07-17 참고).
+- `qualitative-run.yml`(수동 + 관리자 화면의 Edge Function이 workflow_dispatch로 호출):
+  종목 하나를 골라 `grade_qualitative.py extract` → `grade` → 관측값 JSON 커밋 → save_db →
+  build_and_commit_site. 입력은 `ticker`/`tier`/`provider` 셋이며 전부 `env:`를 거쳐 셸에
+  넘긴다(Actions script injection 차단). **AI API 키(`DEEPSEEK_API_KEY`·`ANTHROPIC_API_KEY`)가
+  들어가는 유일한 워크플로**다 — 정기 실행(`qualitative-weekly.yml`)은 무과금 경로로 남겼다.
+  `run-name`에 티커·티어를 찍어 관리자 화면의 '최근 실행' 목록에서 구분되게 한다.
+- `deploy-functions.yml`(수동 + `supabase/functions/**` 변경 push): Supabase CLI로
+  `qualitative-dispatch` Edge Function을 배포한다. `SUPABASE_ACCESS_TOKEN`/`SUPABASE_PROJECT_REF`
+  시크릿이 없으면 조용히 건너뛴다(설정 전 실패 방지).
+- 사이트를 재빌드하는 모든 워크플로는 최상위 `env:`에 `SUPABASE_URL`·`SUPABASE_ANON_KEY`를 둔다 —
+  스텝마다 붙이면 하나를 빠뜨리기 쉽고, 빠뜨린 워크플로가 재빌드하면 관리자 화면의 접속 정보가
+  사라지기 때문이다(`site_config.py`가 '값이 없으면 기존 파일 유지'로 한 번 더 막는다).
 - 모든 워크플로는 `permissions.contents: write`로 `docs/`를 직접 push하고, gh CLI 인증은
-  `github.token`(기본 `GITHUB_TOKEN`)만 사용한다 — 추가 Secrets 불필요.
+  `github.token`(기본 `GITHUB_TOKEN`)만 사용한다 — 관리자 화면 경로만 추가 Secrets가 필요하다.
 
 ## Andys_QIP2.py 진입점 변경
 `if __name__ == "__main__"`에서 `sys.argv`가 있으면(CI) 그 값으로 `main()`을 1회만 실행하고
 종료, 없으면(로컬 대화형) 기존과 동일하게 `input()` 프롬프트 + 매일 09:00 스케줄 무한 루프를
 그대로 유지한다 — 로컬 사용 방식은 바뀌지 않았다.
-- `static/search.js`: 유일한 JS — 첫 입력 시 인덱스 지연 로드, 부분일치 상위 20개 드롭다운.
+- `static/search.js`: 공개 페이지의 검색 JS — 첫 입력 시 인덱스 지연 로드, 부분일치 상위 20개 드롭다운.
+
+# 관리자 화면 · 정성 평가 웹 실행 (Supabase + Actions)
+정적 사이트에서 정성 평가를 실행하기 위한 계층. 브라우저는 실행을 **요청**만 하고, 실제 실행은
+GitHub Actions가 한다. 그 사이에서 권한을 판정하고 GitHub 토큰을 감추는 것이 Supabase다.
+계정은 Andys_PFmanager와 같은 Supabase 프로젝트를 공유한다 (`.claude/DECISIONS.md` 2026-09-16).
+
+    브라우저(로그인) → Edge Function(권한 확인 + PAT 보관) → workflow_dispatch
+                     → qualitative-run.yml(채점·판정·재빌드) → 종목 상세 등급카드
+
+## supabase/schema_qip3.sql (SQL Editor에 붙여넣어 실행)
+PFmanager의 `schema.sql` 위에 얹는 추가분. QIP3가 만드는 것은 전부 `qip_` 접두사를 붙인다.
+- `qip_permissions(email PK, max_tier, daily_limit, note, granted_by, created_at)`: 실행 권한.
+  user_id가 아니라 email이 키라 **가입 전에도 권한을 미리 줄 수 있다**(PFmanager의 allowed_emails와
+  같은 이유·같은 방식).
+- `qip_runtime_flags(id, enabled, reason)`: 전역 차단 스위치. 한 줄짜리 테이블이며, 대시보드에서
+  `enabled=false`로 바꾸면 배포 없이 모든 과금 경로가 즉시 멈춘다.
+- `qip_qualitative_jobs(id, ticker, tier, provider, requested_by, run_url, created_at)`: 실행 요청
+  이력. 일일 상한의 근거다. ticker/tier/provider의 check 제약이 워크플로 입력의 1차 방어선.
+- `qip_max_tier()` / `qip_daily_limit()` / `qip_used_today()`: 권한 판정 재료. 전부 `security definer`
+  — 그러지 않으면 "내 권한을 보려면 관리자여야 한다"는 순환에 빠진다. 관리자는 `deep` · 상한 `null`.
+- `qip_can_request(tier)`: 전역 스위치 ∧ 티어 권한 ∧ 일일 상한을 한 번에 판정한다.
+  **jobs의 INSERT 정책이 이 함수를 그대로 쓴다** — 상한을 지키는 주체는 화면도 Edge Function도
+  아니고 데이터베이스다. deep 권한이 없으면 tier='deep' 행 자체가 만들어지지 않는다.
+- `qip_my_access()`: 화면·함수가 로그인 직후 한 번 불러 받는 상태 jsonb
+  (`is_admin`/`max_tier`/`daily_limit`/`used_today`/`enabled`/`email`). RLS는 조용히 막기만 하므로,
+  사람에게 보여줄 이유는 여기서 만든다.
+- RLS: 권한 테이블은 관리자만(`is_admin()`), jobs는 자기 것만(관리자는 전부), 전역 스위치는
+  읽기는 모두·쓰기는 관리자.
+
+## supabase/functions/qualitative-dispatch/index.ts (Deno Edge Function)
+GitHub PAT를 숨기는 "서버 한 조각". 정적 사이트에 PAT를 실으면 누구나 워크플로를 돌릴 수 있으므로
+이 계층이 반드시 필요하다. service_role 키는 쓰지 않고 **요청자의 JWT 그대로** Supabase를 부르므로,
+이 함수에 버그가 있어도 사용자가 원래 할 수 있는 것 이상은 일어나지 않는다.
+- `POST /` `{ticker, tier, provider}`: `parseRequest`(티커 정규식 + 한국 6자리 확인 + enum) →
+  `fetchAccess`/`denialReason`(403·429 메시지) → `recordJob`(INSERT 정책이 최종 판정) →
+  `dispatchWorkflow`(GitHub 204) 순. 이력을 먼저 남기는 이유는 순서를 뒤집으면 실행은 됐는데
+  기록이 없어 상한을 우회할 수 있기 때문이다.
+- `GET /`: `qip_my_access()` + `recentRuns()`(GitHub Actions 실행 목록 10건)를 한 번에 돌려준다.
+  화면의 권한 표시와 '최근 실행'이 이 한 번의 호출로 채워진다.
+- 시크릿: `GH_DISPATCH_TOKEN`(fine-grained PAT, Actions: Read and write 하나만),
+  `GH_REPO`(`owner/repo`), `ALLOWED_ORIGIN`(CORS).
+
+## presentation/builders/site_config.py
+- `normalize_project_url(raw)`: Project URL 끝의 `/rest/v1`·슬래시를 떼어 `https://<ref>.supabase.co` 형태로.
+- `write_site_config(output_dir)`: 환경변수 `SUPABASE_URL`·`SUPABASE_ANON_KEY`로 `static/config.js`를
+  쓴다(ES 모듈 두 줄). **환경변수가 없으면 기존 파일을 덮어쓰지 않는다** — 시크릿 주입을 빠뜨린
+  워크플로가 정상 배포된 접속 정보를 지우지 못하게 하는 가드(빈 사이트 가드와 같은 판단).
+  `copy_static` 직후·`build_pwa` 앞에 호출해야 한다(서비스워커 캐시 버전에 반영되도록).
+
+## presentation/builders/admin_page.py
+- `build_admin_page(env, output_dir, updated_date)`: `admin/index.html` 생성. repository를 받지 않는다 —
+  화면의 모든 내용은 브라우저가 로그인 후 Supabase에서 직접 받아 채우므로 빈 껍데기와 상수만 만든다.
+  `config.DISPATCH_FUNCTION_NAME`·`config.QUALITATIVE_COST_HINTS`를 템플릿에 넘긴다.
+
+## presentation/templates/admin.html
+`base.html` 상속. 네 개의 패널(설정 안내 / 로그인 / 콘솔 / 권한 관리)을 모두 `hidden`으로 그려 두고
+JS가 상태에 맞는 것만 연다. Edge Function 이름과 비용 안내는 `#admin-console`의 `data-*`에 싣는다 —
+ES 모듈에서는 `document.currentScript`가 null이라 script 태그에서 읽을 수 없기 때문이다.
+비용 JSON은 작은따옴표 속성에 넣는다(Jinja `tojson`은 `"`를 이스케이프하지 않는다).
+
+## presentation/static/supabase.js (ES 모듈)
+Andys_PFmanager `public/supabase.js`에서 이 프로젝트가 쓰는 부분만 가져온 얇은 계층. 두 저장소의
+인증 코드를 나란히 비교할 수 있게 모양을 그대로 두었다.
+- `isConfigured()` / `signIn(email, password)` / `signOut()` / `currentUser()`: GoTrue 직접 호출.
+  세션은 `localStorage`의 `qip.session`에 두고 만료 60초 전 자동 갱신(`freshSession`).
+  회원가입은 두지 않는다 — 가입 자격은 PFmanager의 허용 목록이 관리한다.
+- `select` / `upsert` / `remove`: PostgREST. `callFunction(name, method, body)`: Edge Function.
+  함수 주소는 Project URL에서 나오므로 따로 설정하지 않는다.
+- `ApiError(status, message)` + `describe()`: GoTrue·PostgREST·함수의 서로 다른 오류 모양을 한곳에서
+  한국어 메시지로 흡수한다.
+
+## presentation/static/admin.js (ES 모듈)
+화면 동작. 아무것도 허가하지 않는다 — 버튼을 감추거나 잠그는 것은 헛걸음을 줄이는 안내이고,
+되살려 눌러도 RLS와 Edge Function이 같은 이유로 거절한다.
+- `start()`/`collectElements()`: 접속 정보가 없으면 안내 패널만, 세션이 있으면 콘솔, 없으면 로그인.
+- `refresh(view, functionName)`: Edge Function `GET` 한 번으로 권한 상태와 최근 실행 목록을 모두 받는다.
+- `applyAccess(view, access)`: 권한 요약 문구, deep 라디오 잠금, 관리자면 권한 관리 패널 노출.
+- `bindCostHint` / `bindRunForm`: 티어·모델 조합별 예상 비용 표시(deep이면 모델 선택을 Anthropic으로
+  잠근다), 확인창 후 `POST`, 실행 뒤 4초·12초에 한 번씩만 목록을 다시 읽는다(무한 폴링 안 함).
+- `renderRuns` / `runStateLabel`: GitHub 실행 상태를 한국어 라벨로. DOM은 `textContent`로만 만든다.
+- `bindPermissions` / `loadPermissions` / `renderPermissions`: 관리자 전용 권한 부여·해제(`qip_permissions`).
+
+## presentation/config.py (추가분)
+- `ADMIN_PAGE_TITLE`, `DISPATCH_FUNCTION_NAME`(= supabase/functions 폴더명),
+  `QUALITATIVE_COST_HINTS`(티어:provider → 원. 삼성전자 4회 실측치를 환율 1,400원으로 환산한 어림수).

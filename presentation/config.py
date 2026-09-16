@@ -55,3 +55,19 @@ INDEX_RECOMMENDED_PREVIEW_LIMIT: int = 6  # 메인 페이지의 추천 종목 �
 # 뉴스 섹션(홈/주식 분석 페이지 공용, _news_section.html)에 노출하는 기사 수
 NEWS_FEATURED_LIMIT: int = 5  # 상단 주요 기사(요약 포함)
 NEWS_LIST_LIMIT: int = 20  # 그 아래 헤드라인+링크만 나열하는 기사 수
+
+# --- 관리자 화면 (docs/admin/) ---
+# 정성 평가를 웹에서 실행하는 화면. 로그인·권한은 Supabase가 판정한다
+# (.claude/DECISIONS.md 2026-09-16 "정성 평가 웹 실행", supabase/schema_qip3.sql).
+ADMIN_PAGE_TITLE: str = "관리자"
+
+# 브라우저가 부를 Edge Function 이름. supabase/functions/ 아래 폴더 이름과 같아야 한다.
+DISPATCH_FUNCTION_NAME: str = "qualitative-dispatch"
+
+# 실행 버튼 옆에 띄우는 종목당 예상 비용(원). 삼성전자 사업보고서 4회 실측치를 환율 약 1,400원으로
+# 환산한 값이다 — 원문 분량에 비례하므로 어림수다 (.claude/DECISIONS.md 2026-09-16 파일럿 참고).
+QUALITATIVE_COST_HINTS: dict[str, int] = {
+    "quick:compat": 30,  # DeepSeek flash $0.02
+    "quick:anthropic": 350,  # Sonnet 5 $0.25
+    "deep:anthropic": 3200,  # Opus 5 $2.30
+}

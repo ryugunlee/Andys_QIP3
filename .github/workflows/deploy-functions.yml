@@ -1,0 +1,60 @@
+name: Deploy Edge Functions
+
+# supabase/functions/qualitative-dispatch 를 Supabase 에 올린다.
+# `supabase login` 은 브라우저를 열어야 해서 코드스페이스 같은 환경에서 막힌다. 대신 대시보드에서
+# 만든 액세스 토큰을 시크릿으로 받아 로그인 없이 배포한다 (Andys_PFmanager의 functions.yml과 같은 방식).
+#
+# 필요한 저장소 시크릿 (Settings → Secrets and variables → Actions):
+#   SUPABASE_ACCESS_TOKEN  https://supabase.com/dashboard/account/tokens 에서 만든다 (sbp_…)
+#   SUPABASE_PROJECT_REF   Project URL 의 https://<여기>.supabase.co 부분
+#
+# 함수가 쓰는 시크릿(GH_DISPATCH_TOKEN 등)은 여기가 아니라 Supabase 쪽에 등록한다 — README 참고.
+# 위 두 시크릿이 없으면 조용히 건너뛴다. 아직 설정 전인 동안 배포가 빨갛게 실패하지 않도록.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - ".github/workflows/deploy-functions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-functions
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 시크릿이 있는지 확인
+        id: guard
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_PROJECT_REF" ]; then
+            echo "SUPABASE_ACCESS_TOKEN / SUPABASE_PROJECT_REF 시크릿이 없어 배포를 건너뜁니다."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.guard.outputs.ready == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # JWT 검증은 켜 둔다(기본값). 로그인한 사용자만 부를 수 있어야 하고,
+      # 함수 안에서도 사용자의 토큰 그대로 RLS를 거쳐 권한을 다시 확인한다.
+      - name: qualitative-dispatch 함수 배포
+        if: steps.guard.outputs.ready == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: supabase functions deploy qualitative-dispatch --project-ref "$SUPABASE_PROJECT_REF"

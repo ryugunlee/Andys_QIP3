@@ -1,6 +1,6 @@
 """사이트 전체 생성 오케스트레이션.
 
-정적 자산 배치 → 메인 → 주식 분석 → 종목 상세 → 검색 인덱스 → PWA 순으로
+정적 자산 배치 → 접속 정보 → 메인 → 주식 분석 → 종목 상세 → 관리자 → 검색 인덱스 → PWA 순으로
 모든 빌더를 실행한다. 데이터 출처는 StockRepository 계약 뒤에 숨어 있어
 CSV가 DB로 바뀌어도 이 파일은 수정할 필요가 없다.
 
@@ -11,6 +11,7 @@ PWA가 마지막인 이유: 서비스워커의 캐시 버전이 앞선 빌더들
 from pathlib import Path
 
 from presentation import config
+from presentation.builders.admin_page import build_admin_page
 from presentation.builders.assets import copy_static, write_nojekyll
 from presentation.builders.detail_pages import build_detail_pages
 from presentation.builders.environment import create_environment
@@ -18,6 +19,7 @@ from presentation.builders.index_page import build_index_page
 from presentation.builders.pwa import build_pwa
 from presentation.builders.search_index import build_search_index
 from presentation.builders.sectors_page import build_sectors_page
+from presentation.builders.site_config import write_site_config
 from presentation.builders.stocks_page import build_stocks_page
 from presentation.repository.base import StockRepository
 
@@ -48,11 +50,15 @@ def build_site(
     env = create_environment()
 
     copy_static(output_dir)
+    # 관리자 화면이 읽을 Supabase 접속 정보. static/ 복사 뒤에 써야 덮이지 않고,
+    # build_pwa 앞이어야 서비스워커 캐시 버전에 반영된다.
+    write_site_config(output_dir)
     write_nojekyll(output_dir)
     build_index_page(repository, env, output_dir)
     build_stocks_page(repository, env, output_dir)
     build_sectors_page(repository, env, output_dir)
     detail_count = build_detail_pages(repository, env, output_dir)
+    build_admin_page(env, output_dir, repository.updated_date())
     build_search_index(repository, output_dir)
     build_pwa(repository, env, output_dir)
 
