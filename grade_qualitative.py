@@ -4,13 +4,15 @@
 
     python grade_qualitative.py template 005930 --sector-group 자본집약사이클
         → qualitative/observations/005930.json 빈 템플릿. 사람이 손으로 채우는 경로.
-    python grade_qualitative.py extract 005930 원문.txt --asof 2026-03-18 [--items Q1Q4Q6]
-        → LLM 1회 호출로 9항목을 채점한 관측값 JSON.
+    python grade_qualitative.py extract 005930 [원문.txt] [--asof 2026-03-18] [--items Q1Q4Q6] [--sections II,VI]
+        → LLM 1회 호출로 9항목을 채점한 관측값 JSON. 원문을 생략하면 한국은 OpenDART 사업보고서,
+          미국은 SEC EDGAR 10-K를 자동으로 받아 qualitative/sources/에 저장한 뒤 쓴다.
     python grade_qualitative.py grade 005930 [--market KOSPI] [--no-save]
         → 등급카드 출력(★ 플래그 포함), qualitative_grades 테이블에 저장.
 
 추출 단계는 정량 DB를 읽지 않는다(주가·정량 점수를 보지 않는다 — `.claude/정성 평가 규칙.md` 6절).
-DB는 grade 단계에서 ★ 플래그 계산과 저장에만 연다. ANTHROPIC_API_KEY는 로컬 .env에서 읽는다.
+DB는 grade 단계에서 ★ 플래그 계산과 저장에만 연다. ANTHROPIC_API_KEY·DART_API_KEY·EDGAR_USER_AGENT는
+로컬 .env에서 읽는다.
 """
 
 import argparse
@@ -34,6 +36,9 @@ from analysis.qualitative import (
 )
 from analysis.qualitative.weights import DECISION_REJECT, GRADE_VALID_MONTHS
 from collection.qualitative import blank_observations, create_client, extract_observations, load_source
+from collection.qualitative.dart_source import DEFAULT_SECTIONS, SECTION_NAMES, fetch_dart_report
+from collection.qualitative.edgar_source import fetch_edgar_10k
+from collection.qualitative.sources import SourceDocument, save_source_text
 from collection.qualitative.items import ITEM_CODES, ITEMS_BY_CODE
 from collection.sector_groups import GROUP_ASSET, GROUP_CYCLICAL, GROUP_GENERAL, GROUP_INTANGIBLE
 from collection.tickers import is_korean_listed_ticker
@@ -44,6 +49,8 @@ SECTOR_GROUP_CHOICES: tuple[str, ...] = (GROUP_GENERAL, GROUP_ASSET, GROUP_INTAN
 _MONTHS_PER_YEAR: int = 12
 _ITEMS_PER_CARD_LINE: int = 5
 _STATUS_NOT_INVESTIGATED: str = "not_investigated"
+# 한국어 원문은 글자 수가 곧 토큰 수에 가깝다. 이보다 크면 비용·컨텍스트 사고를 막기 위해 멈춘다.
+MAX_SOURCE_CHARS: int = 600_000
 
 
 def _add_months(base: date, months: int) -> date:
@@ -149,10 +156,50 @@ def command_template(args: argparse.Namespace) -> None:
     print(f"[qualitative] 템플릿 생성: {path}")
 
 
+def _parse_sections(text: str | None, all_sections: bool) -> tuple[str, ...] | None:
+    if all_sections:
+        return None
+    if not text:
+        return DEFAULT_SECTIONS
+    sections = tuple(part.strip().upper() for part in text.replace(" ", ",").split(",") if part.strip())
+    unknown = [numeral for numeral in sections if numeral not in SECTION_NAMES]
+    if unknown:
+        raise SystemExit(f"알 수 없는 섹션: {', '.join(unknown)} (I~XII)")
+    return sections
+
+
+def _fetch_source(args: argparse.Namespace) -> tuple[SourceDocument, str]:
+    """원문 인수가 없을 때 시장별로 자동 수집하고, 재실행용 파일 경로와 기준일을 돌려준다."""
+    if is_korean_listed_ticker(args.ticker):
+        document, meta = fetch_dart_report(args.ticker, _parse_sections(args.sections, args.all_sections))
+        names = ", ".join(f"{numeral} {SECTION_NAMES.get(numeral, '')}".strip() for numeral in meta["sections"])
+        print(f"[qualitative] DART {meta['report_nm']} 접수 {meta['rcept_dt']} — 전체 {meta['full_chars']:,}자 중 "
+              f"{meta['chars']:,}자 사용 (섹션: {names or '대제목 미검출 → 전체'})")
+        stamp = meta["rcept_dt"]
+    else:
+        document, meta = fetch_edgar_10k(args.ticker)
+        print(f"[qualitative] EDGAR 10-K report {meta['report_date']} filed {meta['filing_date']} — {meta['chars']:,}자")
+        stamp = meta["filing_date"].replace("-", "")
+    path = save_source_text(args.ticker, stamp, document.text or "")
+    print(f"[qualitative] 원문 저장: {path} (다음엔 이 파일을 extract에 넘기면 다시 받지 않는다)")
+    return document, stamp
+
+
 def command_extract(args: argparse.Namespace) -> None:
-    document = load_source(Path(args.source))
+    asof = args.asof
+    if args.source:
+        document = load_source(Path(args.source))
+    else:
+        document, stamp = _fetch_source(args)
+        asof = asof or f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:]}"
+    asof = asof or date.today().isoformat()
+    chars = len(document.text or "")
+    if chars > MAX_SOURCE_CHARS and not args.force:
+        raise SystemExit(
+            f"원문이 {chars:,}자로 상한 {MAX_SOURCE_CHARS:,}자를 넘는다 — --sections로 줄이거나 --force로 강행하라"
+        )
     observation_set = extract_observations(
-        create_client(), document, args.ticker, args.asof, args.sector_group, items=_parse_items(args.items),
+        create_client(), document, args.ticker, asof, args.sector_group, items=_parse_items(args.items),
     )
     path = save_observations(observation_set)
     scored = sum(1 for obs in observation_set.observations if obs.score is not None)
@@ -197,10 +244,13 @@ def build_parser() -> argparse.ArgumentParser:
     template.add_argument("--sector-group", choices=SECTOR_GROUP_CHOICES, default=None)
     template.set_defaults(handler=command_template)
 
-    extract = commands.add_parser("extract", help="원문에서 LLM으로 9항목 채점")
+    extract = commands.add_parser("extract", help="원문에서 LLM으로 9항목 채점 (원문 생략 시 자동 수집)")
     extract.add_argument("ticker")
-    extract.add_argument("source", help="사업보고서·10-K 원문 (txt/md/html/pdf)")
-    extract.add_argument("--asof", default=date.today().isoformat(), help="원문 기준일")
+    extract.add_argument("source", nargs="?", default=None, help="사업보고서·10-K 원문 (txt/md/html/pdf). 생략하면 DART/EDGAR 자동 수집")
+    extract.add_argument("--asof", default=None, help="원문 기준일 (기본: 자동 수집 접수일 또는 오늘)")
+    extract.add_argument("--sections", default=None, help="DART 섹션 로마숫자 (기본: II,VI,VII,VIII,IX,X,XI)")
+    extract.add_argument("--all-sections", action="store_true", help="DART 사업보고서 전체 사용")
+    extract.add_argument("--force", action="store_true", help=f"원문 {MAX_SOURCE_CHARS:,}자 상한 무시")
     extract.add_argument("--sector-group", choices=SECTOR_GROUP_CHOICES, default=None)
     extract.add_argument("--items", default=None, help="채점할 항목 코드만 (예: Q1Q4Q6 또는 146)")
     extract.set_defaults(handler=command_extract)

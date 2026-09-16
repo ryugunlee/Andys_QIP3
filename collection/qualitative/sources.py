@@ -1,7 +1,7 @@
-"""원문 로더 (L1의 최소 형태) — 로컬 파일을 LLM에 넘길 문서로 만든다.
+"""원문 로더 — 로컬 파일을 LLM에 넘길 문서로 만들고, 자동 수집한 원문을 저장한다.
 
-1단계(파일럿)는 사람이 사업보고서·10-K를 받아 파일로 두고, 여기서 읽는다. DART OpenAPI·
-SEC EDGAR 자동 수집은 2단계에서 이 모듈에 로더를 추가하는 식으로 확장한다.
+자동 수집은 `dart_source.py`(한국 사업보고서)·`edgar_source.py`(미국 10-K)가 맡고, 받은 텍스트는
+`qualitative/sources/`(git 제외)에 저장해 인용 대조와 재실행에 다시 쓴다.
 
 텍스트(txt/md/html)는 본문을 그대로 보관해 **인용 대조**(추출된 quote가 원문에 실제로
 있는지)를 할 수 있다. PDF는 API의 document 블록으로 넘기고 페이지 로케이터를 받되,
@@ -17,6 +17,8 @@ from pathlib import Path
 TEXT_SUFFIXES: tuple[str, ...] = (".txt", ".md")
 HTML_SUFFIXES: tuple[str, ...] = (".html", ".htm")
 PDF_SUFFIX: str = ".pdf"
+
+SOURCES_DIR: Path = Path("qualitative/sources")
 
 MEDIA_TYPE_TEXT: str = "text/plain"
 MEDIA_TYPE_PDF: str = "application/pdf"
@@ -55,7 +57,7 @@ class _TextExtractor(HTMLParser):
         return "\n".join(self._chunks)
 
 
-def _html_to_text(markup: str) -> str:
+def html_to_text(markup: str) -> str:
     extractor = _TextExtractor()
     extractor.feed(markup)
     return re.sub(r"\n{3,}", "\n\n", extractor.text())
@@ -67,11 +69,19 @@ def load_source(path: Path) -> SourceDocument:
     if suffix in TEXT_SUFFIXES:
         return SourceDocument(title=title, text=path.read_text(encoding="utf-8"))
     if suffix in HTML_SUFFIXES:
-        return SourceDocument(title=title, text=_html_to_text(path.read_text(encoding="utf-8", errors="ignore")))
+        return SourceDocument(title=title, text=html_to_text(path.read_text(encoding="utf-8", errors="ignore")))
     if suffix == PDF_SUFFIX:
         encoded = base64.standard_b64encode(path.read_bytes()).decode("ascii")
         return SourceDocument(title=title, pdf_base64=encoded)
     raise ValueError(f"지원하지 않는 원문 형식: {path.suffix} (txt/md/html/pdf만 가능)")
+
+
+def save_source_text(ticker: str, stamp: str, text: str) -> Path:
+    """자동 수집한 원문을 재사용할 수 있게 파일로 남긴다. 다음 실행은 이 경로를 `extract`에 넘기면 된다."""
+    SOURCES_DIR.mkdir(parents=True, exist_ok=True)
+    path = SOURCES_DIR / f"{ticker}_{stamp}.txt"
+    path.write_text(text, encoding="utf-8")
+    return path
 
 
 def document_block(document: SourceDocument) -> dict:

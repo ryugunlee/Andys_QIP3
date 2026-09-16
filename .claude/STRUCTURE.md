@@ -259,7 +259,20 @@ FRED_API_KEY)를 읽는다. GitHub Actions에서는 `.env` 없이 리포지토�
   raw 필드명의 단일 소스 — 프롬프트·스키마·루브릭이 전부 여기서 읽는다. `ITEM_CODES`, `ITEMS_BY_CODE`.
 - `sources.py`: `load_source(path)` → `SourceDocument(title, text|pdf_base64)`. txt/md/html은 본문을
   보관해 인용 대조가 가능하고, pdf는 document 블록으로만 넘긴다(대조 불가, PROBLEMS #35).
-  `document_block()`이 프롬프트 캐시 경계를 원문에 둔다.
+  `html_to_text(markup)`(DART XML·EDGAR HTML 공용), `save_source_text(ticker, stamp, text)` →
+  `qualitative/sources/<티커>_<접수일>.txt`(git 제외, 재실행용). `document_block()`이 프롬프트 캐시
+  경계를 원문에 둔다.
+- `dart_source.py`: `fetch_dart_report(stock_code, sections=DEFAULT_SECTIONS) → (SourceDocument, meta)`.
+  OpenDART(`DART_API_KEY`): corpCode.xml zip → `parse_corp_codes()` → `qipinfos/dart_corp_codes.json`
+  캐시 → `latest_annual_report()`(list.json, A001, 최종 정정본만, 400일 조회) → `fetch_document_text()`
+  (document.xml zip → 접수번호로 시작하는 본문 XML → `html_to_text` → 유니코드 로마숫자 정규화) →
+  `split_sections()`/`select_sections()`(대제목 "II. 사업의 내용" 기준, 목차·본문의 같은 번호는 이어
+  붙임). 기본 섹션 II·VI·VII·VIII·IX·X·XI — III(재무·주석)은 분량 때문에 요청할 때만. 대제목을 못 찾으면
+  전체를 돌려주고 `meta["sections"]`가 비어 있다. 오류는 `DartError`.
+- `edgar_source.py`: `fetch_edgar_10k(ticker) → (SourceDocument, meta)`. `cik_for()`(company_tickers.json)
+  → `pick_latest_10k()`(submissions의 filings.recent 병렬 배열에서 첫 10-K) → 본문 HTML → 텍스트.
+  `EDGAR_USER_AGENT` 환경변수 필수(연락처를 코드에 박지 않으려고). 403이면 `EdgarError`로 클라우드 IP
+  차단 가능성을 알린다. **클라우드 환경에서 실행 검증 못 함**(PROBLEMS #36).
 - `llm_client.py`: `create_client()` / `extract_structured(client, system, document, request_text,
   schema)` — `claude-opus-5`, 스트리밍, 구조화 출력(`output_config.format`), 서버측 폴백
   (`server-side-fallback-2026-07-01`). 거부·토큰 상한·인증 실패는 `ExtractionError`로. 키는 SDK가
@@ -444,8 +457,12 @@ git에 커밋하지 않는다.
 
 # grade_qualitative.py (진입점)
 - 정성 평가 명령줄. `template <티커> [--sector-group]`(수동 입력용 빈 관측값 JSON) /
-  `extract <티커> <원문파일> [--asof] [--sector-group] [--items Q1Q4Q6]`(LLM 1회 호출 채점) /
-  `grade <티커> [--market] [--no-save]`(등급카드 출력 + ★ 플래그 + `qualitative_grades` 저장).
+  `extract <티커> [원문파일] [--asof] [--sector-group] [--items Q1Q4Q6] [--sections II,VI] [--all-sections]
+  [--force]`(LLM 1회 호출 채점) / `grade <티커> [--market] [--no-save]`(등급카드 출력 + ★ 플래그 +
+  `qualitative_grades` 저장).
+  `extract`에서 원문을 생략하면 `_fetch_source()`가 한국은 `fetch_dart_report`, 미국은 `fetch_edgar_10k`로
+  받아 `qualitative/sources/`에 저장하고 접수일을 `--asof` 기본값으로 쓴다. 원문이 `MAX_SOURCE_CHARS`
+  (600,000자)를 넘으면 `--force` 없이는 멈춘다 — 대형주 사업보고서 전체를 실수로 보내는 비용 사고 방지.
   추출 단계는 정량 DB를 읽지 않는다(주가·정량 점수를 보지 않는 6절 규칙). grade는 DB 파일이 있을 때만
   열어 `compute_trend_flag`와 저장을 하고, 없으면 카드만 출력한다.
   `format_grade_card()`는 7절 양식(항목 등급·종합·배수·주의 항목·★·미조사). `*`는 weak 항목.

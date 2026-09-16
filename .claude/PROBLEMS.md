@@ -479,16 +479,24 @@ WiseFn(cF3002.aspx)은 우선주처럼 재무제표를 제공하지 않는 종�
 근본 해결은 PDF 텍스트 추출 의존성(pypdf 등)을 추가해 대조 경로를 여는 것이다. 이번 범위에서는
 의존성을 늘리지 않으려고 두었다.
 
-## 36. 정성 파이프라인의 원문 자동 수집과 표현 계층이 비어 있다
+## 36. 정성 파이프라인의 원문 자동 수집은 반쪽, 표현 계층은 비어 있다
 
-- DART OpenAPI·SEC EDGAR 연동이 없어 사업보고서·10-K는 사람이 파일로 넣는다. Q2(점유율)·Q4(산업
-  수요·규제)·Q5(섹터 연결)는 사업보고서만으로는 얕아서 산업통계·규제 원문을 원문에 같이 넣거나
-  웹 검색 도구를 붙이는 것이 다음 단계다(`collection/qualitative/sources.py`에 로더 추가).
-- `presentation/models.py`의 `qualitative: str | None`은 자유 문자열 한 칸이라 9항목 등급카드를
-  담지 못한다. `qualitative_grades` 테이블(item_scores JSON·composite·multiplier·trend_flag)을 읽어
-  상세 페이지에 집행률과 나란히 보여주는 작업이 남아 있다(docs 워크플로 동반).
-- 등급 유효기간(6개월) 만료 시 처리는 `valid_until`만 저장하고 판단은 표현 계층으로 미뤄 두었다.
-- 매주 자동 실행(GitHub Actions 스케줄 + workflow_dispatch로 티커 입력)은 아직 워크플로가 없다.
-  원문 자동 수집이 없으면 스케줄을 걸어도 넣을 문서가 없어 그 뒤에 붙인다.
+- **한국(DART)은 자동 수집이 있다**(`collection/qualitative/dart_source.py`, 2026-09-16). 다만 실제 DART
+  문서로는 아직 검증하지 못했다 — 섹션 분할이 대제목 표기("II. 사업의 내용", 유니코드 Ⅱ 포함)에 기대므로
+  첫 실행에서 `meta["sections"]`가 비면 정규식(`_HEADING`)을 실제 문서에 맞춰 손봐야 한다.
+- **미국(EDGAR)은 코드만 있고 미검증**: Codespaces·GitHub Actions 같은 클라우드 IP를 SEC(Akamai)가 403으로
+  막아 robots.txt조차 열리지 않았다. 로컬 PC에서 실행하거나 10-K 파일을 직접 넣는 경로를 쓴다. 우회하지
+  않는다.
+- 기본 섹션에 III(재무에 관한 사항·주석)이 빠져 있어 **Q7·Q8·Q9(세그먼트·특수관계자·영업권·환위험 주석
+  의존)는 결측으로 나올 수 있다.** `--sections II,III,VI,...`로 넣으면 되지만 대형주는 60만 자 상한에
+  걸린다 — 주석 중 필요한 절만 뽑는 2차 분할이 다음 과제다.
+- Q2(점유율)·Q4(산업 수요·규제)·Q5(섹터 연결)는 사업보고서만으로는 얕다. 산업통계·규제 원문을 같이
+  넣거나 웹 검색 도구를 붙이는 것이 그다음이다.
+- `presentation/models.py`의 `qualitative: str | None`은 자유 문자열 한 칸이라 9항목 등급카드를 담지
+  못한다. `qualitative_grades`(item_scores JSON·composite·multiplier·trend_flag)를 읽어 상세 페이지에
+  집행률과 나란히 보여주는 작업이 남아 있다(docs 워크플로 동반).
+- 등급 유효기간(6개월) 만료 처리는 `valid_until`만 저장하고 판단은 표현 계층으로 미뤄 두었다.
+- 매주 자동 실행(Actions 스케줄 + workflow_dispatch 티커 입력) 워크플로는 아직 없다. DART 경로가 실제로
+  돌아가는 것을 확인한 뒤 붙인다(EDGAR는 러너에서 막힐 가능성이 커 한국 시장만 우선).
 - 2026-09-11 6축 체계의 `qualitative_grades` 테이블은 `connect()`가 `qualitative_grades_legacy_6axis`로
   이름만 바꿔 둔다. 실제 저장된 행이 없다고 확인되면 지워도 된다.
