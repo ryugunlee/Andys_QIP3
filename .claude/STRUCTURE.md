@@ -975,6 +975,11 @@ GitHub PAT를 숨기는 "서버 한 조각". 정적 사이트에 PAT를 실으�
   화면의 권한 표시와 '최근 실행'이 이 한 번의 호출로 채워진다.
 - 시크릿: `GH_DISPATCH_TOKEN`(fine-grained PAT, Actions: Read and write 하나만),
   `GH_REPO`(`owner/repo`), `ALLOWED_ORIGIN`(CORS).
+- `corsHeaders()`: `authorization, apikey, content-type, x-client-info`를 허용한다. 브라우저가 싣는 헤더가
+  하나라도 빠지면 preflight가 거절돼 본 요청이 나가지 않는다.
+- `callerOf(request)`: 요청의 `Authorization`과 `apikey`를 그대로 묶어 PostgREST 호출에 넘긴다. 런타임이
+  주입하는 `SUPABASE_ANON_KEY`는 예전 anon 키라, 예전 키를 꺼 둔 프로젝트에서도 동작하도록 브라우저가 보낸
+  publishable 키를 우선한다.
 
 ## presentation/builders/site_config.py
 - `normalize_project_url(raw)`: Project URL 끝의 `/rest/v1`·슬래시를 떼어 `https://<ref>.supabase.co` 형태로.

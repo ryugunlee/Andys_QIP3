@@ -58,10 +58,15 @@ const GH_TOKEN = Deno.env.get("GH_DISPATCH_TOKEN") ?? "";
 const GH_REPO = Deno.env.get("GH_REPO") ?? "";
 const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
 
+/**
+ * 브라우저(static/supabase.js)는 Authorization 외에 apikey 헤더도 싣는다. 여기 빠진 헤더가 하나라도
+ * 있으면 preflight(OPTIONS)가 거절되어 본 요청이 아예 나가지 않는다 — 화면에는 "서버에 연결하지
+ * 못했습니다"만 보인다. x-client-info는 supabase-js가 붙이는 헤더라 함께 열어 둔다.
+ */
 function corsHeaders(): HeadersInit {
   return {
     "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
-    "Access-Control-Allow-Headers": "authorization, content-type",
+    "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   };
 }
@@ -77,22 +82,38 @@ function fail(status: number, message: string): Response {
   return json({ message }, status);
 }
 
-/* ── Supabase (요청자의 토큰 그대로 사용) ──────────────────────────
+/* ── Supabase (요청자의 자격 그대로 사용) ──────────────────────────
    service_role 키는 쓰지 않는다. 사용자의 JWT로 부르기 때문에 RLS가 그대로 적용되고,
-   이 함수에 버그가 있어도 사용자가 원래 할 수 있는 것 이상은 일어나지 않는다. */
+   이 함수에 버그가 있어도 사용자가 원래 할 수 있는 것 이상은 일어나지 않는다.
 
-function supabaseHeaders(token: string): HeadersInit {
+   apikey도 브라우저가 보낸 값(publishable 키)을 그대로 넘긴다. 런타임이 주입하는
+   SUPABASE_ANON_KEY는 예전 anon 키라, 대시보드에서 예전 키를 꺼 두면 PostgREST가 거절한다.
+   브라우저가 apikey를 싣지 않은 경우에만 그 값으로 대신한다. */
+
+interface Caller {
+  token: string;
+  apikey: string;
+}
+
+function callerOf(request: Request): Caller {
   return {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: token,
+    token: request.headers.get("Authorization") ?? "",
+    apikey: request.headers.get("apikey") ?? SUPABASE_ANON_KEY,
+  };
+}
+
+function supabaseHeaders(caller: Caller): HeadersInit {
+  return {
+    apikey: caller.apikey,
+    Authorization: caller.token,
     "Content-Type": "application/json",
   };
 }
 
-async function fetchAccess(token: string): Promise<Access | null> {
+async function fetchAccess(caller: Caller): Promise<Access | null> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/qip_my_access`, {
     method: "POST",
-    headers: supabaseHeaders(token),
+    headers: supabaseHeaders(caller),
     body: "{}",
   });
   if (!response.ok) return null;
@@ -199,10 +220,10 @@ function parseRequest(body: unknown): DispatchRequest | string {
 }
 
 /** 요청 이력을 남긴다. 실패하면 그 자체가 권한·상한 위반이다(INSERT 정책이 막은 것). */
-async function recordJob(token: string, request: DispatchRequest): Promise<Record<string, unknown> | null> {
+async function recordJob(caller: Caller, request: DispatchRequest): Promise<Record<string, unknown> | null> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/qip_qualitative_jobs`, {
     method: "POST",
-    headers: { ...supabaseHeaders(token), Prefer: "return=representation" },
+    headers: { ...supabaseHeaders(caller), Prefer: "return=representation" },
     body: JSON.stringify([{ ...request, run_url: workflowRunsUrl() }]),
   });
   if (!response.ok) return null;
@@ -210,18 +231,18 @@ async function recordJob(token: string, request: DispatchRequest): Promise<Recor
   return rows[0] ?? null;
 }
 
-async function handlePost(token: string, body: unknown): Promise<Response> {
+async function handlePost(caller: Caller, body: unknown): Promise<Response> {
   const parsed = parseRequest(body);
   if (typeof parsed === "string") return fail(400, parsed);
 
-  const access = await fetchAccess(token);
+  const access = await fetchAccess(caller);
   if (access === null) return fail(401, "로그인이 필요합니다.");
 
   const refusal = denial(access, parsed.tier);
   if (refusal !== null) return fail(refusal.status, refusal.message);
 
   // 이력을 먼저 남긴다. 순서를 뒤집으면 워크플로는 돌았는데 기록이 없어 상한을 우회할 수 있다.
-  const job = await recordJob(token, parsed);
+  const job = await recordJob(caller, parsed);
   if (job === null) {
     return fail(403, "요청이 거부되었습니다. 권한 또는 실행 한도를 확인해 주세요.");
   }
@@ -232,8 +253,8 @@ async function handlePost(token: string, body: unknown): Promise<Response> {
   return json({ job, access: { ...access, used_today: access.used_today + 1 } });
 }
 
-async function handleGet(token: string): Promise<Response> {
-  const access = await fetchAccess(token);
+async function handleGet(caller: Caller): Promise<Response> {
+  const access = await fetchAccess(caller);
   if (access === null) return fail(401, "로그인이 필요합니다.");
   return json({ access, runs: await recentRuns() });
 }
@@ -241,15 +262,15 @@ async function handleGet(token: string): Promise<Response> {
 Deno.serve(async (request: Request): Promise<Response> => {
   if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders() });
 
-  const token = request.headers.get("Authorization") ?? "";
-  if (token === "") return fail(401, "로그인이 필요합니다.");
+  const caller = callerOf(request);
+  if (caller.token === "") return fail(401, "로그인이 필요합니다.");
   if (GH_TOKEN === "" || GH_REPO === "") {
     return fail(500, "서버 설정이 끝나지 않았습니다. (GH_DISPATCH_TOKEN / GH_REPO)");
   }
 
-  if (request.method === "GET") return await handleGet(token);
+  if (request.method === "GET") return await handleGet(caller);
   if (request.method !== "POST") return fail(405, "지원하지 않는 요청입니다.");
 
   const body = await request.json().catch(() => null);
-  return await handlePost(token, body);
+  return await handlePost(caller, body);
 });
