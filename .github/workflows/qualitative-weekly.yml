@@ -54,8 +54,12 @@ jobs:
             echo "[weekly] 캐시된 원문 $(ls qualitative/sources | wc -l)개 복원"
           fi
 
+      # 입력값은 env로 받아 셸에 넘긴다. `${{ }}`를 run에 직접 박으면 GitHub가 실행 전에 문자열을
+      # 치환하므로 티커 입력에 셸 명령을 심어 시크릿을 빼낼 수 있다(Actions script injection).
       - name: Regrade and prefetch
-        run: python qualitative_weekly.py --ticker "${{ github.event.inputs.ticker }}"
+        env:
+          INPUT_TICKER: ${{ github.event.inputs.ticker }}
+        run: python qualitative_weekly.py --ticker "$INPUT_TICKER"
 
       - name: Pack cached filings
         run: |
