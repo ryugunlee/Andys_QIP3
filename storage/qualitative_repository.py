@@ -46,8 +46,28 @@ def get_latest_qualitative_grades(conn: duckdb.DuckDBPyConnection) -> pd.DataFra
     ).fetchdf().drop(columns=["recency"])
 
 
+def _has_grades_table(conn: duckdb.DuckDBPyConnection) -> bool:
+    """이 연결의 DB에 qualitative_grades 테이블이 있는가.
+
+    표현 계층은 스키마를 만들지 않는 연결(`_chart_conn`)로 DB를 열기 때문에, 정성 판정을 한 번도
+    저장한 적 없는 DB에는 테이블 자체가 없다. 그때 조회하면 CatalogException이 나 사이트 빌드가
+    통째로 멈춘다(2026-09-16 Deploy Site 실패). 읽기 경로에서 테이블을 만드는 것은 계층 역전이라,
+    없으면 "판정이 없다"로 다루는 쪽을 택했다.
+    """
+    return bool(
+        conn.execute(
+            "SELECT count(*) FROM duckdb_tables() WHERE table_name = 'qualitative_grades'"
+        ).fetchone()[0]
+    )
+
+
 def get_latest_qualitative_grade(conn: duckdb.DuckDBPyConnection, ticker: str) -> dict | None:
-    """한 종목의 가장 최근 판정 행을 dict로. 없으면 None. 상세 페이지 등급카드용."""
+    """한 종목의 가장 최근 판정 행을 dict로. 없으면 None. 상세 페이지 등급카드용.
+
+    테이블이 아직 없는 DB(정성 판정을 저장한 적 없는 시장)에서도 None을 돌려준다.
+    """
+    if not _has_grades_table(conn):
+        return None
     frame = conn.execute(
         "SELECT * FROM qualitative_grades WHERE ticker = ? ORDER BY graded_on DESC LIMIT 1", [ticker]
     ).fetchdf()
