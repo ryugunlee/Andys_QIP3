@@ -248,7 +248,7 @@ def build_parser() -> argparse.ArgumentParser:
     extract.add_argument("ticker")
     extract.add_argument("source", nargs="?", default=None, help="사업보고서·10-K 원문 (txt/md/html/pdf). 생략하면 DART/EDGAR 자동 수집")
     extract.add_argument("--asof", default=None, help="원문 기준일 (기본: 자동 수집 접수일 또는 오늘)")
-    extract.add_argument("--sections", default=None, help="DART 섹션 로마숫자 (기본: II,VI,VII,VIII,IX,X,XI)")
+    extract.add_argument("--sections", default=None, help="DART 섹션 로마숫자 (기본: I,II,VI,VII,X,XI)")
     extract.add_argument("--all-sections", action="store_true", help="DART 사업보고서 전체 사용")
     extract.add_argument("--force", action="store_true", help=f"원문 {MAX_SOURCE_CHARS:,}자 상한 무시")
     extract.add_argument("--sector-group", choices=SECTOR_GROUP_CHOICES, default=None)

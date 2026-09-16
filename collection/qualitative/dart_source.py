@@ -4,7 +4,10 @@
 최종 정정본만) → 원본 문서 zip → XML 태그 제거 → 로마숫자 대제목("II. 사업의 내용")으로 섹션 분할.
 
 전체 사업보고서는 대형주 기준 100만 토큰을 넘을 수 있어 기본은 DEFAULT_SECTIONS만 넣는다.
-III(재무에 관한 사항·주석)은 Q7·Q8·Q9의 근거가 있지만 분량이 압도적이라 요청할 때만 포함한다.
+삼성전자 2025 사업보고서 실측(80만 자): III(재무·주석) 27만, XII(상세표) 16만, VIII(임원·직원) 13만,
+IX(계열회사) 7만 자. 정성 항목이 읽는 것은 I(연혁·주식 총수)·II(사업)·VI(이사회)·VII(주주)·X(대주주
+거래)·XI(제재·소송)라 이 여섯만 기본(14만 자 ≈ 12만 토큰). III은 Q7·Q8·Q9의 주석 근거가 있지만
+분량이 압도적이라 요청할 때만 포함한다.
 키는 다른 수집 소스(FRED·ECOS)와 같이 .env / Actions Secrets의 환경변수로 읽는다.
 """
 
@@ -30,7 +33,7 @@ STATUS_NO_DATA: str = "013"
 LOOKBACK_DAYS: int = 400
 CORP_CODE_CACHE_PATH: Path = Path("qipinfos/dart_corp_codes.json")
 
-DEFAULT_SECTIONS: tuple[str, ...] = ("II", "VI", "VII", "VIII", "IX", "X", "XI")
+DEFAULT_SECTIONS: tuple[str, ...] = ("I", "II", "VI", "VII", "X", "XI")
 SECTION_NAMES: dict[str, str] = {
     "I": "회사의 개요", "II": "사업의 내용", "III": "재무에 관한 사항", "IV": "이사의 경영진단 및 분석의견",
     "V": "회계감사인의 감사의견 등", "VI": "이사회 등 회사의 기관에 관한 사항", "VII": "주주에 관한 사항",

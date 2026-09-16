@@ -267,7 +267,7 @@ FRED_API_KEY)를 읽는다. GitHub Actions에서는 `.env` 없이 리포지토�
   캐시 → `latest_annual_report()`(list.json, A001, 최종 정정본만, 400일 조회) → `fetch_document_text()`
   (document.xml zip → 접수번호로 시작하는 본문 XML → `html_to_text` → 유니코드 로마숫자 정규화) →
   `split_sections()`/`select_sections()`(대제목 "II. 사업의 내용" 기준, 목차·본문의 같은 번호는 이어
-  붙임). 기본 섹션 II·VI·VII·VIII·IX·X·XI — III(재무·주석)은 분량 때문에 요청할 때만. 대제목을 못 찾으면
+  붙임). 기본 섹션 I·II·VI·VII·X·XI(삼성전자 실측 14만 자 ≈ 12만 토큰) — III(재무·주석)·VIII(임원·직원)·IX(계열회사)·XII(상세표)는 분량 때문에 요청할 때만. 대제목을 못 찾으면
   전체를 돌려주고 `meta["sections"]`가 비어 있다. 오류는 `DartError`.
 - `edgar_source.py`: `fetch_edgar_10k(ticker) → (SourceDocument, meta)`. `cik_for()`(company_tickers.json)
   → `pick_latest_10k()`(submissions의 filings.recent 병렬 배열에서 첫 10-K) → 본문 HTML → 텍스트.
