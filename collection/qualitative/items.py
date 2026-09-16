@@ -47,7 +47,8 @@ def _string(description: str) -> dict:
 
 
 def _enum(description: str, values: tuple[str, ...]) -> dict:
-    return {"type": ["string", "null"], "enum": [*values, None], "description": description}
+    # Anthropic 구조화 출력은 enum에 null을 섞는 것을 거부한다 — anyOf로 nullable enum을 표현한다.
+    return {"anyOf": [{"type": "string", "enum": list(values)}, {"type": "null"}], "description": description}
 
 
 TREND_VALUES: tuple[str, ...] = ("decreasing", "flat", "increasing")
@@ -137,14 +138,17 @@ ITEM_SPECS: tuple[ItemSpec, ...] = (
     ItemSpec(
         "Q6", "지배구조·주주 정합성 (결격 보유)", "지배구조",
         "이사회 독립성, 특수관계자 거래, 물적분할·배임 이력",
-        "사외이사 과반 + 특수관계자 거래 매출 5% 미만 + 결격 없음",
+        "사외이사 과반 + 특수관계자 거래(연결 종속회사 제외) 매출 5% 미만 + 결격 없음",
         "과반 미달, 또는 특수관계자 거래 5~15%",
         "15% 이상 또는 3년 증가 추세. 결격 해당 시 F 고정",
         "이사회 등 회사의 기관, 대주주 등과의 거래, 합병·분할 공시, 판결·기소 / DEF 14A",
         {
             "outside_directors": _integer("사외이사 수"),
             "total_directors": _integer("총 이사 수"),
-            "related_party_ratio": _number("특수관계자 매출+매입액 ÷ 총매출 (0~1)"),
+            "related_party_ratio": _number(
+                "지배주주·총수 일가·비연결 계열회사와의 매출+매입 ÷ 총매출 (0~1). "
+                "연결 종속회사(해외 판매·생산법인 등)와의 내부거래는 연결에서 제거되므로 제외한다"
+            ),
             "related_party_trend_3y": _enum("특수관계자 거래 비중 3년 추세", TREND_VALUES),
             "spinoff_relisting": _boolean("핵심 사업 물적분할 후 중복상장 이력"),
             "executive_fraud_5y": _boolean("최근 5년 지배주주·경영진 배임·횡령·분식 확정 판결 또는 기소 진행"),

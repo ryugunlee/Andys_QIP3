@@ -4,9 +4,12 @@
 
     python grade_qualitative.py template 005930 --sector-group 자본집약사이클
         → qualitative/observations/005930.json 빈 템플릿. 사람이 손으로 채우는 경로.
-    python grade_qualitative.py extract 005930 [원문.txt] [--asof 2026-03-18] [--items Q1Q4Q6] [--sections II,VI]
+    python grade_qualitative.py extract 005930 [원문.txt] [--tier quick|deep] [--provider anthropic|compat]
+                                 [--asof 2026-03-18] [--items Q1Q4Q6] [--sections II,VI]
         → LLM 1회 호출로 9항목을 채점한 관측값 JSON. 원문을 생략하면 한국은 OpenDART 사업보고서,
           미국은 SEC EDGAR 10-K를 자동으로 받아 qualitative/sources/에 저장한 뒤 쓴다.
+          quick(기본)은 싸고 넓게(Sonnet 5 또는 OpenAI 호환 저가 모델, 섹션 II·VI·X), deep은 Opus 5로
+          III(재무·주석)까지 읽는다 — 티어 정의는 collection/qualitative/tiers.py.
     python grade_qualitative.py grade 005930 [--market KOSPI] [--no-save]
         → 등급카드 출력(★ 플래그 포함), qualitative_grades 테이블에 저장.
 
@@ -19,6 +22,7 @@ import argparse
 import json
 import os
 from datetime import date
+from functools import partial
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -35,10 +39,19 @@ from analysis.qualitative import (
     save_observations,
 )
 from analysis.qualitative.weights import DECISION_REJECT, GRADE_VALID_MONTHS
-from collection.qualitative import blank_observations, create_client, extract_observations, load_source
-from collection.qualitative.dart_source import DEFAULT_SECTIONS, SECTION_NAMES, fetch_dart_report
+from collection.qualitative import (
+    blank_observations,
+    compat_extract_structured,
+    create_client,
+    create_compat_client,
+    extract_observations,
+    extract_structured,
+    load_source,
+)
+from collection.qualitative.dart_source import SECTION_NAMES, fetch_dart_report
 from collection.qualitative.edgar_source import fetch_edgar_10k
 from collection.qualitative.sources import SourceDocument, save_source_text
+from collection.qualitative.tiers import PROVIDER_ANTHROPIC, PROVIDER_COMPAT, TIER_DEEP, TIER_QUICK, TIERS, Tier
 from collection.qualitative.items import ITEM_CODES, ITEMS_BY_CODE
 from collection.sector_groups import GROUP_ASSET, GROUP_CYCLICAL, GROUP_GENERAL, GROUP_INTANGIBLE
 from collection.tickers import is_korean_listed_ticker
@@ -156,11 +169,11 @@ def command_template(args: argparse.Namespace) -> None:
     print(f"[qualitative] 템플릿 생성: {path}")
 
 
-def _parse_sections(text: str | None, all_sections: bool) -> tuple[str, ...] | None:
+def _parse_sections(text: str | None, all_sections: bool, tier: Tier) -> tuple[str, ...] | None:
     if all_sections:
         return None
     if not text:
-        return DEFAULT_SECTIONS
+        return tier.sections
     sections = tuple(part.strip().upper() for part in text.replace(" ", ",").split(",") if part.strip())
     unknown = [numeral for numeral in sections if numeral not in SECTION_NAMES]
     if unknown:
@@ -168,10 +181,20 @@ def _parse_sections(text: str | None, all_sections: bool) -> tuple[str, ...] | N
     return sections
 
 
-def _fetch_source(args: argparse.Namespace) -> tuple[SourceDocument, str]:
+def _scorer(tier: Tier, provider: str):
+    """티어·provider에 맞는 채점 호출 함수. 추출기는 provider를 모른다."""
+    if provider == PROVIDER_COMPAT:
+        client, model = create_compat_client()
+        print(f"[qualitative] 티어 {tier.name} / provider 호환 엔드포인트 / 모델 {model}")
+        return partial(compat_extract_structured, client, model)
+    print(f"[qualitative] 티어 {tier.name} / provider anthropic / 모델 {tier.anthropic_model} (effort {tier.effort})")
+    return partial(extract_structured, create_client(), model=tier.anthropic_model, effort=tier.effort)
+
+
+def _fetch_source(args: argparse.Namespace, tier: Tier) -> tuple[SourceDocument, str]:
     """원문 인수가 없을 때 시장별로 자동 수집하고, 재실행용 파일 경로와 기준일을 돌려준다."""
     if is_korean_listed_ticker(args.ticker):
-        document, meta = fetch_dart_report(args.ticker, _parse_sections(args.sections, args.all_sections))
+        document, meta = fetch_dart_report(args.ticker, _parse_sections(args.sections, args.all_sections, tier))
         names = ", ".join(f"{numeral} {SECTION_NAMES.get(numeral, '')}".strip() for numeral in meta["sections"])
         print(f"[qualitative] DART {meta['report_nm']} 접수 {meta['rcept_dt']} — 전체 {meta['full_chars']:,}자 중 "
               f"{meta['chars']:,}자 사용 (섹션: {names or '대제목 미검출 → 전체'})")
@@ -186,11 +209,12 @@ def _fetch_source(args: argparse.Namespace) -> tuple[SourceDocument, str]:
 
 
 def command_extract(args: argparse.Namespace) -> None:
+    tier = TIERS[args.tier]
     asof = args.asof
     if args.source:
         document = load_source(Path(args.source))
     else:
-        document, stamp = _fetch_source(args)
+        document, stamp = _fetch_source(args, tier)
         asof = asof or f"{stamp[:4]}-{stamp[4:6]}-{stamp[6:]}"
     asof = asof or date.today().isoformat()
     chars = len(document.text or "")
@@ -199,7 +223,7 @@ def command_extract(args: argparse.Namespace) -> None:
             f"원문이 {chars:,}자로 상한 {MAX_SOURCE_CHARS:,}자를 넘는다 — --sections로 줄이거나 --force로 강행하라"
         )
     observation_set = extract_observations(
-        create_client(), document, args.ticker, asof, args.sector_group, items=_parse_items(args.items),
+        _scorer(tier, args.provider), document, args.ticker, asof, args.sector_group, items=_parse_items(args.items),
     )
     path = save_observations(observation_set)
     scored = sum(1 for obs in observation_set.observations if obs.score is not None)
@@ -248,7 +272,10 @@ def build_parser() -> argparse.ArgumentParser:
     extract.add_argument("ticker")
     extract.add_argument("source", nargs="?", default=None, help="사업보고서·10-K 원문 (txt/md/html/pdf). 생략하면 DART/EDGAR 자동 수집")
     extract.add_argument("--asof", default=None, help="원문 기준일 (기본: 자동 수집 접수일 또는 오늘)")
-    extract.add_argument("--sections", default=None, help="DART 섹션 로마숫자 (기본: I,II,VI,VII,X,XI)")
+    extract.add_argument("--tier", choices=(TIER_QUICK, TIER_DEEP), default=TIER_QUICK, help="quick: 싸고 넓게 / deep: Opus로 재무·주석까지")
+    extract.add_argument("--provider", choices=(PROVIDER_ANTHROPIC, PROVIDER_COMPAT), default=PROVIDER_ANTHROPIC,
+                         help="compat = OpenAI 호환 엔드포인트(DeepSeek 등, COMPAT_LLM_* 환경변수)")
+    extract.add_argument("--sections", default=None, help="DART 섹션 로마숫자 (기본: 티어별 — quick II,VI,X / deep I,II,III,VI,VII,X,XI)")
     extract.add_argument("--all-sections", action="store_true", help="DART 사업보고서 전체 사용")
     extract.add_argument("--force", action="store_true", help=f"원문 {MAX_SOURCE_CHARS:,}자 상한 무시")
     extract.add_argument("--sector-group", choices=SECTOR_GROUP_CHOICES, default=None)

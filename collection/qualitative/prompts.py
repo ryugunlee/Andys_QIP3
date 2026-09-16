@@ -48,7 +48,9 @@ def _item_schema(spec: ItemSpec) -> dict:
         "type": "object",
         "properties": {
             "status": {"type": "string", "enum": ["observed", "missing"]},
-            "score": {"type": ["integer", "null"], "minimum": SCORE_MIN, "maximum": SCORE_MAX},
+            # Anthropic 구조화 출력은 integer의 minimum/maximum을 거부한다. 범위는 시스템 프롬프트 문장과
+            # 판정기의 클램프가 지킨다.
+            "score": {"type": ["integer", "null"], "description": f"{SCORE_MIN}~{SCORE_MAX} 정수 점수"},
             "rationale": {"type": "string"},
             "raw": {
                 "type": "object",
@@ -65,6 +67,7 @@ def _item_schema(spec: ItemSpec) -> dict:
 
 
 def build_schema(items: list[ItemSpec]) -> dict:
+    """검증용 전체 스키마 — 항목 코드를 키로, raw 필드까지 타입을 못박는다."""
     return {
         "type": "object",
         "properties": {spec.code: _item_schema(spec) for spec in items},
@@ -73,12 +76,49 @@ def build_schema(items: list[ItemSpec]) -> dict:
     }
 
 
+# Anthropic 구조화 출력은 nullable 필드 16개·문법 크기 제한이 있어 항목별 스키마 9벌을 못 받는다.
+# 출력은 "공통 항목 스키마 1벌의 배열"로 받고(raw는 JSON 문자열), 코드가 항목 dict로 되돌린 뒤
+# build_schema로 검증한다(`response_check.py`). OpenAI 호환 provider도 같은 출력 형태를 쓴다.
+RAW_AS_JSON_STRING: dict = {
+    "type": "string",
+    "description": "요청문에 나열된 raw 필드를 담은 JSON 객체 문자열 (예: {\"a\": 0.8, \"b\": null}). 확인되지 않은 필드는 null",
+}
+
+
+def build_output_schema(items: list[ItemSpec]) -> dict:
+    item_schema = {
+        "type": "object",
+        "properties": {
+            "item": {"type": "string", "enum": [spec.code for spec in items]},
+            "status": {"type": "string", "enum": ["observed", "missing"]},
+            "score": {"type": ["integer", "null"], "description": f"{SCORE_MIN}~{SCORE_MAX} 정수 점수"},
+            "rationale": {"type": "string"},
+            "raw": RAW_AS_JSON_STRING,
+            "evidence": _evidence_schema(),
+            "note": {"type": "string"},
+        },
+        "required": ["item", "status", "score", "rationale", "raw", "evidence", "note"],
+        "additionalProperties": False,
+    }
+    return {
+        "type": "object",
+        "properties": {"observations": {"type": "array", "items": item_schema}},
+        "required": ["observations"],
+        "additionalProperties": False,
+    }
+
+
 def _describe_fields(spec: ItemSpec) -> str:
     lines = []
     for name, schema in spec.fields.items():
         description = schema.get("description", "")
-        allowed = [value for value in schema.get("enum", []) if value is not None]
+        allowed = next((option["enum"] for option in schema.get("anyOf", []) if "enum" in option), [])
         suffix = f" (허용값: {', '.join(allowed)})" if allowed else ""
+        element = schema.get("items", {}).get("properties")
+        if element:
+            # raw가 JSON 문자열로 오면 배열 원소의 스키마가 강제되지 않으므로 형태를 글로 못박는다.
+            shape = ", ".join(f"{key}: {value.get('description') or value.get('type')}" for key, value in element.items())
+            suffix += f" — 원소는 객체 {{{shape}}} (문자열 배열 금지)"
         lines.append(f"    - {name}: {description}{suffix}")
     return "\n".join(lines)
 
@@ -86,7 +126,9 @@ def _describe_fields(spec: ItemSpec) -> str:
 def build_request(items: list[ItemSpec]) -> str:
     """항목 채점 요청문. 종목명·정량 점수·주가는 넣지 않는다."""
     blocks = [
-        f"첨부한 문서를 읽고 아래 {len(items)}개 항목을 채점하라. 항목 코드를 키로 하는 JSON 하나로 답하라.",
+        f"첨부한 문서를 읽고 아래 {len(items)}개 항목을 채점하라.",
+        "출력은 JSON 객체 하나 — observations 배열에 항목당 원소 하나씩, item 필드에 항목 코드를 넣는다.",
+        "raw는 아래 필드명을 키로 하는 JSON 객체를 **문자열**로 담는다(확인되지 않은 필드는 null).",
         "",
     ]
     for spec in items:

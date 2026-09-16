@@ -273,18 +273,30 @@ FRED_API_KEY)를 읽는다. GitHub Actions에서는 `.env` 없이 리포지토�
   → `pick_latest_10k()`(submissions의 filings.recent 병렬 배열에서 첫 10-K) → 본문 HTML → 텍스트.
   `EDGAR_USER_AGENT` 환경변수 필수(연락처를 코드에 박지 않으려고). 403이면 `EdgarError`로 클라우드 IP
   차단 가능성을 알린다. **클라우드 환경에서 실행 검증 못 함**(PROBLEMS #36).
+- `tiers.py`: `TIERS = {quick: Tier(claude-sonnet-5, effort low, 섹션 II·VI·X), deep: Tier(claude-opus-5,
+  effort high, 섹션 I·II·III·VI·VII·X·XI)}`. 비용은 항목 수가 아니라 원문 토큰이 정하므로 티어의 차이는
+  모델·effort·섹션 범위다. provider 상수 `PROVIDER_ANTHROPIC`/`PROVIDER_COMPAT`.
 - `llm_client.py`: `create_client()` / `extract_structured(client, system, document, request_text,
-  schema)` — `claude-opus-5`, 스트리밍, 구조화 출력(`output_config.format`), 서버측 폴백
-  (`server-side-fallback-2026-07-01`). 거부·토큰 상한·인증 실패는 `ExtractionError`로. 키는 SDK가
-  환경변수(ANTHROPIC_API_KEY)/`ant auth` 프로필에서 해석한다.
+  schema, model, effort)` — 스트리밍, 구조화 출력(`output_config.format`), 서버측 폴백은 Opus에만.
+  **Anthropic 구조화 출력 제약**(integer의 min/max 불가, enum에 null 불가, nullable 필드 16개 한도, 객체는
+  additionalProperties:false 강제, 문법 크기 한도)을 실측으로 확인해 출력 스키마는 `build_output_schema`
+  (공통 항목 1벌의 배열, raw는 JSON 문자열)를 쓰고, 그래도 문법 한도에 걸리면 스키마를 프롬프트에 넣는
+  모드로 자동 재시도한다. 거부·토큰 상한·인증 실패·JSON 아님은 `ExtractionError`.
+- `compat_client.py`: `create_compat_client() → (openai.OpenAI, model)` / `compat_extract_structured(client,
+  model, system, document, request_text, schema)` — OpenAI 호환 엔드포인트(DeepSeek 등) JSON 모드. 환경변수
+  `COMPAT_LLM_BASE_URL`/`COMPAT_LLM_API_KEY`/`COMPAT_LLM_MODEL`. PDF 불가, 컨텍스트 초과는 400을 그대로
+  `CompatError`로. **실행 검증 못 함**(키 없음, PROBLEMS #37).
 - `prompts.py`: 고정 `SYSTEM_PROMPT`(앵커 채점·근거 필수·없음 허용·인용 원문 그대로·주가 정보 금지),
-  `build_schema(items)`/`build_request(items)`. 항목마다 status/score/rationale/raw/evidence/note를 요구한다.
-  시스템 프롬프트에 종목·날짜를 넣지 않는 이유는 캐시가 접두 일치이기 때문.
+  `build_request(items)`(배열 필드는 원소 객체 형태를 글로 명시), `build_schema(items)`(검증용 전체 스키마,
+  항목 코드 키·raw 타입 못박음), `build_output_schema(items)`(API 출력용 배열 스키마).
+- `response_check.py`: `normalize_payload(payload)`(observations 배열 → 코드 dict, item 키 제거, raw JSON
+  문자열 복원) / `validate_items(payload, schema)`(항목별 jsonschema 검사, 어긋난 항목만 결측). provider 공통.
 - `lexicon_filter.py`: 부록 A 자기참조 어휘 `BLOCKED_TERMS`, `find_blocked_terms(text)`.
-- `extractor.py`: `extract_observations(client, document, ticker, asof, sector_group, items)` — **LLM 1회
-  호출**로 요청 항목을 채점 → `Observation`. **증거 없음 → missing, 인용 대조 실패 → weak, 자기참조
-  어휘 검출(근거·인용) → weak.** 요청하지 않은 항목은 not_investigated. `blank_observations()`는 수동
-  입력 템플릿.
+- `extractor.py`: `extract_observations(call, document, ticker, asof, sector_group, items)` — provider 중립.
+  `call`은 `functools.partial`로 묶은 Anthropic/호환 호출 함수. **LLM 1회 호출** → 원본 응답을
+  `qualitative/sources/<티커>_<기준일>.response.json`에 저장(`save_raw_response`, 검증 로직 수정 시 재호출
+  없이 재검증) → 정규화·스키마 검증 → `Observation`. **증거 없음 → missing, 인용 대조 실패 → weak, 자기참조
+  어휘 검출(근거·인용) → weak.** 요청하지 않은 항목은 not_investigated. `blank_observations()`는 수동 입력 템플릿.
 
 
 # 저장 함수 및 영역
@@ -460,6 +472,8 @@ git에 커밋하지 않는다.
   `extract <티커> [원문파일] [--asof] [--sector-group] [--items Q1Q4Q6] [--sections II,VI] [--all-sections]
   [--force]`(LLM 1회 호출 채점) / `grade <티커> [--market] [--no-save]`(등급카드 출력 + ★ 플래그 +
   `qualitative_grades` 저장).
+  `--tier quick|deep`(기본 quick)이 모델·effort·기본 섹션을 정하고(`tiers.py`), `--provider anthropic|compat`이
+  호출 함수(`_scorer()`)를 고른다.
   `extract`에서 원문을 생략하면 `_fetch_source()`가 한국은 `fetch_dart_report`, 미국은 `fetch_edgar_10k`로
   받아 `qualitative/sources/`에 저장하고 접수일을 `--asof` 기본값으로 쓴다. 원문이 `MAX_SOURCE_CHARS`
   (600,000자)를 넘으면 `--force` 없이는 멈춘다 — 대형주 사업보고서 전체를 실수로 보내는 비용 사고 방지.

@@ -9,6 +9,7 @@
 """
 
 import base64
+import json
 import re
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -81,6 +82,14 @@ def save_source_text(ticker: str, stamp: str, text: str) -> Path:
     SOURCES_DIR.mkdir(parents=True, exist_ok=True)
     path = SOURCES_DIR / f"{ticker}_{stamp}.txt"
     path.write_text(text, encoding="utf-8")
+    return path
+
+
+def save_raw_response(ticker: str, asof: str, payload: dict) -> Path:
+    """LLM 원본 응답을 남긴다 — 검증 로직을 고쳐도 재호출 없이 다시 검증할 수 있게."""
+    SOURCES_DIR.mkdir(parents=True, exist_ok=True)
+    path = SOURCES_DIR / f"{ticker}_{asof.replace('-', '')}.response.json"
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return path
 
 
