@@ -615,12 +615,73 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
   white-space: nowrap;
 }
 
-.qualitative-card {
-  padding: 20px;
+/* --- 정성 등급카드 (상세 페이지) --- */
+/* 등급은 색과 문자를 함께 쓴다(색각 이상 대비). S·A 초록, B 파랑, C 주황, D·F 빨강 — 관문 팔레트와 맞춘다. */
+.qual-composite {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.qual-composite small { font-size: 0.85rem; font-weight: 500; margin-left: 6px; color: var(--ink-secondary); }
+.qual-meta { margin: 4px 0 12px; font-size: 0.9rem; color: var(--ink-secondary); line-height: 1.6; }
+.qual-expired { color: #b3261e; font-weight: 600; }
+.qual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.qual-item {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  white-space: pre-wrap;
+  padding: 0;
+}
+.qual-item summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.qual-item summary::-webkit-details-marker { display: none; }
+.qual-item summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius); }
+.qual-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; color: var(--ink-muted); }
+.qual-short { font-weight: 600; flex: 1; }
+.qual-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: #fff;
+  white-space: nowrap;
+}
+.qual-chip sup { font-size: 0.6rem; }
+.qual-grade-s, .qual-grade-a { background: #0f7b4f; }
+.qual-grade-b { background: #3f5a73; }
+.qual-grade-c { background: #b58900; }
+.qual-grade-d, .qual-grade-f { background: #b3261e; }
+.qual-grade-none { background: #8a9398; }
+.qual-composite.qual-grade-s, .qual-composite.qual-grade-a { background: none; color: #0f7b4f; }
+.qual-composite.qual-grade-b { background: none; color: #3f5a73; }
+.qual-composite.qual-grade-c { background: none; color: #b58900; }
+.qual-composite.qual-grade-d, .qual-composite.qual-grade-f { background: none; color: #b3261e; }
+.qual-composite.qual-grade-none { background: none; color: var(--ink-muted); font-size: 1rem; }
+.qual-item-body { padding: 0 14px 12px; border-top: 1px dashed var(--border); }
+.qual-question { margin: 10px 0 6px; font-size: 0.82rem; color: var(--ink-muted); }
+.qual-rationale { margin: 0 0 6px; font-size: 0.9rem; line-height: 1.6; }
+.qual-evidence { margin: 6px 0 0; padding-left: 16px; font-size: 0.82rem; color: var(--ink-secondary); line-height: 1.55; }
+.qual-evidence q { color: var(--ink); font-style: normal; }
+.qual-evidence-grade {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-right: 4px;
 }
 
 /* --- 푸터 --- */
@@ -804,3 +865,185 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
 .fin-table tr:last-child td { border-bottom: none; }
 .fin-table th:first-child, .fin-table td:first-child { text-align: left; color: var(--ink-muted); }
 .table-scroll { overflow-x: auto; }
+
+/* --- QIP4 안정성 관문 (상세 페이지) --- */
+/* 기존 화면에는 통과/탈락을 보여주는 요소가 없어 여기서 처음 만든다.
+   색만으로 구분하지 않고 문구를 함께 두어 색각 이상에서도 읽히게 한다. */
+.gate-verdict {
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.gate-verdict.gate-pass {
+  color: #0f7b4f;
+  background: #e7f6ee;
+  border-color: #bde5d0;
+}
+.gate-verdict.gate-fail {
+  color: #b3261e;
+  background: #fdecea;
+  border-color: #f5c6c2;
+}
+.gate-panel {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+}
+.gate-panel h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.gate-panel ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+.gate-panel li {
+  margin: 0.2rem 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.gate-panel-fail {
+  border-left: 3px solid #b3261e;
+}
+.gate-panel-warn {
+  border-left: 3px solid #b58900;
+}
+.gate-note {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted, #6b7280);
+  line-height: 1.5;
+}
+
+/* --- 관리자 화면 (admin/index.html) --- */
+/* 정성 평가를 웹에서 실행하는 화면. 일반 방문자는 오지 않는 페이지라 폭을 좁혀 읽기 쉽게 둔다. */
+.admin-console { display: grid; gap: 16px; }
+
+.admin-panel {
+  max-width: 720px;
+  padding: 20px;
+  margin: 16px 0;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.admin-console .admin-panel { margin: 0; }
+.admin-panel h2 { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+.admin-panel-head { display: flex; align-items: center; gap: 12px; }
+.admin-panel-head h2 { margin: 0; }
+.admin-panel-head .admin-button { margin-left: auto; }
+
+.admin-hint { color: var(--ink-secondary); font-size: 14px; line-height: 1.6; margin: 0 0 12px; }
+.admin-hint code {
+  padding: 1px 5px;
+  background: var(--card-bg-strong);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.admin-identity { display: flex; align-items: center; gap: 12px; }
+.admin-identity .admin-hint { margin: 2px 0 0; }
+.admin-identity .admin-button { margin-left: auto; }
+
+.admin-form { display: grid; gap: 12px; }
+/* 권한 부여 줄은 항목이 많아 가로로 흐르게 둔다 — 좁은 화면에서는 자동으로 줄바꿈된다. */
+.admin-form--inline {
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(120px, auto);
+  align-items: end;
+}
+@media (max-width: 720px) {
+  .admin-form--inline { grid-auto-flow: row; }
+}
+
+.admin-field { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
+.admin-field input[type="text"],
+.admin-field input[type="email"],
+.admin-field input[type="password"],
+.admin-field input[type="number"],
+.admin-field select {
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 400;
+  color: var(--ink-primary);
+  background: var(--page-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+}
+.admin-field input:focus, .admin-field select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.admin-field--choice { border: 0; padding: 0; margin: 0; }
+.admin-field--choice legend { padding: 0; margin-bottom: 6px; font-size: 14px; font-weight: 600; }
+.admin-field--choice label {
+  display: block;
+  padding: 2px 0;
+  font-weight: 400;
+  color: var(--ink-secondary);
+}
+.admin-choice--disabled { opacity: 0.45; }
+
+.admin-cost { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink-primary); }
+
+.admin-message { margin: 0; font-size: 14px; color: var(--ink-secondary); min-height: 20px; }
+.admin-message--error { color: var(--up); }
+
+.admin-button {
+  justify-self: start;
+  padding: 10px 18px;
+  font: inherit;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+}
+.admin-button:disabled { opacity: 0.45; cursor: not-allowed; }
+.admin-button--quiet {
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--ink-secondary);
+  background: var(--card-bg-strong);
+}
+
+.admin-runs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.admin-run {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: var(--page-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  font-size: 14px;
+}
+.admin-run__title { font-weight: 600; }
+.admin-run__state {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--card-bg-strong);
+  color: var(--ink-secondary);
+}
+.admin-run__state--success { background: var(--accent-weak); color: var(--down); }
+.admin-run__state--failure, .admin-run__state--timed_out { background: #fdecec; color: var(--up); }
+.admin-run__time { margin-left: auto; color: var(--ink-muted); font-size: 13px; }
+.admin-run__link { color: var(--accent); font-weight: 600; }
+
+.admin-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 14px; }
+.admin-table th, .admin-table td {
+  padding: 8px 6px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.admin-table th { color: var(--ink-muted); font-size: 13px; font-weight: 600; }

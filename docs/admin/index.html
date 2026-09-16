@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>관리자 · Andy&#39;s QIP</title>
+  <meta name="description" content="투자자가 스스로 판단할 수 있도록 정보를 제공하는 정량 분석 리포트">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" href="../static/icons/icon-192.png" type="image/png">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="../static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="QIP">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-root="..">
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="../index.html">Andy's <span>QIP</span></a>
+    <nav class="main-nav" aria-label="주요 메뉴">
+      <a href="../index.html">홈</a>
+      <a href="../stocks/index.html">주식 분석</a>
+      <a href="../sectors/index.html">섹터·산업</a>
+    </nav>
+    <div class="search-box" data-root="..">
+      <input type="search" id="stock-search" placeholder="종목명·티커 검색"
+             autocomplete="off" aria-label="종목 검색">
+      <ul id="search-results" class="search-results" hidden></ul>
+    </div>
+<div class="install-cta" hidden>
+  <button type="button" class="install-button" aria-expanded="false" aria-controls="install-guide">
+    앱 설치
+  </button>
+  <div class="install-guide" id="install-guide" role="dialog" aria-label="앱 설치 안내" hidden>
+    <p class="install-guide-title">홈 화면에 추가하기</p>
+    <ol class="install-guide-steps">
+      <li>아래쪽 <strong>공유</strong> 버튼을 누릅니다.</li>
+      <li>목록에서 <strong>홈 화면에 추가</strong>를 고릅니다.</li>
+      <li>오른쪽 위 <strong>추가</strong>를 누르면 끝납니다.</li>
+    </ol>
+    <button type="button" class="install-guide-close">닫기</button>
+  </div>
+</div>  </div>
+</header><main class="container">
+<h1 class="page-title">관리자</h1>
+
+<section class="admin-panel" id="admin-unconfigured" hidden>
+  <h2>설정이 끝나지 않았습니다</h2>
+  <p class="admin-hint">
+    Supabase 접속 정보가 비어 있습니다. 저장소 시크릿에
+    <code>SUPABASE_URL</code>·<code>SUPABASE_ANON_KEY</code>를 등록한 뒤 사이트를 다시 배포해 주세요.
+    자세한 순서는 README의 "관리자 화면 설정"을 참고하세요.
+  </p>
+</section>
+
+<section class="admin-panel" id="admin-login" hidden>
+  <h2>로그인</h2>
+  <p class="admin-hint">Andy's PF Manager와 같은 계정을 씁니다.</p>
+  <form id="admin-login-form" class="admin-form" autocomplete="on">
+    <label class="admin-field">
+      <span>이메일</span>
+      <input type="email" id="admin-email" name="email" autocomplete="email" required>
+    </label>
+    <label class="admin-field">
+      <span>비밀번호</span>
+      <input type="password" id="admin-password" name="password" autocomplete="current-password" required>
+    </label>
+    <p class="admin-message" id="admin-login-message" role="alert"></p>
+    <button type="submit" class="admin-button" id="admin-login-submit">로그인</button>
+  </form>
+</section>
+
+<section class="admin-console" id="admin-console" hidden
+         data-function-name="qualitative-dispatch"
+         data-cost-hints='{"deep:anthropic": 3200, "quick:anthropic": 350, "quick:compat": 30}'>
+  <div class="admin-panel admin-identity">
+    <div>
+      <strong id="admin-user-email"></strong>
+      <p class="admin-hint" id="admin-access-summary"></p>
+    </div>
+    <button type="button" class="admin-button admin-button--quiet" id="admin-logout">로그아웃</button>
+  </div>
+
+  <section class="admin-panel">
+    <h2>정성 평가 실행</h2>
+    <p class="admin-hint">
+      선택한 종목의 사업보고서를 받아 9항목을 채점하고(extract), 등급을 판정해(grade) 저장합니다.
+      끝나면 사이트가 다시 빌드되어 종목 상세 페이지의 등급카드에 반영됩니다.
+      한국 종목(6자리 숫자)만 실행할 수 있습니다 — 미국 종목은 실행 서버의 IP가 SEC EDGAR에 막혀 있습니다.
+    </p>
+
+    <form id="admin-run-form" class="admin-form">
+      <label class="admin-field">
+        <span>종목 코드</span>
+        <input type="text" id="admin-ticker" inputmode="numeric" placeholder="005930"
+               maxlength="10" required>
+      </label>
+
+      <fieldset class="admin-field admin-field--choice">
+        <legend>채점 티어</legend>
+        <label><input type="radio" name="tier" value="quick" checked> quick — 사업보고서 핵심 섹션</label>
+        <label id="admin-tier-deep-label">
+          <input type="radio" name="tier" value="deep"> deep — 재무·주석까지 (Opus 5)
+        </label>
+      </fieldset>
+
+      <fieldset class="admin-field admin-field--choice" id="admin-provider-field">
+        <legend>모델</legend>
+        <label><input type="radio" name="provider" value="compat" checked> DeepSeek (저가)</label>
+        <label><input type="radio" name="provider" value="anthropic"> Anthropic</label>
+      </fieldset>
+
+      <p class="admin-cost" id="admin-cost-hint"></p>
+      <p class="admin-message" id="admin-run-message" role="alert"></p>
+      <button type="submit" class="admin-button" id="admin-run-submit">실행하기</button>
+    </form>
+  </section>
+
+  <section class="admin-panel">
+    <div class="admin-panel-head">
+      <h2>최근 실행</h2>
+      <button type="button" class="admin-button admin-button--quiet" id="admin-refresh-runs">새로고침</button>
+    </div>
+    <ul class="admin-runs" id="admin-runs">
+      <li class="admin-hint">불러오는 중…</li>
+    </ul>
+  </section>
+
+  <section class="admin-panel" id="admin-permissions-panel" hidden>
+    <h2>실행 권한 관리</h2>
+    <p class="admin-hint">
+      여기에 등록된 사람만 정성 평가를 실행할 수 있습니다. 가입 자체는 PF Manager의 허용 이메일 목록이
+      따로 관리하므로, 아직 계정이 없는 사람에게는 그쪽에도 이메일을 추가해야 합니다.
+    </p>
+
+    <form id="admin-grant-form" class="admin-form admin-form--inline">
+      <label class="admin-field">
+        <span>이메일</span>
+        <input type="email" id="admin-grant-email" required>
+      </label>
+      <label class="admin-field">
+        <span>최대 티어</span>
+        <select id="admin-grant-tier">
+          <option value="quick" selected>quick</option>
+          <option value="deep">deep</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span>일일 상한</span>
+        <input type="number" id="admin-grant-limit" min="1" max="50" value="5" required>
+      </label>
+      <label class="admin-field">
+        <span>메모</span>
+        <input type="text" id="admin-grant-note" maxlength="60" placeholder="선택">
+      </label>
+      <button type="submit" class="admin-button" id="admin-grant-submit">권한 부여</button>
+    </form>
+    <p class="admin-message" id="admin-permission-message" role="alert"></p>
+
+    <table class="admin-table">
+      <thead>
+        <tr><th>이메일</th><th>티어</th><th>일일 상한</th><th>메모</th><th></th></tr>
+      </thead>
+      <tbody id="admin-permission-rows"></tbody>
+    </table>
+  </section>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="container">
+    <p>본 사이트의 모든 정보는 투자 판단을 돕기 위한 자료이며, 매수·매도를 권유하지 않습니다.</p>
+    <p class="footer-meta">데이터 기준일: 2026-09-15</p>
+    <p class="footer-meta"><a href="../admin/index.html">관리자</a></p>
+  </div>
+</footer>
+<script src="../static/search.js" defer></script>
+<script src="../static/sw-register.js" defer></script>
+<script src="../static/install.js" defer></script>
+<script type="module" src="../static/admin.js"></script>
+</body>
+</html>
