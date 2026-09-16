@@ -23,7 +23,11 @@ from storage.macro_repository import (
 from storage.news_repository import get_latest_news, prune_news, upsert_news
 from storage.price_repository import get_price_history, upsert_price_history
 from storage.qip4_inputs import attach_qip4_inputs
-from storage.qualitative_repository import get_latest_qualitative_grades, upsert_qualitative_grade
+from storage.qualitative_repository import (
+    get_latest_qualitative_grade,
+    get_latest_qualitative_grades,
+    upsert_qualitative_grade,
+)
 from storage.raw_repository import get_raw_latest, upsert_raw_latest
 from storage.qip3_selection import get_goodstock2
 from storage.qip4_selection import get_goodstock3
@@ -74,4 +78,5 @@ __all__ = [
     "get_latest_news",
     "upsert_qualitative_grade",
     "get_latest_qualitative_grades",
+    "get_latest_qualitative_grade",
 ]

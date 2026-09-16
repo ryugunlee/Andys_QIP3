@@ -180,12 +180,17 @@ _SCHEMA_STATEMENTS: list[str] = [
         watch_items TEXT,
         valid_items INTEGER,
         trend_flag TEXT,
+        tier TEXT,
+        model TEXT,
         valid_until DATE,
         observations_path TEXT,
         PRIMARY KEY (ticker, graded_on)
     )
     """,
 ]
+
+# 2026-09-16 9항목 체계 이후 추가된 컬럼. 이미 만들어진 테이블에는 CREATE IF NOT EXISTS가 손대지 않으므로 따로 더한다.
+_QUALITATIVE_ADDED_COLUMNS: tuple[tuple[str, str], ...] = (("tier", "TEXT"), ("model", "TEXT"))
 
 # 2026-09-11 6축 체계의 qualitative_grades(axis_grades 컬럼)는 2026-09-15 9항목 체계와 컬럼이
 # 달라 INSERT가 깨진다. 구 테이블은 지우지 않고 이름을 바꿔 두고 새 DDL이 다시 만들게 한다.
@@ -201,6 +206,11 @@ def _migrate_legacy_qualitative_grades(conn: duckdb.DuckDBPyConnection) -> None:
         conn.execute(f"ALTER TABLE qualitative_grades RENAME TO {_LEGACY_QUALITATIVE_TABLE}")
 
 
+def _add_missing_qualitative_columns(conn: duckdb.DuckDBPyConnection) -> None:
+    for name, column_type in _QUALITATIVE_ADDED_COLUMNS:
+        conn.execute(f"ALTER TABLE qualitative_grades ADD COLUMN IF NOT EXISTS {name} {column_type}")
+
+
 def connect(db_path: str) -> duckdb.DuckDBPyConnection:
     """DuckDB 파일에 연결하고 스키마가 없으면 생성한다.
 
@@ -214,4 +224,5 @@ def connect(db_path: str) -> duckdb.DuckDBPyConnection:
     _migrate_legacy_qualitative_grades(conn)
     for statement in _SCHEMA_STATEMENTS:
         conn.execute(statement)
+    _add_missing_qualitative_columns(conn)
     return conn

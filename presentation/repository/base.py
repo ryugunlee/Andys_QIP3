@@ -65,6 +65,13 @@ class StockRepository(Protocol):
         """
         ...
 
+    def qualitative_grade_row(self, ticker: str, market: str) -> dict | None:
+        """종목의 가장 최근 정성 판정(qualitative_grades 한 행). 정성 평가를 돌리지 않은 종목은 None.
+
+        시장(market)으로 통화권 DB를 결정한다. 카드 뷰 변환은 presentation.qualitative_view가 한다.
+        """
+        ...
+
     def updated_date(self) -> str | None:
         """데이터 기준일("YYYY-MM-DD"). 데이터가 전혀 없으면 None."""
         ...

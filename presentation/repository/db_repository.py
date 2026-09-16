@@ -36,6 +36,7 @@ from storage.group_summary_repository import get_group_summary
 from storage.price_repository import get_price_history
 from storage.qip3_selection import get_goodstock2
 from storage.qip4_selection import get_goodstock3
+from storage.qualitative_repository import get_latest_qualitative_grade
 from storage.report_export import get_goodstock, get_run_snapshot
 
 DEFAULT_STOCK_DB_PATHS: tuple[str, ...] = (KR_STOCK_DB_PATH, US_STOCK_DB_PATH)
@@ -169,6 +170,12 @@ class DuckDbStockRepository:
         if not prices and not annual and not quarterly:
             return None
         return StockCharts(prices=prices, annual=annual, quarterly=quarterly)
+
+    def qualitative_grade_row(self, ticker: str, market: str) -> dict | None:
+        path = Path(KR_STOCK_DB_PATH if config.is_korean_market_name(market) else US_STOCK_DB_PATH)
+        if not path.exists():
+            return None
+        return get_latest_qualitative_grade(self._chart_conn(path), ticker)
 
     def _chart_conn(self, path: Path) -> duckdb.DuckDBPyConnection:
         conn = self._chart_conns.get(path)

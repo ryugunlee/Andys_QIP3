@@ -2,6 +2,7 @@
 
 from analysis.qualitative.grader import GradeResult, ItemResult, qualitative_grade
 from analysis.qualitative.schema import (
+    OBSERVATIONS_DIR,
     Evidence,
     Observation,
     ObservationSet,
@@ -16,6 +17,7 @@ __all__ = [
     "GradeResult",
     "ItemResult",
     "Observation",
+    "OBSERVATIONS_DIR",
     "ObservationSet",
     "TrendFlag",
     "compute_trend_flag",

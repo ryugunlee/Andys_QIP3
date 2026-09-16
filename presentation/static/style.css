@@ -615,12 +615,73 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
   white-space: nowrap;
 }
 
-.qualitative-card {
-  padding: 20px;
+/* --- 정성 등급카드 (상세 페이지) --- */
+/* 등급은 색과 문자를 함께 쓴다(색각 이상 대비). S·A 초록, B 파랑, C 주황, D·F 빨강 — 관문 팔레트와 맞춘다. */
+.qual-composite {
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.qual-composite small { font-size: 0.85rem; font-weight: 500; margin-left: 6px; color: var(--ink-secondary); }
+.qual-meta { margin: 4px 0 12px; font-size: 0.9rem; color: var(--ink-secondary); line-height: 1.6; }
+.qual-expired { color: #b3261e; font-weight: 600; }
+.qual-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.qual-item {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  white-space: pre-wrap;
+  padding: 0;
+}
+.qual-item summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.qual-item summary::-webkit-details-marker { display: none; }
+.qual-item summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius); }
+.qual-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; color: var(--ink-muted); }
+.qual-short { font-weight: 600; flex: 1; }
+.qual-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: #fff;
+  white-space: nowrap;
+}
+.qual-chip sup { font-size: 0.6rem; }
+.qual-grade-s, .qual-grade-a { background: #0f7b4f; }
+.qual-grade-b { background: #3f5a73; }
+.qual-grade-c { background: #b58900; }
+.qual-grade-d, .qual-grade-f { background: #b3261e; }
+.qual-grade-none { background: #8a9398; }
+.qual-composite.qual-grade-s, .qual-composite.qual-grade-a { background: none; color: #0f7b4f; }
+.qual-composite.qual-grade-b { background: none; color: #3f5a73; }
+.qual-composite.qual-grade-c { background: none; color: #b58900; }
+.qual-composite.qual-grade-d, .qual-composite.qual-grade-f { background: none; color: #b3261e; }
+.qual-composite.qual-grade-none { background: none; color: var(--ink-muted); font-size: 1rem; }
+.qual-item-body { padding: 0 14px 12px; border-top: 1px dashed var(--border); }
+.qual-question { margin: 10px 0 6px; font-size: 0.82rem; color: var(--ink-muted); }
+.qual-rationale { margin: 0 0 6px; font-size: 0.9rem; line-height: 1.6; }
+.qual-evidence { margin: 6px 0 0; padding-left: 16px; font-size: 0.82rem; color: var(--ink-secondary); line-height: 1.55; }
+.qual-evidence q { color: var(--ink); font-style: normal; }
+.qual-evidence-grade {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-right: 4px;
 }
 
 /* --- 푸터 --- */

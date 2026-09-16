@@ -1,0 +1,81 @@
+{# 정성 등급카드. 컨텍스트: qualitative (QualitativeCardView 또는 None — 정성 평가를 돌린 종목만)
+   `.claude/정성 평가 규칙.md` 7절 양식을 화면에 옮긴 것. 종합·배수·★·9항목 칩은 항상 보이고,
+   항목을 펼치면 근거 서술과 원문 인용이 나온다 — 판단 재료를 숨기지 않되 화면이 답답하지 않게. #}
+{% if qualitative %}
+<section class="page-section qual-block">
+  <div class="section-head">
+    <h2>정성 평가</h2>
+    {% if qualitative.composite %}
+    <span class="qual-composite {{ qualitative.composite_class }}">
+      {{ qualitative.composite }}<small>{{ "%.1f" | format(qualitative.score) }}점</small>
+    </span>
+    {% else %}
+    <span class="qual-composite qual-grade-none">{{ qualitative.decision }}</span>
+    {% endif %}
+  </div>
+
+  <p class="qual-meta">
+    {% if qualitative.multiplier is not none %}배수 <strong>{{ "%.2f" | format(qualitative.multiplier) }}</strong> → {{ qualitative.decision }} ·{% endif %}
+    판정 {{ qualitative.graded_on }} · 유효 {{ qualitative.valid_until }}{% if qualitative.expired %} <span class="qual-expired">만료 — 재판정 필요</span>{% endif %}
+    · {{ qualitative.scorer_label }}{% if qualitative.source_title %} · 원문 {{ qualitative.source_title }}{% endif %}
+  </p>
+
+  {% if qualitative.veto_labels %}
+  <div class="gate-panel gate-panel-fail">
+    <h3>결격 — 종합과 무관하게 기각</h3>
+    <ul>{% for label in qualitative.veto_labels %}<li>{{ label }}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
+  {% if qualitative.trend_flag_label %}
+  <div class="gate-panel gate-panel-warn">
+    <h3>★ 주가 추세 확인</h3>
+    <p class="gate-note">{{ qualitative.trend_flag_label }}</p>
+  </div>
+  {% endif %}
+
+  <div class="qual-grid">
+    {% for item in qualitative.items %}
+    <details class="qual-item">
+      <summary>
+        <span class="qual-code">{{ item.code }}</span>
+        <span class="qual-short">{{ item.short }}</span>
+        {% if item.score is not none %}
+        <span class="qual-chip {{ item.grade_class }}">{{ item.grade }} {{ "%.0f" | format(item.score) }}{% if item.weak %}<sup title="증거가 약하거나 추정값 — 상한 {{ "%.0f" | format(qualitative.weak_cap) }}">*</sup>{% endif %}</span>
+        {% else %}
+        <span class="qual-chip qual-grade-none">{{ item.status_label or "—" }}</span>
+        {% endif %}
+      </summary>
+      <div class="qual-item-body">
+        <p class="qual-question">{{ item.title }} · 가중 {{ item.weight }}</p>
+        {% if item.rationale %}<p class="qual-rationale">{{ item.rationale }}</p>{% endif %}
+        {% if item.note %}<p class="gate-note">{{ item.note }}</p>{% endif %}
+        {% if item.evidence %}
+        <ul class="qual-evidence">
+          {% for e in item.evidence %}
+          <li><span class="qual-evidence-grade">{{ e.grade_label }}</span> {{ e.locator }} — <q>{{ e.quote }}</q></li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if not item.rationale and not item.evidence %}<p class="gate-note">근거 없음</p>{% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
+
+  {% if qualitative.watch_items %}
+  <div class="gate-panel gate-panel-warn">
+    <h3>주의 항목 (C 이하)</h3>
+    <ul>
+      {% for item in qualitative.watch_items %}
+      <li><strong>{{ item.code }} {{ item.short }} {{ item.grade }}</strong>{% if item.rationale %} — {{ item.rationale }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+  {% if qualitative.cap_labels %}
+  <p class="gate-note">{% for label in qualitative.cap_labels %}{{ label }}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+  {% endif %}
+  <p class="gate-note">배수는 모멘텀 집행률과 곱하지 않는다 — 나란히 놓고 보는 판단 재료다. <sup>*</sup>는 증거가 약하거나 추정값이라 점수 상한이 걸린 항목.</p>
+</section>
+{% endif %}

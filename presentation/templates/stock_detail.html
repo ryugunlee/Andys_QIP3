@@ -43,14 +43,7 @@
 
 {% include "partials/_qip4_gate.html" %}
 
-{% if detail.qualitative %}
-<section class="page-section">
-  <div class="section-head">
-    <h2>정성 평가</h2>
-  </div>
-  <div class="qualitative-card">{{ detail.qualitative }}</div>
-</section>
-{% endif %}
+{% include "partials/_qualitative_card.html" %}
 
 {% if financial_table %}
 <section class="page-section">

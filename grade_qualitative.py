@@ -53,7 +53,7 @@ from collection.qualitative import (
 )
 from collection.qualitative.dart_source import SECTION_NAMES, fetch_dart_report
 from collection.qualitative.edgar_source import fetch_edgar_10k
-from collection.qualitative.sources import SourceDocument, save_source_text
+from collection.qualitative.sources import SOURCES_DIR, SourceDocument, save_source_text
 from collection.qualitative.tiers import PROVIDER_ANTHROPIC, PROVIDER_COMPAT, TIER_DEEP, TIER_QUICK, TIERS, Tier
 from collection.qualitative.items import ITEM_CODES, ITEMS_BY_CODE
 from collection.sector_groups import GROUP_ASSET, GROUP_CYCLICAL, GROUP_GENERAL, GROUP_INTANGIBLE
@@ -117,9 +117,10 @@ def format_grade_card(
 ) -> str:
     """`.claude/정성 평가 규칙.md` 7절 양식. `*`는 weak(점수 상한 적용) 항목."""
     valid_until = _add_months(graded_on, GRADE_VALID_MONTHS)
+    scorer = f" / {observation_set.tier} · {observation_set.model}" if observation_set.model else ""
     lines = [
         f"[식별]   {observation_set.ticker} / 섹터군 {observation_set.sector_group or '미지정'} / "
-        f"관측 {observation_set.asof} / 판정 {graded_on} / 유효 {valid_until}",
+        f"관측 {observation_set.asof} / 판정 {graded_on} / 유효 {valid_until}{scorer}",
     ]
     by_code = observation_set.by_code()
     item_lines = _item_lines(result, by_code)
@@ -163,6 +164,8 @@ def _grade_row(
         "watch_items": "|".join(result.watch_items),
         "valid_items": result.valid_items,
         "trend_flag": flag.code if flag else None,
+        "tier": observation_set.tier,
+        "model": observation_set.model,
         "valid_until": _add_months(graded_on, GRADE_VALID_MONTHS),
         "observations_path": str(path),
     }
@@ -186,17 +189,27 @@ def _parse_sections(text: str | None, all_sections: bool, tier: Tier) -> tuple[s
 
 
 def _scorer(tier: Tier, provider: str):
-    """티어·provider에 맞는 채점 호출 함수. 추출기는 provider를 모른다."""
+    """티어·provider에 맞는 (채점 호출 함수, 모델 id). 추출기는 provider를 모른다."""
     if provider == PROVIDER_COMPAT:
         client, model = create_compat_client()
         print(f"[qualitative] 티어 {tier.name} / provider 호환 엔드포인트 / 모델 {model}")
-        return partial(compat_extract_structured, client, model)
+        return partial(compat_extract_structured, client, model), model
     print(f"[qualitative] 티어 {tier.name} / provider anthropic / 모델 {tier.anthropic_model} (effort {tier.effort})")
-    return partial(extract_structured, create_client(), model=tier.anthropic_model, effort=tier.effort)
+    return partial(extract_structured, create_client(), model=tier.anthropic_model, effort=tier.effort), tier.anthropic_model
+
+
+def cached_source(ticker: str) -> Path | None:
+    """주간 워크플로가 미리 받아 둔(또는 이전 실행이 남긴) 원문 중 가장 최근 것."""
+    candidates = sorted(SOURCES_DIR.glob(f"{ticker}_*.txt"))
+    return candidates[-1] if candidates else None
 
 
 def _fetch_source(args: argparse.Namespace, tier: Tier) -> tuple[SourceDocument, str]:
-    """원문 인수가 없을 때 시장별로 자동 수집하고, 재실행용 파일 경로와 기준일을 돌려준다."""
+    """원문 인수가 없을 때: 캐시된 원문이 있으면 그것을, 없으면 시장별로 자동 수집한다. (문서, 기준일 stamp)"""
+    cached = None if args.refetch else cached_source(args.ticker)
+    if cached is not None:
+        print(f"[qualitative] 캐시된 원문 사용: {cached} (--refetch로 다시 받을 수 있다)")
+        return load_source(cached), cached.stem.split("_")[-1]
     if is_korean_listed_ticker(args.ticker):
         document, meta = fetch_dart_report(args.ticker, _parse_sections(args.sections, args.all_sections, tier))
         names = ", ".join(f"{numeral} {SECTION_NAMES.get(numeral, '')}".strip() for numeral in meta["sections"])
@@ -226,8 +239,9 @@ def command_extract(args: argparse.Namespace) -> None:
         raise SystemExit(
             f"원문이 {chars:,}자로 상한 {MAX_SOURCE_CHARS:,}자를 넘는다 — --sections로 줄이거나 --force로 강행하라"
         )
+    call, model = _scorer(tier, args.provider)
     observation_set = extract_observations(
-        _scorer(tier, args.provider), document, args.ticker, asof, args.sector_group, items=_parse_items(args.items),
+        call, document, args.ticker, asof, args.sector_group, items=_parse_items(args.items), tier=tier.name, model=model,
     )
     path = save_observations(observation_set)
     scored = sum(1 for obs in observation_set.observations if obs.score is not None)
@@ -239,38 +253,42 @@ def command_revalidate(args: argparse.Namespace) -> None:
     saved_payload = json.loads(Path(args.response).read_text(encoding="utf-8"))
     observation_set = extract_observations(
         lambda **_: saved_payload, document, args.ticker, args.asof, args.sector_group, items=_parse_items(args.items),
+        tier=args.tier, model=args.model,
     )
     path = save_observations(observation_set)
     scored = sum(1 for obs in observation_set.observations if obs.score is not None)
     print(f"[qualitative] 재검증 저장: {path} (채점 {scored}개 / 결측·미조사 {len(observation_set.observations) - scored}개)")
 
 
-def command_grade(args: argparse.Namespace) -> None:
-    path = observation_path(args.ticker)
+def grade_ticker(ticker: str, market: str | None, save: bool) -> str:
+    """관측값 JSON → 판정 → (DB가 있으면) ★ 플래그 계산·저장. 등급카드 문자열을 돌려준다."""
+    path = observation_path(ticker)
     observation_set = load_observations(path)
     result = qualitative_grade(observation_set)
     graded_on = date.today()
 
-    is_korean = is_korean_listed_ticker(args.ticker)
-    market = args.market or ("KOSPI" if is_korean else "NASDAQ")
+    is_korean = is_korean_listed_ticker(ticker)
+    market = market or ("KOSPI" if is_korean else "NASDAQ")
     source = "naver" if is_korean else "yahoo"
     db_path = storage.stock_db_path_for_market(market)
     flag: TrendFlag | None = None
     if os.path.exists(db_path):
         conn = storage.connect(db_path)
         try:
-            flag = compute_trend_flag(conn, args.ticker, source)
-            if not args.no_save:
+            flag = compute_trend_flag(conn, ticker, source)
+            if save:
                 storage.upsert_qualitative_grade(conn, _grade_row(observation_set, result, graded_on, path, flag))
         finally:
             conn.close()
-    print(format_grade_card(observation_set, result, graded_on, flag))
-    if args.no_save:
-        return
-    if os.path.exists(db_path):
-        print(f"[qualitative] qualitative_grades 저장 완료 ({market} DB)")
-    else:
-        print(f"[qualitative] DB 없음({db_path}) — 저장·★ 플래그 생략")
+    card = format_grade_card(observation_set, result, graded_on, flag)
+    if save:
+        card += (f"\n[qualitative] qualitative_grades 저장 완료 ({market} DB)" if os.path.exists(db_path)
+                 else f"\n[qualitative] DB 없음({db_path}) — 저장·★ 플래그 생략")
+    return card
+
+
+def command_grade(args: argparse.Namespace) -> None:
+    print(grade_ticker(args.ticker, args.market, save=not args.no_save))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -290,9 +308,10 @@ def build_parser() -> argparse.ArgumentParser:
     extract.add_argument("--tier", choices=(TIER_QUICK, TIER_DEEP), default=TIER_QUICK, help="quick: 싸고 넓게 / deep: Opus로 재무·주석까지")
     extract.add_argument("--provider", choices=(PROVIDER_ANTHROPIC, PROVIDER_COMPAT), default=PROVIDER_ANTHROPIC,
                          help="compat = OpenAI 호환 엔드포인트(DeepSeek 등, COMPAT_LLM_* 환경변수)")
-    extract.add_argument("--sections", default=None, help="DART 섹션 로마숫자 (기본: 티어별 — quick II,VI,X / deep I,II,III,VI,VII,X,XI)")
+    extract.add_argument("--sections", default=None, help="DART 섹션 로마숫자 (기본: 티어별 — quick II,VI,X,III* / deep I,II,III,VI,VII,X,XI). III*=재무 핵심 주석만")
     extract.add_argument("--all-sections", action="store_true", help="DART 사업보고서 전체 사용")
     extract.add_argument("--force", action="store_true", help=f"원문 {MAX_SOURCE_CHARS:,}자 상한 무시")
+    extract.add_argument("--refetch", action="store_true", help="qualitative/sources/에 캐시된 원문이 있어도 다시 받는다")
     extract.add_argument("--sector-group", choices=SECTOR_GROUP_CHOICES, default=None)
     extract.add_argument("--items", default=None, help="채점할 항목 코드만 (예: Q1Q4Q6 또는 146)")
     extract.set_defaults(handler=command_extract)
@@ -304,6 +323,8 @@ def build_parser() -> argparse.ArgumentParser:
     revalidate.add_argument("--asof", required=True)
     revalidate.add_argument("--sector-group", choices=SECTOR_GROUP_CHOICES, default=None)
     revalidate.add_argument("--items", default=None)
+    revalidate.add_argument("--tier", choices=(TIER_QUICK, TIER_DEEP), default=None, help="그 응답을 만든 티어 (기록용)")
+    revalidate.add_argument("--model", default=None, help="그 응답을 만든 모델 id (기록용)")
     revalidate.set_defaults(handler=command_revalidate)
 
     grade = commands.add_parser("grade", help="관측값 JSON을 판정해 등급카드 출력·저장")

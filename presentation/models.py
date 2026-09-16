@@ -44,7 +44,6 @@ class StockDetail:
     close: float | None
     market_cap: float | None
     values: dict[str, object] = field(default_factory=dict)
-    qualitative: str | None = None  # 정성 평가 (없으면 상세 페이지에서 미표시)
 
 
 @dataclass(frozen=True)

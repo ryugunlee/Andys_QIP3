@@ -94,6 +94,8 @@ def extract_observations(
     asof: str,
     sector_group: str | None,
     items: tuple[str, ...] = ITEM_CODES,
+    tier: str | None = None,
+    model: str | None = None,
 ) -> ObservationSet:
     """LLM 1회 호출로 요청 항목을 채점한다. 요청하지 않은 항목은 not_investigated로 남긴다."""
     specs = [ITEMS_BY_CODE[code] for code in items]
@@ -111,7 +113,7 @@ def extract_observations(
     ]
     return ObservationSet(
         ticker=ticker, asof=asof, sector_group=sector_group,
-        observations=observations, source_title=document.title,
+        observations=observations, source_title=document.title, tier=tier, model=model,
     )
 
 

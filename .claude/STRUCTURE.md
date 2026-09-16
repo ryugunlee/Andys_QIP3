@@ -269,14 +269,16 @@ FRED_API_KEY)를 읽는다. GitHub Actions에서는 `.env` 없이 리포지토�
   캐시 → `latest_annual_report()`(list.json, A001, 최종 정정본만, 400일 조회) → `fetch_document_text()`
   (document.xml zip → 접수번호로 시작하는 본문 XML → `html_to_text` → 유니코드 로마숫자 정규화) →
   `split_sections()`/`select_sections()`(대제목 "II. 사업의 내용" 기준, 목차·본문의 같은 번호는 이어
-  붙임). 기본 섹션 I·II·VI·VII·X·XI(삼성전자 실측 14만 자 ≈ 12만 토큰) — III(재무·주석)·VIII(임원·직원)·IX(계열회사)·XII(상세표)는 분량 때문에 요청할 때만. 대제목을 못 찾으면
+  붙임). `select_notes()`: III 본문에서 `NOTE_KEYWORDS`(현금흐름표·무형자산·자본금·재무위험관리·부문별
+  보고·특수관계자·배당)가 든 절·주석 블록만 — 키워드당 첫 블록(연결 기준), 배당은 6-x 전부. 섹션 목록의
+  `"III*"`가 이걸 뜻한다(삼성전자 실측 2.5만 자, Q7·Q8·Q9 근거). 기본 섹션 I·II·VI·VII·X·XI(삼성전자 실측 14만 자 ≈ 12만 토큰) — III(재무·주석)·VIII(임원·직원)·IX(계열회사)·XII(상세표)는 분량 때문에 요청할 때만. 대제목을 못 찾으면
   전체를 돌려주고 `meta["sections"]`가 비어 있다. 오류는 `DartError`.
 - `edgar_source.py`: `fetch_edgar_10k(ticker) → (SourceDocument, meta)`. `cik_for()`(company_tickers.json)
   → `pick_latest_10k()`(submissions의 filings.recent 병렬 배열에서 첫 10-K) → 본문 HTML → 텍스트.
   `EDGAR_USER_AGENT` 환경변수 필수(연락처를 코드에 박지 않으려고). 403이면 `EdgarError`로 클라우드 IP
   차단 가능성을 알린다. **클라우드 환경에서 실행 검증 못 함**(PROBLEMS #36).
-- `tiers.py`: `TIERS = {quick: Tier(claude-sonnet-5, effort low, 섹션 II·VI·X), deep: Tier(claude-opus-5,
-  effort high, 섹션 I·II·III·VI·VII·X·XI)}`. 비용은 항목 수가 아니라 원문 토큰이 정하므로 티어의 차이는
+- `tiers.py`: `TIERS = {quick: Tier(claude-sonnet-5, effort low, 섹션 II·VI·X·III*), deep: Tier(claude-opus-5,
+  effort high, 섹션 I·II·III·VI·VII·X·XI)}`. `III*`는 III의 핵심 주석만(아래 dart_source). 비용은 항목 수가 아니라 원문 토큰이 정하므로 티어의 차이는
   모델·effort·섹션 범위다. provider 상수 `PROVIDER_ANTHROPIC`/`PROVIDER_COMPAT`.
 - `llm_client.py`: `create_client()` / `extract_structured(client, system, document, request_text,
   schema, model, effort)` — 스트리밍, 구조화 출력(`output_config.format`), 서버측 폴백은 Opus에만.
@@ -296,7 +298,8 @@ FRED_API_KEY)를 읽는다. GitHub Actions에서는 `.env` 없이 리포지토�
   문자열 복원) / `validate_items(payload, schema)`(항목별 jsonschema 검사, 어긋난 항목만 결측; 계약에 새로
   생긴 raw 필드는 null로 채워 예전 응답도 재검증 가능). provider 공통.
 - `lexicon_filter.py`: 부록 A 자기참조 어휘 `BLOCKED_TERMS`, `find_blocked_terms(text)`.
-- `extractor.py`: `extract_observations(call, document, ticker, asof, sector_group, items)` — provider 중립.
+- `extractor.py`: `extract_observations(call, document, ticker, asof, sector_group, items, tier, model)` —
+  provider 중립. tier·model은 관측값 JSON과 `qualitative_grades`에 기록돼 상세 페이지에 표시된다.
   `call`은 `functools.partial`로 묶은 Anthropic/호환 호출 함수. **LLM 1회 호출** → 원본 응답을
   `qualitative/sources/<티커>_<기준일>.response.json`에 저장(`save_raw_response`, 검증 로직 수정 시 재호출
   없이 재검증) → 정규화·스키마 검증 → `Observation`. **증거 없음 → missing, 인용 대조 실패 → weak, 자기참조
@@ -443,8 +446,10 @@ git에 커밋하지 않는다.
 
 ## storage/qualitative_repository.py
 - `upsert_qualitative_grade(conn, row)`: 정성 등급 결과 1행 upsert (ticker, graded_on). `item_scores`는
-  `{코드: {score, grade}}` JSON 문자열, 사유·주의 항목은 `|` 구분 코드, `trend_flag`는 ★ 플래그 코드.
-  `observed_asof`인 이유: `asof`가 DuckDB 예약어.
+  `{코드: {score, grade}}` JSON 문자열, 사유·주의 항목은 `|` 구분 코드, `trend_flag`는 ★ 플래그 코드,
+  `tier`/`model`은 채점 출처. `observed_asof`인 이유: `asof`가 DuckDB 예약어. 새 컬럼은 `connect()`가
+  `ALTER TABLE ADD COLUMN IF NOT EXISTS`로 기존 테이블에 더한다.
+- `get_latest_qualitative_grade(conn, ticker)`: 종목 1건 최신 판정 dict(없으면 None) — 상세 페이지용.
 - `get_latest_qualitative_grades(conn)`: 종목별 최신 판정 1행. 유효기한(`valid_until`) 판단은 표현
   계층 몫. 관측값·증거는 DB가 아니라 `qualitative/observations/*.json`(git 추적).
 
@@ -479,7 +484,10 @@ git에 커밋하지 않는다.
   `qualitative_grades` 저장).
   `--tier quick|deep`(기본 quick)이 모델·effort·기본 섹션을 정하고(`tiers.py`), `--provider anthropic|compat`이
   호출 함수(`_scorer()`)를 고른다.
-  `extract`에서 원문을 생략하면 `_fetch_source()`가 한국은 `fetch_dart_report`, 미국은 `fetch_edgar_10k`로
+  `grade_ticker(ticker, market, save)`가 grade의 본체(주간 스크립트가 재사용). `cached_source(ticker)`는
+  `qualitative/sources/<티커>_*.txt` 중 최신 파일.
+  `extract`에서 원문을 생략하면 `_fetch_source()`가 캐시된 원문을 먼저 쓰고(`--refetch`로 무시), 없으면
+  한국은 `fetch_dart_report`, 미국은 `fetch_edgar_10k`로
   받아 `qualitative/sources/`에 저장하고 접수일을 `--asof` 기본값으로 쓴다. 원문이 `MAX_SOURCE_CHARS`
   (600,000자)를 넘으면 `--force` 없이는 멈춘다 — 대형주 사업보고서 전체를 실수로 보내는 비용 사고 방지.
   추출 단계는 정량 DB를 읽지 않는다(주가·정량 점수를 보지 않는 6절 규칙). grade는 DB 파일이 있을 때만
@@ -487,6 +495,15 @@ git에 커밋하지 않는다.
   `format_grade_card()`는 7절 양식(항목 등급·종합·배수·주의 항목·★·미조사). `*`는 weak 항목, Q1이 수주형
   사업이 아니면 `해당없음`.
 - 파일럿 보고서는 `qualitative/reports/<티커>_<날짜>.md`(git 추적). 첫 보고서: 삼성전자 2026-09-16.
+
+# qualitative_weekly.py (진입점) + .github/workflows/qualitative-weekly.yml
+- 정성 평가의 **LLM을 쓰지 않는** 주간 작업. `observed_tickers()`(관측값 JSON이 있는 종목) →
+  `regrade()`(`grade_ticker` 저장 모드 — ★ 플래그·유효기한 갱신) → `selected_korean_tickers(limit)`(KR DB
+  시장별 최신 run의 `get_goodstock3`를 QIP4 Score로 정렬, 상위 30) → `prefetch_sources()`(캐시 없는 종목만
+  quick 섹션으로 DART 수집 → `qualitative/sources/`). `DART_API_KEY` 없으면 미리 받기만 생략.
+- 워크플로: 일요일 21:00 UTC + `workflow_dispatch(ticker)`. DB 복원 → 원문 캐시 tar 복원
+  (`qualitative_sources.tar.gz`, data-store 릴리스 자산) → 스크립트 → tar 재포장 → DB·tar 저장 → 사이트
+  재빌드. 시크릿은 `DART_API_KEY`뿐 — AI 키는 일부러 넣지 않는다.
   `load_dotenv()`로 ANTHROPIC_API_KEY를 읽는다.
 
 
@@ -629,6 +646,18 @@ QIP4 정량 규칙(`.claude/투자 규칙.md`). QIP3와 **병행**하며 QIP3는
   `price_daily` 6개월 수익률과 `financial_statements` 최근 2개 연도 영업이익 변화율만 쓴다(뉴스 미사용).
   |수익률| ≥ 30%인데 영업이익 변화가 같은 방향이 아니거나 ±10% 이내 → `UNEXPLAINED_UP/DOWN`.
 
+
+## presentation/qualitative_view.py
+- `build_qualitative_card(row, today) → QualitativeCardView` — `qualitative_grades` 한 행 + 관측값 JSON
+  (`row["observations_path"]`, 저장소에 git 추적)으로 상세 페이지 등급카드 뷰를 만든다. 점수·weak·해당 없음은
+  JSON을 다시 판정해 얻고(판정기는 결정적), JSON이 없으면 DB의 item_scores만 쓴다. 코드→한국어(결격·상한·
+  ★ 플래그·증거 등급·티어)는 여기에만. `QualitativeItemView`(code/title/short/weight/score/grade/weak/
+  status_label/rationale/note/evidence), `expired`(valid_until < 오늘).
+- 저장소 계약 `StockRepository.qualitative_grade_row(ticker, market)`(DuckDB: `get_latest_qualitative_grade`,
+  CSV: None). 빌더 `detail_pages._qualitative_card()` → 템플릿 `partials/_qualitative_card.html`
+  (종합·배수·판정일·유효·티어·모델 → 결격/★ 패널 → 9항목 `<details>` 칩(펼치면 근거 서술·인용) → 주의 항목).
+  CSS `.qual-*`(관문 팔레트와 같은 색: S·A 초록, B 남색, C 주황, D·F 빨강). `StockDetail.qualitative` 문자열
+  칸은 이 카드로 대체돼 제거했다.
 
 ## presentation/qip4_view.py
 - `build_gate_view(values)` → `GateView` — QIP4 관문·경보 **코드를 한국어 문구로** 바꾼다.

@@ -24,6 +24,7 @@ from presentation.metrics import (
     specs_by_group,
 )
 from presentation.qip4_view import build_gate_view
+from presentation.qualitative_view import build_qualitative_card
 from presentation.models import AnnualFinancials, StockCharts, StockDetail
 from presentation.repository.base import StockRepository
 
@@ -151,6 +152,11 @@ def _financial_table_quarterly(
     return _financial_rows(charts.quarterly, market)
 
 
+def _qualitative_card(repository: StockRepository, detail: StockDetail):
+    row = repository.qualitative_grade_row(detail.ticker, detail.market)
+    return build_qualitative_card(row) if row else None
+
+
 def build_detail_pages(
     repository: StockRepository, env: Environment, output_dir: Path
 ) -> int:
@@ -173,6 +179,7 @@ def build_detail_pages(
             metric_groups=_metric_groups(detail),
             chart_data=_chart_data(charts),
             qip4_gate=build_gate_view(detail.values),
+            qualitative=_qualitative_card(repository, detail),
             financial_table=_financial_table(charts, detail.market),
             financial_table_quarterly=_financial_table_quarterly(charts, detail.market),
         )

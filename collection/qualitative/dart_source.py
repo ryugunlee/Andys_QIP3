@@ -35,6 +35,7 @@ CORP_CODE_CACHE_PATH: Path = Path("qipinfos/dart_corp_codes.json")
 
 DEFAULT_SECTIONS: tuple[str, ...] = ("I", "II", "VI", "VII", "X", "XI")
 SECTION_NAMES: dict[str, str] = {
+    "III*": "재무 핵심 주석(현금흐름·자본금·무형자산·재무위험·부문·특수관계자·배당)",
     "I": "회사의 개요", "II": "사업의 내용", "III": "재무에 관한 사항", "IV": "이사의 경영진단 및 분석의견",
     "V": "회계감사인의 감사의견 등", "VI": "이사회 등 회사의 기관에 관한 사항", "VII": "주주에 관한 사항",
     "VIII": "임원 및 직원 등에 관한 사항", "IX": "계열회사 등에 관한 사항", "X": "대주주 등과의 거래내용",
@@ -46,6 +47,13 @@ _ROMAN_UNICODE: dict[str, str] = {
     for index, numeral in enumerate(("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"))
 }
 _HEADING = re.compile(r"^\s*(XII|XI|IX|X|VIII|VII|VI|IV|V|III|II|I)\s*\.\s*(\S.*)$")
+
+# III(재무에 관한 사항) 안의 절·주석 제목: "2-5. 연결 현금흐름표", "18. 자본금 (연결)", "6-1. 회사의 배당정책…"
+_NOTE_HEADING = re.compile(r"^\s*(\d{1,2}(?:-\d)?)\.\s*([가-힣A-Za-z][^\n]{1,40})$")
+# Q7·Q8·Q9의 근거가 있는 주석. 연결 주석이 별도 주석보다 먼저 나오므로 키워드별 첫 블록만 쓴다(배당은 6-x 전부).
+# 삼성전자 실측: 현금흐름표·무형자산·자본금·재무위험관리·부문별 보고·특수관계자·배당 ≈ 2.5만 자.
+NOTE_KEYWORDS: tuple[str, ...] = ("현금흐름표", "무형자산", "자본금", "재무위험관리", "부문별 보고", "특수관계자", "배당")
+NOTES_PSEUDO_SECTION: str = "III*"  # 섹션 목록에서 "III의 핵심 주석만"을 뜻하는 표기
 
 
 class DartError(RuntimeError):
@@ -158,13 +166,41 @@ def split_sections(text: str) -> dict[str, str]:
     return {numeral: "\n".join(lines) for numeral, lines in buckets.items()}
 
 
+def select_notes(section_text: str, keywords: tuple[str, ...] = NOTE_KEYWORDS) -> str:
+    """III 본문에서 키워드가 든 절·주석 블록만 이어 붙인다. 키워드당 첫 블록(연결 기준), 배당은 전부."""
+    lines = section_text.splitlines()
+    heads = [index for index, line in enumerate(lines) if _NOTE_HEADING.match(line)]
+    taken: set[str] = set()
+    blocks: list[str] = []
+    for position, start in enumerate(heads):
+        title = _NOTE_HEADING.match(lines[start]).group(2)
+        keyword = next((word for word in keywords if word in title), None)
+        if keyword is None or (keyword in taken and keyword != "배당"):
+            continue
+        end = heads[position + 1] if position + 1 < len(heads) else len(lines)
+        blocks.append("\n".join(lines[start:end]))
+        taken.add(keyword)
+    return "\n\n".join(blocks)
+
+
 def select_sections(text: str, sections: tuple[str, ...]) -> tuple[str, list[str]]:
-    """요청한 섹션만 이어 붙인다. 대제목을 하나도 못 찾으면 전체를 돌려주고 빈 목록으로 알린다."""
+    """요청한 섹션만 이어 붙인다. "III*"는 III의 핵심 주석만. 대제목을 하나도 못 찾으면 전체를 돌려주고
+    빈 목록으로 알린다."""
     found = split_sections(text)
     if not found:
         return text, []
-    chosen = [numeral for numeral in sections if numeral in found]
-    return "\n\n".join(found[numeral] for numeral in chosen), chosen
+    parts: list[str] = []
+    chosen: list[str] = []
+    for numeral in sections:
+        if numeral == NOTES_PSEUDO_SECTION and "III" in found:
+            notes = select_notes(found["III"])
+            if notes:
+                parts.append(notes)
+                chosen.append(numeral)
+        elif numeral in found:
+            parts.append(found[numeral])
+            chosen.append(numeral)
+    return "\n\n".join(parts), chosen
 
 
 def fetch_dart_report(stock_code: str, sections: tuple[str, ...] | None = DEFAULT_SECTIONS) -> tuple[SourceDocument, dict]:

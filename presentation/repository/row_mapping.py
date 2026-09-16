@@ -94,7 +94,6 @@ def detail_from_row(row: pd.Series) -> StockDetail:
         close=to_float(row_value(row, COL_CLOSE)),
         market_cap=to_float(row_value(row, COL_MARKET_CAP)),
         values=values,
-        qualitative=None,  # 정성 평가는 아직 분석 영역에 미구현
     )
 
 

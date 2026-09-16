@@ -25,8 +25,8 @@ class Tier:
 
 
 TIERS: dict[str, Tier] = {
-    # 삼성전자 실측: II 4만·VI 3.8만·X 0.8만 자 ≈ 8.6만 자. 128K 컨텍스트 엔드포인트에도 들어간다.
-    TIER_QUICK: Tier(TIER_QUICK, "claude-sonnet-5", "low", ("II", "VI", "X")),
+    # 삼성전자 실측: II 4만·VI 3.8만·X 0.8만 + III 핵심 주석 2.5만 ≈ 11만 자. III*가 Q7·Q8·Q9의 근거를 준다.
+    TIER_QUICK: Tier(TIER_QUICK, "claude-sonnet-5", "low", ("II", "VI", "X", "III*")),
     # III(재무·주석 27만 자)을 더해 Q7·Q8·Q9 근거까지. 삼성전자 기준 41만 자 ≈ 33.5만 토큰.
     TIER_DEEP: Tier(TIER_DEEP, "claude-opus-5", "high", ("I", "II", "III", "VI", "VII", "X", "XI")),
 }

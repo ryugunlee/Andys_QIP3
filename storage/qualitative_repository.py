@@ -12,7 +12,7 @@ import pandas as pd
 _GRADE_COLUMNS: list[str] = [
     "ticker", "graded_on", "observed_asof", "sector_group", "item_scores", "composite", "score",
     "multiplier", "decision", "veto_reasons", "cap_reasons", "watch_items", "valid_items",
-    "trend_flag", "valid_until", "observations_path",
+    "trend_flag", "tier", "model", "valid_until", "observations_path",
 ]
 
 
@@ -44,3 +44,14 @@ def get_latest_qualitative_grades(conn: duckdb.DuckDBPyConnection) -> pd.DataFra
         WHERE recency = 1
         """
     ).fetchdf().drop(columns=["recency"])
+
+
+def get_latest_qualitative_grade(conn: duckdb.DuckDBPyConnection, ticker: str) -> dict | None:
+    """한 종목의 가장 최근 판정 행을 dict로. 없으면 None. 상세 페이지 등급카드용."""
+    frame = conn.execute(
+        "SELECT * FROM qualitative_grades WHERE ticker = ? ORDER BY graded_on DESC LIMIT 1", [ticker]
+    ).fetchdf()
+    if frame.empty:
+        return None
+    record = frame.iloc[0].to_dict()
+    return {key: (None if pd.isna(value) else value) for key, value in record.items()}

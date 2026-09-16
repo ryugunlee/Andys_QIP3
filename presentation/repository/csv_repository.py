@@ -120,6 +120,9 @@ class CsvStockRepository:
         """CSV 폴백에는 그룹 요약 산출물이 없다 — 섹터 페이지는 안내 카드를 보여준다."""
         return []
 
+    def qualitative_grade_row(self, ticker: str, market: str) -> dict | None:
+        return None  # CSV 폴백에는 정성 판정 테이블이 없다
+
     def updated_date(self) -> str | None:
         self._all()  # 로드된 파일 목록 확보
         if not self._loaded_files:

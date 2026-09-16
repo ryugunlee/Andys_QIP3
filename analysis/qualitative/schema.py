@@ -59,6 +59,8 @@ class ObservationSet:
     sector_group: str | None
     observations: list[Observation]
     source_title: str = ""
+    tier: str | None = None  # quick | deep — 어느 티어로 채점했나 (사람이 직접 채우면 None)
+    model: str | None = None  # 채점 모델 id
 
     def by_code(self) -> dict[str, Observation]:
         return {observation.item: observation for observation in self.observations}
@@ -98,4 +100,6 @@ def load_observations(path: Path) -> ObservationSet:
         sector_group=payload.get("sector_group"),
         observations=observations,
         source_title=payload.get("source_title", ""),
+        tier=payload.get("tier"),
+        model=payload.get("model"),
     )
