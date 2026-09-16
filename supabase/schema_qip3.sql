@@ -140,7 +140,68 @@ as $$
     );
 $$;
 
+-- ── 요청 기록 보호: INSERT 트리거 ─────────────────────────────
+-- 아래 RLS 정책만으로는 두 가지를 막지 못한다(2026-09-16 로컬 Postgres에서 재현):
+--   1) 동시 요청 — 두 요청이 서로의 기록을 보기 전에 각자 "아직 0건"으로 판정해 상한을 넘긴다.
+--   2) 시각 위조 — PostgREST로 직접 INSERT하며 created_at을 과거로 넣으면 오늘 사용량에서 빠진다.
+-- 그래서 판정을 트리거로 옮기고, 같은 사람의 요청을 잠금으로 한 줄로 세운 뒤 센다.
+create or replace function public.qip_guard_job_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    caller        uuid := auth.uid();
+    allowed_tier  text;
+    limit_per_day integer;
+    used          integer;
+begin
+    if caller is null then
+        raise exception '로그인이 필요합니다.' using errcode = '42501';
+    end if;
+
+    -- 같은 사람의 요청끼리만 기다린다(다른 사람의 요청은 막지 않는다). 트랜잭션이 끝나면 자동으로 풀린다.
+    perform pg_advisory_xact_lock(hashtext('qip_qualitative_jobs'), hashtext(caller::text));
+
+    -- 요청자와 시각은 서버가 정한다. 클라이언트가 보낸 값은 버린다.
+    new.requested_by := caller;
+    new.created_at := now();
+
+    if not coalesce((select enabled from public.qip_runtime_flags where id), false) then
+        raise exception '정성 평가 실행이 일시 중지되어 있습니다.' using errcode = '42501';
+    end if;
+
+    allowed_tier := public.qip_max_tier();
+    if allowed_tier is null or (allowed_tier = 'quick' and new.tier <> 'quick') then
+        raise exception '이 티어를 실행할 권한이 없습니다.' using errcode = '42501';
+    end if;
+
+    limit_per_day := public.qip_daily_limit();
+    if limit_per_day is not null then
+        -- 반드시 잠금을 잡은 뒤에 센다. plpgsql의 각 문장은 새 스냅샷으로 실행되므로,
+        -- 먼저 들어와 커밋된 요청이 여기서 보인다(STABLE 함수인 qip_used_today()는 그렇지 않다).
+        select count(*) into used
+        from public.qip_qualitative_jobs
+        where requested_by = caller and created_at >= date_trunc('day', now());
+        if used >= limit_per_day then
+            raise exception '오늘 실행 한도를 모두 썼습니다. (%/%건)', used, limit_per_day
+                using errcode = '42501';
+        end if;
+    end if;
+
+    return new;
+end;
+$$;
+
+drop trigger if exists qip_guard_job_insert on public.qip_qualitative_jobs;
+create trigger qip_guard_job_insert
+    before insert on public.qip_qualitative_jobs
+    for each row execute function public.qip_guard_job_insert();
+
 -- ── 행 수준 보안 ──────────────────────────────────────────────
+-- 모든 정책은 로그인한 사용자(authenticated)에게만 적용한다. 비로그인(anon)에게는 정책이 없으므로
+-- RLS가 전부 막는다.
 alter table public.qip_permissions enable row level security;
 alter table public.qip_runtime_flags enable row level security;
 alter table public.qip_qualitative_jobs enable row level security;
@@ -149,18 +210,21 @@ alter table public.qip_qualitative_jobs enable row level security;
 drop policy if exists "admins manage qip permissions" on public.qip_permissions;
 create policy "admins manage qip permissions" on public.qip_permissions
     for all
+    to authenticated
     using (public.is_admin())
     with check (public.is_admin());
 
--- 전역 스위치는 누구나 읽고(화면에 "실행 중지 중" 안내를 띄우려면 필요) 관리자만 끈다.
+-- 전역 스위치는 로그인한 사람이면 읽고(화면에 "실행 중지 중" 안내를 띄우려면 필요) 관리자만 끈다.
 drop policy if exists "read qip flags" on public.qip_runtime_flags;
 create policy "read qip flags" on public.qip_runtime_flags
     for select
+    to authenticated
     using (true);
 
 drop policy if exists "admins update qip flags" on public.qip_runtime_flags;
 create policy "admins update qip flags" on public.qip_runtime_flags
     for update
+    to authenticated
     using (public.is_admin())
     with check (public.is_admin());
 
@@ -168,27 +232,32 @@ create policy "admins update qip flags" on public.qip_runtime_flags
 drop policy if exists "own or all qip jobs" on public.qip_qualitative_jobs;
 create policy "own or all qip jobs" on public.qip_qualitative_jobs
     for select
+    to authenticated
     using (requested_by = auth.uid() or public.is_admin());
 
--- 핵심 정책: 요청을 만들 수 있는 조건 자체가 권한·티어·일일 상한·전역 스위치다.
--- Edge Function의 사전 검사는 친절한 오류 메시지를 위한 것이고, 실제 방어는 여기다.
+-- 권한·티어·상한의 1차 판정은 위 트리거가 하고, 이 정책은 한 번 더 확인하는 두 번째 벽이다.
 drop policy if exists "request within quota" on public.qip_qualitative_jobs;
 create policy "request within quota" on public.qip_qualitative_jobs
     for insert
+    to authenticated
     with check (requested_by = auth.uid() and public.qip_can_request(tier));
 
--- 실행 링크를 나중에 채워 넣는 UPDATE만 자기 행에 허용한다(Edge Function이 dispatch 직후 수행).
+-- 요청 기록은 한 번 만들면 누구도 고치거나 지우지 못한다(UPDATE·DELETE 정책 없음).
+-- 예전 버전에 있던 UPDATE 정책은 자기 기록의 created_at을 과거로 바꿔 일일 상한을 초기화하는 구멍이었다
+-- (Edge Function은 UPDATE를 쓰지 않는다). 이미 실행한 DB에서도 지워지도록 drop만 남긴다.
 drop policy if exists "annotate own qip job" on public.qip_qualitative_jobs;
-create policy "annotate own qip job" on public.qip_qualitative_jobs
-    for update
-    using (requested_by = auth.uid())
-    with check (requested_by = auth.uid());
 
 -- ── 접근 권한 ─────────────────────────────────────────────────
--- 비로그인(anon)에게는 아무것도 주지 않는다. 권한 판정 함수도 로그인한 사람만 부른다.
+-- Supabase는 public 스키마에 새로 만든 테이블·함수에 anon·authenticated 권한을 넓게 준다.
+-- RLS가 막고 있더라도, 쓰지 않는 권한은 먼저 모두 거두고 필요한 것만 다시 준다.
+revoke all on public.qip_permissions, public.qip_runtime_flags, public.qip_qualitative_jobs
+    from anon, authenticated;
 grant select, insert, update, delete on public.qip_permissions to authenticated;
 grant select, update on public.qip_runtime_flags to authenticated;
-grant select, insert, update on public.qip_qualitative_jobs to authenticated;
-grant usage, select on all sequences in schema public to authenticated;
-grant execute on function public.qip_my_access() to authenticated;
-grant execute on function public.qip_can_request(text) to authenticated;
+grant select, insert on public.qip_qualitative_jobs to authenticated;
+
+revoke execute on function
+    public.qip_max_tier(), public.qip_daily_limit(), public.qip_used_today(),
+    public.qip_can_request(text), public.qip_my_access(), public.qip_guard_job_insert()
+    from public, anon;
+grant execute on function public.qip_my_access(), public.qip_can_request(text) to authenticated;

@@ -219,16 +219,26 @@ function parseRequest(body: unknown): DispatchRequest | string {
   return { ticker, tier, provider };
 }
 
-/** 요청 이력을 남긴다. 실패하면 그 자체가 권한·상한 위반이다(INSERT 정책이 막은 것). */
-async function recordJob(caller: Caller, request: DispatchRequest): Promise<Record<string, unknown> | null> {
+type RecordResult = { job: Record<string, unknown> } | { refusal: string };
+
+/**
+ * 요청 이력을 남긴다. 거절되면 그 자체가 권한·상한 위반이다 — DB의 INSERT 트리거
+ * (qip_guard_job_insert)가 같은 사람의 요청을 잠금으로 줄 세운 뒤 판정하므로, 위의 사전 검사를
+ * 동시에 통과한 요청도 여기서 걸린다. 트리거가 남긴 한국어 사유를 그대로 돌려준다.
+ */
+async function recordJob(caller: Caller, request: DispatchRequest): Promise<RecordResult> {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/qip_qualitative_jobs`, {
     method: "POST",
     headers: { ...supabaseHeaders(caller), Prefer: "return=representation" },
     body: JSON.stringify([{ ...request, run_url: workflowRunsUrl() }]),
   });
-  if (!response.ok) return null;
-  const rows = await response.json();
-  return rows[0] ?? null;
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    const reason = typeof payload?.message === "string" ? payload.message : "";
+    return { refusal: reason || "요청이 거부되었습니다. 권한 또는 실행 한도를 확인해 주세요." };
+  }
+  const job = Array.isArray(payload) ? payload[0] : null;
+  return job ? { job } : { refusal: "요청 기록을 남기지 못했습니다." };
 }
 
 async function handlePost(caller: Caller, body: unknown): Promise<Response> {
@@ -242,21 +252,22 @@ async function handlePost(caller: Caller, body: unknown): Promise<Response> {
   if (refusal !== null) return fail(refusal.status, refusal.message);
 
   // 이력을 먼저 남긴다. 순서를 뒤집으면 워크플로는 돌았는데 기록이 없어 상한을 우회할 수 있다.
-  const job = await recordJob(caller, parsed);
-  if (job === null) {
-    return fail(403, "요청이 거부되었습니다. 권한 또는 실행 한도를 확인해 주세요.");
-  }
+  const recorded = await recordJob(caller, parsed);
+  if ("refusal" in recorded) return fail(403, recorded.refusal);
 
   const error = await dispatchWorkflow(parsed);
   if (error !== null) return fail(502, error);
 
-  return json({ job, access: { ...access, used_today: access.used_today + 1 } });
+  return json({ job: recorded.job, access: { ...access, used_today: access.used_today + 1 } });
 }
 
 async function handleGet(caller: Caller): Promise<Response> {
   const access = await fetchAccess(caller);
   if (access === null) return fail(401, "로그인이 필요합니다.");
-  return json({ access, runs: await recentRuns() });
+  // 실행 권한이 없는 계정(PF Manager 사용자 등)에게는 실행 목록을 주지 않는다. 볼 이유가 없고,
+  // 새로고침을 반복해 GitHub 토큰의 API 호출 한도를 소모시키는 길도 막는다.
+  const runs = access.max_tier === null ? [] : await recentRuns();
+  return json({ access, runs });
 }
 
 Deno.serve(async (request: Request): Promise<Response> => {

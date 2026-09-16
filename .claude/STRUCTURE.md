@@ -960,8 +960,15 @@ PFmanager의 `schema.sql` 위에 얹는 추가분. QIP3가 만드는 것은 전�
 - `qip_my_access()`: 화면·함수가 로그인 직후 한 번 불러 받는 상태 jsonb
   (`is_admin`/`max_tier`/`daily_limit`/`used_today`/`enabled`/`email`). RLS는 조용히 막기만 하므로,
   사람에게 보여줄 이유는 여기서 만든다.
-- RLS: 권한 테이블은 관리자만(`is_admin()`), jobs는 자기 것만(관리자는 전부), 전역 스위치는
-  읽기는 모두·쓰기는 관리자.
+- `qip_guard_job_insert()` + BEFORE INSERT 트리거: **일일 상한의 실제 판정자.** 같은 사람의 요청을
+  `pg_advisory_xact_lock`으로 줄 세운 뒤(동시 요청 경합 차단) 새 스냅샷으로 오늘 건수를 세고, 요청자·시각은
+  클라이언트 값을 버리고 `auth.uid()`·`now()`로 덮는다(과거 날짜 위조 차단). 거절 사유는 한국어 예외
+  메시지(errcode 42501 → PostgREST 403)로 남기며 Edge Function이 그대로 화면에 전달한다.
+- RLS: 모든 정책이 `to authenticated`. 권한 테이블은 관리자만(`is_admin()`), jobs는 SELECT(자기 것, 관리자는
+  전부)·INSERT만 — **UPDATE·DELETE 정책 없음**(예전 UPDATE 정책은 created_at을 고쳐 상한을 초기화하는 구멍이라
+  제거, 이미 실행한 DB에서도 지워지도록 `drop policy`만 남김). 전역 스위치는 읽기는 로그인 사용자·쓰기는 관리자.
+- 권한: Supabase가 새 테이블·함수에 anon·authenticated로 넓게 주는 기본 권한을 `revoke all`로 거두고
+  필요한 것만 다시 준다. qip_ 함수는 `public`·`anon`에서 실행 권한을 뺀다.
 
 ## supabase/functions/qualitative-dispatch/index.ts (Deno Edge Function)
 GitHub PAT를 숨기는 "서버 한 조각". 정적 사이트에 PAT를 실으면 누구나 워크플로를 돌릴 수 있으므로
@@ -972,7 +979,9 @@ GitHub PAT를 숨기는 "서버 한 조각". 정적 사이트에 PAT를 실으�
   `dispatchWorkflow`(GitHub 204) 순. 이력을 먼저 남기는 이유는 순서를 뒤집으면 실행은 됐는데
   기록이 없어 상한을 우회할 수 있기 때문이다.
 - `GET /`: `qip_my_access()` + `recentRuns()`(GitHub Actions 실행 목록 10건)를 한 번에 돌려준다.
-  화면의 권한 표시와 '최근 실행'이 이 한 번의 호출로 채워진다.
+  화면의 권한 표시와 '최근 실행'이 이 한 번의 호출로 채워진다. 실행 권한이 없는 계정에는 목록을 빈 배열로
+  준다(PAT의 GitHub API 한도 소모 방지).
+- `recordJob`은 DB가 거절하면 `{refusal}`로 트리거의 사유 메시지를 돌려주고, `handlePost`가 403으로 전달한다.
 - 시크릿: `GH_DISPATCH_TOKEN`(fine-grained PAT, Actions: Read and write 하나만),
   `GH_REPO`(`owner/repo`), `ALLOWED_ORIGIN`(CORS).
 - `corsHeaders()`: `authorization, apikey, content-type, x-client-info`를 허용한다. 브라우저가 싣는 헤더가
