@@ -85,6 +85,8 @@ def pipeline_ratio(pipelines: list[dict] | None) -> float | None:
         return None
     total = 0.0
     for entry in pipelines:
+        if entry.get("revenue_ratio") is None:
+            continue
         stage = min(max(int(entry["stage"]), PIPELINE_STAGE_MIN), PIPELINE_STAGE_MAX)
         total += w.PIPELINE_STAGE_COEFFICIENTS[stage] * float(entry["revenue_ratio"])
     return total

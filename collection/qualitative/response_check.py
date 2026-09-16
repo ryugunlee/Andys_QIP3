@@ -38,6 +38,10 @@ def validate_items(payload: dict, schema: dict) -> tuple[dict, list[str]]:
     replaced: list[str] = []
     for code, item_schema in schema["properties"].items():
         item = payload.get(code) if isinstance(payload, dict) else None
+        if isinstance(item, dict) and isinstance(item.get("raw"), dict):
+            # 항목 계약에 필드가 추가돼도 예전 응답을 재검증할 수 있게, 빠진 raw 필드는 null로 채운다.
+            for field in item_schema["properties"]["raw"]["properties"]:
+                item["raw"].setdefault(field, None)
         try:
             jsonschema.validate(item, item_schema)
             repaired[code] = item

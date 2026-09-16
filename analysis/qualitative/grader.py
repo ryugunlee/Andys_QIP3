@@ -10,7 +10,10 @@ from dataclasses import dataclass
 import analysis.qualitative.weights as w
 from analysis.qualitative.rubric import recompute_score, veto_reasons_for_governance
 from analysis.qualitative.schema import EVIDENCE_GRADE_WEAK_MIN, STATUS_WEAK, Observation, ObservationSet
-from collection.qualitative.items import ITEM_CODES, ITEMS_BY_CODE
+from collection.qualitative.items import BASIS_ESTIMATED, BASIS_FIELD, ITEM_CODES, ITEMS_BY_CODE
+
+ORDER_BOOK_ITEM: str = "Q1"
+ORDER_BOOK_FIELD: str = "order_book_business"
 
 
 @dataclass
@@ -39,23 +42,33 @@ def grade_of(score: float) -> str:
     return next(grade for threshold, grade in w.GRADE_BANDS if score >= threshold)
 
 
-def _is_weak(observation: Observation) -> bool:
+def _is_weak(observation: Observation, recomputed: bool) -> bool:
     if observation.status == STATUS_WEAK:
+        return True
+    # 재계산에 쓴 수치가 공시 없는 추정이면 점수를 B 앵커 위로 올리지 않는다 (문서 2절).
+    if recomputed and (observation.raw or {}).get(BASIS_FIELD) == BASIS_ESTIMATED:
         return True
     graded = [evidence.grade for evidence in observation.evidence]
     return bool(graded) and min(graded) >= EVIDENCE_GRADE_WEAK_MIN
 
 
+def _not_applicable(code: str, observation: Observation) -> bool:
+    """Q1은 수주 개념이 없는 업종이면 '낮음'이 아니라 '해당 없음' — 분모에서 뺀다 (문서 2절)."""
+    return code == ORDER_BOOK_ITEM and (observation.raw or {}).get(ORDER_BOOK_FIELD) is False
+
+
 def score_item(code: str, observation: Observation | None) -> ItemResult:
-    """항목 점수. 결측·미조사·근거 없음은 None. raw 수치가 있으면 재계산, weak는 상한."""
+    """항목 점수. 결측·미조사·근거 없음·해당 없음은 None. raw 수치가 있으면 재계산, weak는 상한."""
     empty = ItemResult(code, None, None, False, False)
     if observation is None or observation.is_excluded() or not observation.rationale.strip():
+        return empty
+    if _not_applicable(code, observation):
         return empty
     recomputed = recompute_score(code, observation.raw)
     score = recomputed if recomputed is not None else observation.score
     if score is None:
         return empty
-    weak = _is_weak(observation)
+    weak = _is_weak(observation, recomputed is not None)
     if weak:
         score = min(float(score), w.WEAK_SCORE_CAP)
     score = min(max(float(score), w.SCORE_MIN), w.SCORE_MAX)

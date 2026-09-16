@@ -12,6 +12,9 @@
           III(재무·주석)까지 읽는다 — 티어 정의는 collection/qualitative/tiers.py.
     python grade_qualitative.py grade 005930 [--market KOSPI] [--no-save]
         → 등급카드 출력(★ 플래그 포함), qualitative_grades 테이블에 저장.
+    python grade_qualitative.py revalidate 005930 원문.txt 응답.response.json --asof 2026-03-10
+        → 저장해 둔 LLM 원본 응답을 현재 규칙(스키마·인용 대조·어휘)으로 다시 검증해 관측값 JSON을 만든다.
+          LLM을 다시 부르지 않는다 — 규칙·프롬프트를 고치며 반복할 때 쓴다.
 
 추출 단계는 정량 DB를 읽지 않는다(주가·정량 점수를 보지 않는다 — `.claude/정성 평가 규칙.md` 6절).
 DB는 grade 단계에서 ★ 플래그 계산과 저장에만 연다. ANTHROPIC_API_KEY·DART_API_KEY·EDGAR_USER_AGENT는
@@ -83,16 +86,17 @@ def _parse_items(text: str | None) -> tuple[str, ...]:
     return codes
 
 
-def _item_label(code: str, result) -> str:
+def _item_label(code: str, result, observation) -> str:
     title = ITEMS_BY_CODE[code].short
     if result.score is None:
-        return f"{code} {title} -"
+        not_applicable = observation is not None and (observation.raw or {}).get("order_book_business") is False
+        return f"{code} {title} {'해당없음' if not_applicable else '-'}"
     mark = "*" if result.weak else ""
     return f"{code} {title} {result.grade}({result.score:.0f}){mark}"
 
 
-def _item_lines(result: GradeResult) -> list[str]:
-    labels = [_item_label(code, item) for code, item in result.items.items()]
+def _item_lines(result: GradeResult, by_code: dict) -> list[str]:
+    labels = [_item_label(code, item, by_code.get(code)) for code, item in result.items.items()]
     return [
         "  ".join(labels[start:start + _ITEMS_PER_CARD_LINE])
         for start in range(0, len(labels), _ITEMS_PER_CARD_LINE)
@@ -117,7 +121,8 @@ def format_grade_card(
         f"[식별]   {observation_set.ticker} / 섹터군 {observation_set.sector_group or '미지정'} / "
         f"관측 {observation_set.asof} / 판정 {graded_on} / 유효 {valid_until}",
     ]
-    item_lines = _item_lines(result)
+    by_code = observation_set.by_code()
+    item_lines = _item_lines(result, by_code)
     lines.append(f"[항목]   {item_lines[0]}")
     lines.extend(f"         {line}" for line in item_lines[1:])
     if result.veto_reasons:
@@ -128,7 +133,6 @@ def format_grade_card(
         caps = f" (상한: {', '.join(result.cap_reasons)})" if result.cap_reasons else ""
         lines.append(f"[종합]   {result.composite} ({result.score})  배수 {result.multiplier:.2f}{caps} → {result.decision}")
         lines.append("         배수는 집행률과 곱하지 않는다 — 판단 재료로 나란히 본다   [결격] 통과")
-    by_code = observation_set.by_code()
     watch = [
         f"{code} {ITEMS_BY_CODE[code].short} {result.items[code].grade} — {by_code[code].rationale}"
         for code in result.watch_items
@@ -230,6 +234,17 @@ def command_extract(args: argparse.Namespace) -> None:
     print(f"[qualitative] 관측값 저장: {path} (채점 {scored}개 / 결측·미조사 {len(observation_set.observations) - scored}개)")
 
 
+def command_revalidate(args: argparse.Namespace) -> None:
+    document = load_source(Path(args.source))
+    saved_payload = json.loads(Path(args.response).read_text(encoding="utf-8"))
+    observation_set = extract_observations(
+        lambda **_: saved_payload, document, args.ticker, args.asof, args.sector_group, items=_parse_items(args.items),
+    )
+    path = save_observations(observation_set)
+    scored = sum(1 for obs in observation_set.observations if obs.score is not None)
+    print(f"[qualitative] 재검증 저장: {path} (채점 {scored}개 / 결측·미조사 {len(observation_set.observations) - scored}개)")
+
+
 def command_grade(args: argparse.Namespace) -> None:
     path = observation_path(args.ticker)
     observation_set = load_observations(path)
@@ -281,6 +296,15 @@ def build_parser() -> argparse.ArgumentParser:
     extract.add_argument("--sector-group", choices=SECTOR_GROUP_CHOICES, default=None)
     extract.add_argument("--items", default=None, help="채점할 항목 코드만 (예: Q1Q4Q6 또는 146)")
     extract.set_defaults(handler=command_extract)
+
+    revalidate = commands.add_parser("revalidate", help="저장된 LLM 원본 응답을 현재 규칙으로 재검증 (재호출 없음)")
+    revalidate.add_argument("ticker")
+    revalidate.add_argument("source", help="그 응답을 만들 때 쓴 원문 파일")
+    revalidate.add_argument("response", help="qualitative/sources/<티커>_<기준일>.response.json")
+    revalidate.add_argument("--asof", required=True)
+    revalidate.add_argument("--sector-group", choices=SECTOR_GROUP_CHOICES, default=None)
+    revalidate.add_argument("--items", default=None)
+    revalidate.set_defaults(handler=command_revalidate)
 
     grade = commands.add_parser("grade", help="관측값 JSON을 판정해 등급카드 출력·저장")
     grade.add_argument("ticker")

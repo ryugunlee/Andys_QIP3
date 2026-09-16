@@ -56,6 +56,17 @@ DIRECTION_VALUES: tuple[str, ...] = ("shrinking", "flat", "growing")
 REGULATION_VALUES: tuple[str, ...] = ("headwind", "uncertain", "favorable")
 SURVIVAL_VALUES: tuple[str, ...] = ("extinction_path", "uncertain", "no_extinction_path")
 SUBSTITUTABILITY_VALUES: tuple[str, ...] = ("low", "mid", "high")
+# 재계산 항목(Q1·Q6·Q8·Q9)의 수치가 어디서 왔는가. 추정의 강도에 따라 판정기가 다르게 다룬다(문서 2절).
+BASIS_DISCLOSED: str = "disclosed"
+BASIS_BOUNDED: str = "bounded"
+BASIS_ESTIMATED: str = "estimated"
+BASIS_VALUES: tuple[str, ...] = (BASIS_DISCLOSED, BASIS_BOUNDED, BASIS_ESTIMATED)
+BASIS_FIELD: str = "basis"
+_BASIS_DESCRIPTION: str = (
+    "위 수치의 근거 강도: disclosed=공시에 그 수치가 그대로 있음 / bounded=공시된 상한·하한으로 확정되는 "
+    "보수적 값(예: '5대 매출처 합산 15%' → 최대 고객 0.15) / estimated=공시 없이 추정. "
+    "bounded면 반드시 보수적인 쪽 값을 쓴다"
+)
 
 _PIPELINES_FIELD: dict = {
     "type": ["array", "null"],
@@ -65,7 +76,8 @@ _PIPELINES_FIELD: dict = {
         "properties": {
             "name": {"type": "string"},
             "stage": {"type": "integer", "description": "확실성 단계 1(구상·MOU)~5(양산)"},
-            "revenue_ratio": {"type": "number", "description": "완전 가동 시 예상 매출 ÷ 현매출"},
+            # 규모는 공시에 없는 경우가 대부분이라(삼성전자 실측) null을 허용한다. 단계만으로도 판정 근거가 된다.
+            "revenue_ratio": {"type": ["number", "null"], "description": "완전 가동 시 예상 매출 ÷ 현매출 (공시 없으면 null)"},
         },
         "required": ["name", "stage", "revenue_ratio"],
         "additionalProperties": False,
@@ -81,8 +93,13 @@ ITEM_SPECS: tuple[ItemSpec, ...] = (
         "0.2배 미만, 또는 MOU·구두 수준뿐(구속력 없음)",
         "사업보고서 수주상황·주요계약, 공급계약 공시 / 10-K RPO·Backlog. 자산형은 여신 건전성으로 치환",
         {
+            "order_book_business": _boolean(
+                "사업 성격상 수주잔고·장기공급계약·구독매출이 존재하는 업종인가(조선·건설·방산·장비·플랜트·SI·구독형 등). "
+                "메모리·가전·소비재처럼 스팟 판매 구조라 수주 개념이 없으면 false — 그 경우 이 항목은 채점하지 않는다"
+            ),
             "committed_to_revenue": _number("(수주잔고 + 1년 내 확정 반복매출) ÷ 연매출"),
             "binding_contracts": _boolean("확정분이 구속력 있는 계약(공급계약·수주 공시)에 근거하는가"),
+            BASIS_FIELD: _enum(_BASIS_DESCRIPTION, BASIS_VALUES),
         },
     ),
     ItemSpec(
@@ -153,6 +170,7 @@ ITEM_SPECS: tuple[ItemSpec, ...] = (
             "spinoff_relisting": _boolean("핵심 사업 물적분할 후 중복상장 이력"),
             "executive_fraud_5y": _boolean("최근 5년 지배주주·경영진 배임·횡령·분식 확정 판결 또는 기소 진행"),
             "unfair_merger_ratio": _boolean("소액주주에 불리한 합병·분할 비율 강행 이력"),
+            BASIS_FIELD: _enum(_BASIS_DESCRIPTION, BASIS_VALUES),
         },
     ),
     ItemSpec(
@@ -178,6 +196,7 @@ ITEM_SPECS: tuple[ItemSpec, ...] = (
         {
             "top_customer_sales_share": _number("최대 고객 매출 비중 (0~1)"),
             "top_segment_op_income_share": _number("최대 세그먼트 영업이익 비중 (0~1)"),
+            BASIS_FIELD: _enum(_BASIS_DESCRIPTION, BASIS_VALUES),
         },
     ),
     ItemSpec(
@@ -188,8 +207,11 @@ ITEM_SPECS: tuple[ItemSpec, ...] = (
         "50% 이상이고 미헤지",
         "지역별 매출·생산 설비 소재, 금융위험관리 주석(환위험) / 10-K Item 7A",
         {
-            "top_country_share": _number("단일 국가 매출 또는 생산 비중 중 큰 값 (0~1)"),
+            "top_country_share": _number(
+                "단일 **국가** 매출 또는 생산 비중 중 큰 값 (0~1). 국가별 수치가 없고 대륙·권역(미주·유럽)만 있으면 null — 대륙값을 넣지 않는다"
+            ),
             "fx_hedged": _boolean("자연 헤지 구조이거나 헤지 비율이 유의미한가"),
+            BASIS_FIELD: _enum(_BASIS_DESCRIPTION, BASIS_VALUES),
         },
     ),
 )

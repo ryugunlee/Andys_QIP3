@@ -257,6 +257,8 @@ FRED_API_KEY)를 읽는다. GitHub Actions에서는 `.env` 없이 리포지토�
 판정(수치 재계산·종합·배수)은 `analysis/qualitative/`. 프로젝트의 유일한 LLM 의존 지점.
 - `items.py`: 9항목 계약 `ItemSpec`(code/title/short/question/anchor_s·b·f/sources/fields). 앵커 문구와
   raw 필드명의 단일 소스 — 프롬프트·스키마·루브릭이 전부 여기서 읽는다. `ITEM_CODES`, `ITEMS_BY_CODE`.
+  Q1의 `order_book_business`(false면 판정기가 해당 없음 처리), 재계산 항목(Q1·Q6·Q8·Q9)의 `basis`
+  (`BASIS_DISCLOSED`/`BOUNDED`/`ESTIMATED` — estimated면 판정기가 weak 상한 적용).
 - `sources.py`: `load_source(path)` → `SourceDocument(title, text|pdf_base64)`. txt/md/html은 본문을
   보관해 인용 대조가 가능하고, pdf는 document 블록으로만 넘긴다(대조 불가, PROBLEMS #35).
   `html_to_text(markup)`(DART XML·EDGAR HTML 공용), `save_source_text(ticker, stamp, text)` →
@@ -283,14 +285,16 @@ FRED_API_KEY)를 읽는다. GitHub Actions에서는 `.env` 없이 리포지토�
   (공통 항목 1벌의 배열, raw는 JSON 문자열)를 쓰고, 그래도 문법 한도에 걸리면 스키마를 프롬프트에 넣는
   모드로 자동 재시도한다. 거부·토큰 상한·인증 실패·JSON 아님은 `ExtractionError`.
 - `compat_client.py`: `create_compat_client() → (openai.OpenAI, model)` / `compat_extract_structured(client,
-  model, system, document, request_text, schema)` — OpenAI 호환 엔드포인트(DeepSeek 등) JSON 모드. 환경변수
-  `COMPAT_LLM_BASE_URL`/`COMPAT_LLM_API_KEY`/`COMPAT_LLM_MODEL`. PDF 불가, 컨텍스트 초과는 400을 그대로
-  `CompatError`로. **실행 검증 못 함**(키 없음, PROBLEMS #37).
+  model, system, document, request_text, schema)` — OpenAI 호환 엔드포인트 JSON 모드. 환경변수
+  `COMPAT_LLM_BASE_URL`/`COMPAT_LLM_API_KEY`/`COMPAT_LLM_MODEL`, 또는 **DeepSeek 프리셋**(`DEEPSEEK_API_KEY`만
+  있으면 api.deepseek.com의 `deepseek-flash`, thinking을 `extra_body`로 끔, 빈 응답 1회 재시도). 삼성전자
+  실측: 입력 6만·출력 5천 토큰 ≈ $0.02. PDF 불가, 컨텍스트 초과는 400을 `CompatError`로.
 - `prompts.py`: 고정 `SYSTEM_PROMPT`(앵커 채점·근거 필수·없음 허용·인용 원문 그대로·주가 정보 금지),
   `build_request(items)`(배열 필드는 원소 객체 형태를 글로 명시), `build_schema(items)`(검증용 전체 스키마,
   항목 코드 키·raw 타입 못박음), `build_output_schema(items)`(API 출력용 배열 스키마).
 - `response_check.py`: `normalize_payload(payload)`(observations 배열 → 코드 dict, item 키 제거, raw JSON
-  문자열 복원) / `validate_items(payload, schema)`(항목별 jsonschema 검사, 어긋난 항목만 결측). provider 공통.
+  문자열 복원) / `validate_items(payload, schema)`(항목별 jsonschema 검사, 어긋난 항목만 결측; 계약에 새로
+  생긴 raw 필드는 null로 채워 예전 응답도 재검증 가능). provider 공통.
 - `lexicon_filter.py`: 부록 A 자기참조 어휘 `BLOCKED_TERMS`, `find_blocked_terms(text)`.
 - `extractor.py`: `extract_observations(call, document, ticker, asof, sector_group, items)` — provider 중립.
   `call`은 `functools.partial`로 묶은 Anthropic/호환 호출 함수. **LLM 1회 호출** → 원본 응답을
@@ -469,6 +473,7 @@ git에 커밋하지 않는다.
 
 # grade_qualitative.py (진입점)
 - 정성 평가 명령줄. `template <티커> [--sector-group]`(수동 입력용 빈 관측값 JSON) /
+  `revalidate <티커> <원문> <원본응답.json> --asof`(저장된 LLM 응답을 현재 규칙으로 재검증, 재호출 없음) /
   `extract <티커> [원문파일] [--asof] [--sector-group] [--items Q1Q4Q6] [--sections II,VI] [--all-sections]
   [--force]`(LLM 1회 호출 채점) / `grade <티커> [--market] [--no-save]`(등급카드 출력 + ★ 플래그 +
   `qualitative_grades` 저장).
@@ -479,7 +484,9 @@ git에 커밋하지 않는다.
   (600,000자)를 넘으면 `--force` 없이는 멈춘다 — 대형주 사업보고서 전체를 실수로 보내는 비용 사고 방지.
   추출 단계는 정량 DB를 읽지 않는다(주가·정량 점수를 보지 않는 6절 규칙). grade는 DB 파일이 있을 때만
   열어 `compute_trend_flag`와 저장을 하고, 없으면 카드만 출력한다.
-  `format_grade_card()`는 7절 양식(항목 등급·종합·배수·주의 항목·★·미조사). `*`는 weak 항목.
+  `format_grade_card()`는 7절 양식(항목 등급·종합·배수·주의 항목·★·미조사). `*`는 weak 항목, Q1이 수주형
+  사업이 아니면 `해당없음`.
+- 파일럿 보고서는 `qualitative/reports/<티커>_<날짜>.md`(git 추적). 첫 보고서: 삼성전자 2026-09-16.
   `load_dotenv()`로 ANTHROPIC_API_KEY를 읽는다.
 
 

@@ -7,9 +7,10 @@ Anthropic 호출(`llm_client.py`)과 같은 계약을 지킨다: (system, docume
 - PDF 문서 블록이 없다. 원문은 텍스트로만 넣는다.
 - 컨텍스트가 128K 안팎인 경우가 많다 — 길이 초과는 엔드포인트가 400으로 알려주므로 그대로 올린다.
 
-설정은 환경변수 세 개: COMPAT_LLM_BASE_URL(예: https://api.deepseek.com), COMPAT_LLM_API_KEY,
-COMPAT_LLM_MODEL(예: deepseek-chat). 이름을 provider 중립으로 둔 이유는 DeepSeek 외 다른 호환
-엔드포인트로 바꿀 때 코드를 건드리지 않기 위해서다.
+설정은 환경변수 세 개: COMPAT_LLM_BASE_URL, COMPAT_LLM_API_KEY, COMPAT_LLM_MODEL. 이름을 provider
+중립으로 둔 이유는 DeepSeek 외 다른 호환 엔드포인트로 바꿀 때 코드를 건드리지 않기 위해서다.
+DeepSeek 프리셋: 세 개가 없고 DEEPSEEK_API_KEY만 있으면 https://api.deepseek.com 의 deepseek-flash를
+쓴다(2026-09 실측: 1M 컨텍스트, JSON 출력 지원, 입력 $0.30/출력 $1.2 per 1M — Sonnet 5의 약 1/7).
 """
 
 import json
@@ -22,10 +23,17 @@ from collection.qualitative.sources import SourceDocument
 ENV_BASE_URL: str = "COMPAT_LLM_BASE_URL"
 ENV_API_KEY: str = "COMPAT_LLM_API_KEY"
 ENV_MODEL: str = "COMPAT_LLM_MODEL"
+ENV_DEEPSEEK_KEY: str = "DEEPSEEK_API_KEY"
+DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+DEEPSEEK_DEFAULT_MODEL: str = "deepseek-flash"
 REQUEST_TIMEOUT_SECONDS: float = 600.0
 MAX_OUTPUT_TOKENS: int = 8000
 # JSON 모드는 결정적 출력이 목적이라 온도를 0으로 둔다.
 TEMPERATURE: float = 0.0
+# DeepSeek은 thinking이 기본 켜짐(effort high)이라 quick 티어에서는 끈다. 다른 엔드포인트에는 보내지 않는다.
+DEEPSEEK_EXTRA_BODY: dict = {"thinking": {"type": "disabled"}}
+# DeepSeek 문서가 "JSON 모드에서 가끔 빈 content"를 경고한다 — 한 번 더 시도한다.
+EMPTY_RETRY_LIMIT: int = 1
 
 _JSON_ONLY_INSTRUCTION: str = (
     "\n\n반드시 아래 JSON 스키마를 만족하는 JSON 객체 하나만 출력하라. 설명 문장·코드펜스 없이 JSON만.\n"
@@ -39,8 +47,12 @@ class CompatError(RuntimeError):
 
 def create_compat_client() -> tuple[openai.OpenAI, str]:
     base_url, api_key, model = (os.getenv(name) for name in (ENV_BASE_URL, ENV_API_KEY, ENV_MODEL))
+    if not (base_url and api_key and model) and os.getenv(ENV_DEEPSEEK_KEY):
+        base_url, api_key, model = DEEPSEEK_BASE_URL, os.getenv(ENV_DEEPSEEK_KEY), model or DEEPSEEK_DEFAULT_MODEL
     if not (base_url and api_key and model):
-        raise CompatError(f".env에 {ENV_BASE_URL}, {ENV_API_KEY}, {ENV_MODEL} 세 개가 모두 있어야 한다")
+        raise CompatError(
+            f".env에 {ENV_BASE_URL}, {ENV_API_KEY}, {ENV_MODEL} 세 개, 또는 DeepSeek 프리셋용 {ENV_DEEPSEEK_KEY}가 있어야 한다"
+        )
     return openai.OpenAI(base_url=base_url, api_key=api_key, timeout=REQUEST_TIMEOUT_SECONDS), model
 
 
@@ -66,14 +78,20 @@ def compat_extract_structured(
         f"[원문: {document.title}]\n{document.text}\n\n[요청]\n{request_text}"
         f"{_JSON_ONLY_INSTRUCTION}{json.dumps(schema, ensure_ascii=False)}"
     )
+    extra_body = DEEPSEEK_EXTRA_BODY if str(client.base_url).startswith(DEEPSEEK_BASE_URL) else {}
     try:
-        completion = client.chat.completions.create(
-            model=model,
-            temperature=TEMPERATURE,
-            max_tokens=MAX_OUTPUT_TOKENS,
-            response_format={"type": "json_object"},
-            messages=[{"role": "system", "content": system}, {"role": "user", "content": user_text}],
-        )
+        for attempt in range(EMPTY_RETRY_LIMIT + 1):
+            completion = client.chat.completions.create(
+                model=model,
+                temperature=TEMPERATURE,
+                max_tokens=MAX_OUTPUT_TOKENS,
+                response_format={"type": "json_object"},
+                messages=[{"role": "system", "content": system}, {"role": "user", "content": user_text}],
+                extra_body=extra_body,
+            )
+            if (completion.choices[0].message.content or "").strip():
+                break
+            print(f"[qualitative] 호환 엔드포인트가 빈 응답을 돌려줬다 — 재시도 {attempt + 1}/{EMPTY_RETRY_LIMIT}")
     except openai.AuthenticationError as error:
         raise CompatError(f"호환 엔드포인트 인증 실패 — {ENV_API_KEY}를 확인하라") from error
     except openai.BadRequestError as error:
