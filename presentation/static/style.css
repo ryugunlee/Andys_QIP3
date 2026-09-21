@@ -144,6 +144,22 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
 }
 .install-guide-close:hover { color: var(--ink-primary); }
 
+/* --- 관리자 로그인 입구 ---
+   구석에 작은 아이콘만 둔다. 일반 이용자에게는 눈에 띄지 않되, 관리자 본인은
+   /admin/에 들어가지 않아도 헤더에서 바로 로그인 화면으로 갈 수 있다. */
+.admin-corner-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  margin-left: -8px;
+  border-radius: 50%;
+  color: var(--ink-muted);
+}
+.admin-corner-link:hover { background: var(--card-bg-strong); color: var(--ink-secondary); }
+
 /* --- 검색 --- */
 .search-box {
   position: relative;
@@ -714,6 +730,7 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
     margin-left: 0;
   }
   .install-cta { order: 4; }
+  .admin-corner-link { order: 5; margin-left: 0; }
   .page-title { font-size: 22px; margin-top: 24px; }
   .page-section { margin: 28px 0; }
   .metric-table { grid-template-columns: 1fr; }

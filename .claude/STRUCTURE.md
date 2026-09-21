@@ -943,6 +943,15 @@ GitHub Actions가 한다. 그 사이에서 권한을 판정하고 GitHub 토큰�
     브라우저(로그인) → Edge Function(권한 확인 + PAT 보관) → workflow_dispatch
                      → qualitative-run.yml(채점·판정·재빌드) → 종목 상세 등급카드
 
+## presentation/templates/partials/_header.html — 관리자 로그인 입구
+`.header-inner`의 설치 버튼 옆에 자물쇠 아이콘 하나(`.admin-corner-link`, `admin/index.html`로 가는
+링크)만 둔다. 일반 이용자 눈에 띄지 않게 **일부러 라벨 없이 아이콘만** 두었고(제목만 `title`/`aria-label`),
+누르면 기존 admin.html의 로그인 폼(→ supabase.js)으로 바로 간다 — 새 인증 경로를 만들지 않았다.
+사이트 전체 페이지(6,331개)가 이 partial을 통해 헤더를 공유하므로 base.html·CSS 한 번 고치면 전부
+반영된다. 이 저장소에는 `qipinfos/*.duckdb`가 없어 `build_site.py`로 즉시 재생성할 수 없었기 때문에,
+2026-09-21 변경분은 템플릿·`style.css`를 고친 뒤 동일한 스니펫을 `docs/**/*.html`에도 스크립트로
+동일하게 삽입해 즉시 반영했다(다음 자동 빌드가 템플릿에서 다시 만들어도 같은 결과이므로 드리프트 없음).
+
 ## supabase/schema_qip3.sql (SQL Editor에 붙여넣어 실행)
 PFmanager의 `schema.sql` 위에 얹는 추가분. QIP3가 만드는 것은 전부 `qip_` 접두사를 붙인다.
 - `qip_permissions(email PK, max_tier, daily_limit, note, granted_by, created_at)`: 실행 권한.

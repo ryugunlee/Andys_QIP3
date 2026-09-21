@@ -12,5 +12,14 @@
       <ul id="search-results" class="search-results" hidden></ul>
     </div>
     {% include "partials/_install.html" %}
+    {# 관리자 로그인 입구. 일부러 눈에 띄지 않게 작은 아이콘만 둔다 —
+       실제 화면은 admin/index.html(admin.js)이 그리고, 권한은 Supabase RLS가 지킨다. #}
+    <a class="admin-corner-link" href="{{ root }}/admin/index.html" aria-label="관리자 로그인" title="관리자 로그인">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="5" y="11" width="14" height="9" rx="2"></rect>
+        <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+      </svg>
+    </a>
   </div>
 </header>
