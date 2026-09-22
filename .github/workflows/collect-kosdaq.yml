@@ -41,7 +41,7 @@ jobs:
         run: python Andys_QIP2.py KOSDAQ
 
       - name: Save DuckDB to data-store release
-        run: bash .github/scripts/save_db.sh
+        run: bash .github/scripts/save_db.sh qipinfos/andys_qip_kr.duckdb
 
       - name: Rebuild site and commit
         run: bash .github/scripts/build_and_commit_site.sh

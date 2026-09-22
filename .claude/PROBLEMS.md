@@ -624,3 +624,29 @@ _duckdb.NotImplementedException: Not implemented Error: Data type 'complex128' n
 매크로/뉴스 워크플로가 같은 시간대에 docs/를 먼저 커밋해 생기는 충돌이다. 데이터 손실은 없지만
 매주 워크플로가 실패로 뜨고 사이트 갱신이 하루 늦어진다. → 원인이 완전히 달라 **별건으로 분리**했다
 (2026-09-22 기준 미착수).
+
+---
+
+## 41. (해결) `save_db.sh`가 안 바꾼 DB까지 올려 시장 수집이 서로를 덮어썼다
+
+`save_db.sh`는 인자가 없으면 kr/us/macro DuckDB **3종 전부**를 `gh release upload --clobber`로
+올린다. 그런데 시장 수집 4종(`collect-kospi/kosdaq/nasdaq/nyse.yml`)이 전부 인자 없이 호출하고 있었다.
+
+각 워크플로는 시작할 때 `restore_db.sh`로 3종을 모두 복원하므로, 자기가 건드리지 않은 DB는
+**"내가 시작한 시점의 낡은 사본"** 을 들고 있다. 그 상태로 전부 올리면 그 사이에 다른 워크플로가
+갱신한 결과가 통째로 사라진다. KOSPI 수집(4시간)이 도는 동안 매크로 수집이 끝났다면 그 매크로
+데이터는 KOSPI가 끝나는 순간 없어진다. 두 시장 수집이 겹치면 run 하나가 완전히 유실된다.
+
+### 조치 (2026-09-22)
+- 시장 워크플로 4종이 **자기 통화권 DB만** 넘기도록 수정
+  (KOSPI·KOSDAQ → `andys_qip_kr.duckdb`, NASDAQ·NYSE → `andys_qip_us.duckdb`).
+- 정성 워크플로 2종(`qualitative-run`/`qualitative-weekly`)에서 불필요한 매크로 DB 업로드 제거
+  — 정성 평가는 종목 DB의 `qualitative_grades`만 쓴다.
+- `save_db.sh` 헤더에 "호출부는 자기가 바꾼 DB만 넘긴다"는 규약을 명시.
+
+### 남은 제약 (코드로 막지 않음)
+KOSPI·KOSDAQ은 KR DB를, NASDAQ·NYSE는 US DB를 **여전히 공유한다.** 같은 DB를 쓰는 두 워크플로를
+동시에 돌리면 아직도 덮어쓴다. cron이 24시간 간격이라 현재 스케줄에서는 겹치지 않지만,
+**수동 실행(workflow_dispatch) 때는 앞의 실행이 끝난 뒤 다음을 시작해야 한다.**
+근본 해결은 릴리스 자산 대신 append 가능한 저장소(또는 run 단위 파일 분리)로 옮기는 것인데,
+저장 계층 전면 변경이라 별도 과제로 남긴다.

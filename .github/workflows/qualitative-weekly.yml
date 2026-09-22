@@ -73,7 +73,7 @@ jobs:
       - name: Save DuckDB and cached filings to data-store release
         run: |
           bash .github/scripts/save_db.sh \
-            qipinfos/andys_qip_kr.duckdb qipinfos/andys_qip_us.duckdb qipinfos/andys_qip_macro.duckdb \
+            qipinfos/andys_qip_kr.duckdb qipinfos/andys_qip_us.duckdb \
             qipinfos/qualitative_sources.tar.gz
 
       - name: Rebuild site and commit

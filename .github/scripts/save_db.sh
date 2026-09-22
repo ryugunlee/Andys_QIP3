@@ -4,6 +4,15 @@
 # 그대로 읽고 쓸 수 있다 — 사이트(docs/)와 달리 이 데이터는 공개할 필요가 없어 draft로 둔다.
 #
 # 사용법: save_db.sh [올릴 qipinfos/ 상대경로 파일들...] (기본값: kr/us/macro 3종 전체)
+#
+# **호출부는 자기가 실제로 바꾼 DB만 인자로 넘겨야 한다.** 업로드는 --clobber라서,
+# 안 바꾼 DB까지 올리면 "내가 시작할 때 복원한 낡은 사본"으로 그 사이 다른 워크플로가
+# 올린 결과를 덮어쓴다. 실제로 시장 수집 4종이 전부 인자 없이 호출해, 두 시장이 겹쳐
+# 돌면 나중에 끝난 쪽이 상대의 run을 통째로 지우는 상태였다 (`.claude/PROBLEMS.md` #41).
+#
+# 남은 제약: KOSPI·KOSDAQ은 andys_qip_kr.duckdb를, NASDAQ·NYSE는 andys_qip_us.duckdb를
+# 여전히 공유한다. **같은 DB를 쓰는 두 워크플로는 동시에 돌리지 말 것** (cron은 24시간
+# 간격이라 현재 겹치지 않는다). 수동 실행 시에는 앞의 실행이 끝난 뒤 다음을 시작한다.
 set -euo pipefail
 
 DATA_RELEASE_TAG="${DATA_RELEASE_TAG:-data-store}"
