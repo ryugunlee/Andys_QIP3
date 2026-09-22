@@ -14,7 +14,7 @@
 (function () {
   "use strict";
 
-  var CACHE_NAME = "qip-92d8530230d8";
+  var CACHE_NAME = "qip-b9859bf440b2";
   /* 이 워커는 사이트 루트에 있으므로 self.location이 곧 사이트 루트다. */
   var OFFLINE_HREF = new URL("./offline.html", self.location.href).href;
   var MANIFEST_HREF = new URL("./manifest.webmanifest", self.location.href).href;
@@ -35,6 +35,8 @@
     "./static/icons/icon-512.png",
     "./static/icons/icon-maskable-512.png",
     "./static/install.js",
+    "./static/qual_run_shared.js",
+    "./static/qual_run_widget.js",
     "./static/search.js",
     "./static/style.css",
     "./static/supabase.js",

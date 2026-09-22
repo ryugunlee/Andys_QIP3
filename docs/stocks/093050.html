@@ -115,6 +115,40 @@
 </div>  </div>
 </section>
 
+<section class="admin-panel qual-run-panel" id="qual-run-panel"
+         data-ticker="093050"
+         data-function-name="qualitative-dispatch"
+         data-cost-hints='{"deep:anthropic": 3200, "quick:anthropic": 350, "quick:compat": 30}' hidden>
+  <h2>정성 평가 실행</h2>
+
+  <p class="admin-message admin-message--error" id="qualrun-denied" hidden>
+    실행 권한이 없습니다. 관리자에게 문의해 주세요.
+  </p>
+
+  <form class="admin-form" id="qualrun-form" hidden>
+    <p class="admin-hint" id="qualrun-quota"></p>
+
+    <fieldset class="admin-field admin-field--choice">
+      <legend>채점 티어</legend>
+      <label><input type="radio" name="tier" value="quick" checked> quick — 사업보고서 핵심 섹션</label>
+      <label id="qualrun-tier-deep-label">
+        <input type="radio" name="tier" value="deep"> deep — 재무·주석까지 (Opus 5)
+      </label>
+    </fieldset>
+
+    <fieldset class="admin-field admin-field--choice" id="qualrun-provider-field">
+      <legend>모델</legend>
+      <label><input type="radio" name="provider" value="compat" checked> DeepSeek (저가)</label>
+      <label><input type="radio" name="provider" value="anthropic"> Anthropic</label>
+    </fieldset>
+
+    <p class="admin-cost" id="qualrun-cost-hint"></p>
+    <p class="admin-message" id="qualrun-message" role="alert"></p>
+    <button type="submit" class="admin-button" id="qualrun-submit">이 종목 정성 평가 실행</button>
+  </form>
+</section>
+<script type="module" src="../static/qual_run_widget.js"></script>
+
 
 
 <section class="page-section">
