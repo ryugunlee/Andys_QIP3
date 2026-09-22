@@ -3,6 +3,7 @@
 from collection.basic_information import get_stock_basic_infomation
 from collection.naver import get_naver_stock_information
 from collection.stock_base import split_raw_and_curated
+from collection.ticker_chunks import chunk_tickers, parse_chunk_spec
 from collection.tickers import get_tickers, is_korean_listed_ticker, is_korean_market
 
 __all__ = [
@@ -12,4 +13,6 @@ __all__ = [
     "is_korean_market",
     "is_korean_listed_ticker",
     "split_raw_and_curated",
+    "chunk_tickers",
+    "parse_chunk_spec",
 ]

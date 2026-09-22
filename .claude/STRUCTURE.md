@@ -78,6 +78,12 @@
   발생액 원시값, 선수금 증가 여부. 분기가 6개 이상이면 분기(YoY), 아니면 연간으로 판정한다.
   **발생액의 "업종 상위 10%" 판정만 횡단면이라 `analysis/`가 맡는다.**
 
+## collection/ticker_chunks.py
+- `chunk_tickers(tickers, index, total)`: 티커 목록을 `total`조각으로 나눈 `index`번째(1부터) 조각.
+  나머지를 앞 조각에 하나씩 얹어 크기 차이를 1 이내로 유지하고, 순서를 바꾸지 않아
+  **조각을 이으면 정확히 원래 목록**이 된다(결정적 분할 — 재실행해도 같은 몫).
+- `parse_chunk_spec("2/4")` → `(2, 4)`. 범위를 벗어나면 `ValueError`.
+
 ## collection/sector_groups.py
 - `sector_group(sector, industry)`: 업종명 → 가치 가중치용 4분류
   (`일반`/`자산형`/`무형자산형`/`자본집약사이클`). 한국 한글 업종명과 미국 영문 sector/industry를
@@ -467,18 +473,50 @@ git에 커밋하지 않는다.
 - 위 함수들을 공개 API로 재노출.
 
 
+# pipeline/ (시장 수집 실행의 단계 조립)
+`Andys_QIP2.py`의 `main()` 하나가 갖고 있던 단계를 함수로 쪼갠 계층이다. 전체 수집과 조각
+수집이 **같은 단계를 같은 순서로** 쓰도록 한 곳에 모았다 (PROBLEMS #42).
+
+## pipeline/market_run.py
+- `source_for_market(market)`: 시장 이름 → `"naver"`/`"yahoo"`.
+- `persist_ticker_data(conn, stock, source)`: 수집 콜백. 종목의 일봉/재무제표/컨센서스/원본을
+  DuckDB에 저장한다. 여기서 쓰는 테이블은 전부 **티커 키 upsert**라 run과 무관하다 — 그래서
+  조각 수집이 여러 job으로 나뉘어도 그대로 누적된다.
+- `curated_columns_only(stockdata)`: 수집 표에서 `raw_` 접두사 컬럼을 뺀 표(스냅샷 저장용).
+- `collect_market(conn, market, tickers)` → `(수집 표, 실패 티커)`. **`collection_runs` 행을
+  만들지 않는다** — 조각 수집이 실패해도 반쪽 run이 DB에 남지 않게 하려는 의도적 분리다.
+- `record_snapshot(conn, market, source, stockdata, error_tickers)` → run_id.
+  run 1건을 기록하고 curated 팩터를 스냅샷으로 저장한다. **수집이 다 끝난 뒤 한 번만** 부른다.
+- `finalize_run(conn, run_id)` → 채점 결과. 시총가중 지수 갱신 → `get_latest_snapshots`
+  (통화권 전체 모집단) → `attach_qip4_inputs` → `compute_scores` → `update_snapshot_scores` →
+  커트라인(`save_standard_cutlines`) → 섹터/산업 자체 평가(`upsert_group_summary`).
+- `report_run(conn, run_id, scored, searched)`: 이번 run 요약을 표준출력에 찍는다.
+- `run_market(market)`: 위 단계를 이어 부르는 전체 수집(기존 `main()`과 같은 동작).
+
+## pipeline/chunk_store.py
+조각 수집 결과를 job 사이로 넘기는 파일 저장소. 워크플로가 이 폴더를 artifact로 주고받는다.
+- `write_chunk(dir, market, index, total, stockdata, error_tickers)`: curated 표를 parquet으로,
+  실패 티커를 JSON으로 저장. object 컬럼을 문자열 dtype으로 고정해 둔다 — 값이 전부 결측인
+  텍스트 팩터를 DuckDB가 INTEGER로 추론해 조각마다 타입이 갈리는 것을 막는다.
+- `read_chunks(dir, market)` → `(합친 표, 실패 티커 합집합)`. 조각 간 중복 티커는 첫 조각만 남긴다
+  (`snapshot_factors`의 (run_id, ticker) PK 위반 방어선).
+- **parquet 입출력을 DuckDB로 한다** — pandas `to_parquet`은 pyarrow를 요구하지만 DuckDB는
+  이미 의존성이고 parquet을 직접 읽고 쓴다. 의존성을 늘리지 않기 위한 선택.
+
 # Andys_QIP2.py (진입점)
-- `_persist_ticker_data(conn, stock, source)`: 수집 콜백. 종목의 일봉/재무제표/원본 데이터를
-  DuckDB에 저장한다 (`storage.upsert_price_history`/`upsert_financial_statements`/`upsert_raw_latest`).
-- `email_report(title, text, folder_path)`: 환경변수(`GMAIL_ADDRESS`/`GMAIL_APP_PASSWORD`)로
-  Gmail 발송. folder_path 안의 csv/txt/json을 첨부 (변경 없음).
-- `main(stockmarket)`: `is_korean_market()`으로 야후/네이버 경로를 나누고, 시장에 맞는 DB
-  (`stock_db_path_for_market`)에 연결한다. 수집 콜백으로 종목별 일봉/재무제표/원본을 즉시 저장하고
-  curated 팩터를 `save_snapshot_factors`로 저장한 뒤, **이 통화권 DB의 시장별 최신 run 전체를
-  모집단으로 `compute_scores`를 돌려** `update_snapshot_scores`로 점수를 갱신한다(시장 1개가 아닌
-  통화권 전체 기준). 이어 커트라인(`save_standard_cutlines`)과 섹터/산업 자체 평가
-  (`compute_group_summary`→`upsert_group_summary`)를 저장하고, 이메일은 `export_run_summary`로
-  DB에서 뽑은 CSV를 첨부해 발송한다(실패는 경고만).
+- `main = run_market` (별칭). 시장 하나를 통째로 수집·저장·채점한다. 실제 단계는
+  `pipeline/market_run.py`에 있다 — 이 파일은 명령줄 처리와 스케줄 루프만 담당한다.
+
+# collect_chunk.py (진입점 — 분할 수집)
+- `python collect_chunk.py KOSDAQ --chunk 2/4 [--chunk-dir qipinfos/chunks]`.
+  `get_tickers` → `chunk_tickers`로 자기 몫만 골라 `collect_market`을 돌리고, 결과를
+  `write_chunk`로 조각 파일에 남긴다. **run을 만들지 않는다.**
+
+# finalize_run.py (진입점 — 분할 수집의 마지막 단계)
+- `python finalize_run.py KOSDAQ [--chunk-dir qipinfos/chunks]`.
+  `read_chunks`로 조각을 합쳐 `record_snapshot`(run 1건) → `finalize_run` → `report_run`.
+  조각이 없거나 합본이 비면 0이 아닌 코드로 끝낸다 — "성공한 빈 run"이 그 시장의 최신 run이
+  되면 사이트에서 종목이 통째로 사라지기 때문이다.
 
 # compute_scores.py (진입점)
 - 수집 없이 점수만 재계산한다(가중치·방식 변경 후 재산출용). `python compute_scores.py [KR|US|ALL]`.
@@ -919,11 +957,21 @@ builders·templates(어떻게 보여주나)**. 공개 페이지의 JS는 검색�
   `github-actions[bot]` 이름으로 커밋·푸시한다 (동시 실행 대비 `git pull --rebase` 포함).
 
 ## .github/workflows/ (시장별·매크로 스케줄)
-- `collect-kospi.yml`(월 22:00 UTC), `collect-kosdaq.yml`(화 22:00 UTC),
-  `collect-nasdaq.yml`(수 23:00 UTC), `collect-nyse.yml`(목 23:00 UTC): 각각
-  restore_db → `python Andys_QIP2.py {시장}` → save_db → build_and_commit_site 순.
-  `workflow_dispatch`로 수동 실행도 가능. KR 워크플로는 timeout 300분, US(yfinance, 종목 수
-  많고 속도 예측 어려움)는 340분으로 6시간 잡 한도 내에 여유를 둠.
+- `collect-kospi.yml`(월 22:00 UTC), `collect-nasdaq.yml`(수 23:00 UTC),
+  `collect-nyse.yml`(목 23:00 UTC): 각각 restore_db → `python Andys_QIP2.py {시장}` →
+  save_db(자기 통화권 DB만) → build_and_commit_site 순. `workflow_dispatch`로 수동 실행도 가능.
+  KR 워크플로는 timeout 300분, US(yfinance, 종목 수 많고 속도 예측 어려움)는 340분으로
+  6시간 잡 한도 내에 여유를 둠.
+- `collect-kosdaq.yml`(화 22:00 UTC): **혼자만 분할 수집 구조다.** KOSDAQ 1,820종목은 8시간이
+  넘어 6시간 잡 한도를 넘기 때문에(PROBLEMS #42), `strategy.matrix`로 조각 4개를
+  `max-parallel: 1`(= 순차)로 돌린 뒤 `finalize` job이 조각을 합쳐 한 run으로 확정한다.
+  조각 job은 `collect_chunk.py`로 수집만 하고 결과를 artifact(`kosdaq-chunk-N`)로 올리며,
+  finalize job이 `download-artifact`(pattern + merge-multiple)로 전부 받아 `finalize_run.py`를
+  돌린다. `max-parallel: 1`이 핵심 — 조각들이 같은 KR DuckDB 자산을 주고받으므로 병렬로 돌면
+  서로를 덮어쓴다(PROBLEMS #41).
+- **같은 통화권 DB를 쓰는 워크플로는 동시에 돌리지 않는다**(KOSPI·KOSDAQ → KR, NASDAQ·NYSE → US).
+  각 워크플로는 `save_db.sh`에 자기 통화권 DB만 넘기지만, 같은 파일을 쓰는 둘이 겹치면
+  여전히 덮어쓴다. cron은 24시간 간격이라 겹치지 않으며, 수동 실행 시에는 순차로 돌려야 한다.
 - `collect-macro.yml`(매일 23:30 UTC): restore_db/save_db를 매크로 DB 하나로 한정해서만
   호출하고, `collect_macro.py` 실행 후 사이트는 다시 빌드하지 않는다 — 그 주의 시장별
   수집이 사이트를 재빌드할 때까지 경제지표 반영이 지연된다는 뜻(`.claude/PROBLEMS.md`

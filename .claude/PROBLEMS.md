@@ -650,3 +650,42 @@ KOSPI·KOSDAQ은 KR DB를, NASDAQ·NYSE는 US DB를 **여전히 공유한다.** 
 **수동 실행(workflow_dispatch) 때는 앞의 실행이 끝난 뒤 다음을 시작해야 한다.**
 근본 해결은 릴리스 자산 대신 append 가능한 저장소(또는 run 단위 파일 분리)로 옮기는 것인데,
 저장 계층 전면 변경이라 별도 과제로 남긴다.
+
+---
+
+## 42. (해결) KOSDAQ 수집은 한 번도 완주한 적이 없었다 — 6시간 잡 한도 초과
+
+`collection_runs`를 보면 KR DB에는 **KOSPI run만 10건** 있고 KOSDAQ은 0건이다. 워크플로 이력도
+모든 KOSDAQ 실행이 정확히 5시간(`timeout-minutes: 300`)에 잘려 `cancelled`로 끝나 있었다.
+
+KOSDAQ은 1,820종목이고 네이버 수집은 종목당 약 16초다(KOSPI 실측: 942종목 / 4:13:08).
+환산하면 **약 8.1시간** — `timeout-minutes`를 올려도 GitHub 호스팅 러너의 **작업 시간 상한
+6시간**을 넘기 때문에 단일 job으로는 구조적으로 불가능하다.
+
+### 왜 단순 분할로는 안 되는가
+조각마다 `Andys_QIP2.py KOSDAQ`을 부르면 KOSDAQ run이 4개 생긴다. `get_latest_snapshots`와
+`_LATEST_RUNS_QUERY`가 시장별 `max(run_id)`만 잡으므로 **마지막 조각 455종목만 "최신 KOSDAQ"**
+이 되어 나머지 1,365종목이 사이트에서 사라진다. 조각이 하나의 run으로 합쳐져야 한다.
+
+### 조치 (2026-09-22) — 조각은 수집만, 마지막 job이 한 run으로 확정
+- `pipeline/market_run.py` 신설: `Andys_QIP2.py`의 `main()`을 `collect_market`(수집) /
+  `record_snapshot`(run 기록 + 스냅샷) / `finalize_run`(지수·채점·커트라인·그룹요약)으로 분리.
+  `Andys_QIP2.py`는 명령줄·스케줄만 담당하는 얇은 래퍼가 됐고 사용법은 그대로다.
+- `collection/ticker_chunks.py`: 결정적 티커 분할(`chunk_tickers`). 조각을 이으면 정확히 원본.
+- `pipeline/chunk_store.py`: 조각 결과를 parquet + 실패 티커 JSON으로 주고받는다.
+  parquet 입출력은 **DuckDB로** 한다(pandas `to_parquet`이 요구하는 pyarrow를 안 늘리려고).
+- 진입점 `collect_chunk.py`(조각 수집) / `finalize_run.py`(합쳐서 확정·채점) 추가.
+- `collect-kosdaq.yml`을 `strategy.matrix` 4조각 + `max-parallel: 1`(순차) + `finalize` job 구조로.
+
+**핵심 설계 결정 — 조각 job은 `collection_runs` 행을 만들지 않는다.** curated 표는 DB가 아니라
+artifact로 넘기고, 확정 job이 성공할 때만 run이 생긴다. 조각이 같은 run_id에 append하는 대안은
+중간 실패 시 "점수 없는 반쪽 run"이 최신 run이 되어 **KOSDAQ 전체가 사이트에서 NULL**이 되는데,
+이를 막으려면 `collection_runs.completed_at` 같은 컬럼과 조회 계층 변경이 따라온다.
+지금 구조는 스키마를 전혀 건드리지 않고 같은 안전성을 얻는다.
+일봉·재무제표·컨센서스·raw는 티커 키 upsert라 조각마다 그냥 DB에 누적해도 안전하다.
+
+### 남은 것
+- KOSDAQ 첫 완주 전까지 KR DB에는 여전히 KOSPI만 있다. 한국 전체 모집단이 KOSPI 942종목
+  기준이라, KOSDAQ이 들어오면 **한국 종목의 percentile·standard 점수가 한 번 크게 바뀐다**
+  (모집단이 2.9배가 되므로 정상적인 변화지 버그가 아니다).
+- 조각 수 4개는 조각당 약 2시간 기준이다. KOSDAQ 종목이 크게 늘면 조각 수를 올려야 한다.
