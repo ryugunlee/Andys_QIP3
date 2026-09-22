@@ -1,0 +1,141 @@
+{
+  "ticker": "034020",
+  "asof": "2026-03-20",
+  "sector_group": null,
+  "observations": [
+    {
+      "item": "Q1",
+      "status": "missing",
+      "score": null,
+      "rationale": "",
+      "raw": null,
+      "evidence": [],
+      "note": "제공된 원문에는 수주잔고·수주상황 표가 없고, 특수관계자 거래·주식기준보상·현금흐름표 주석만 포함되어 있어 수주잔고/연매출 비율을 확인할 수 없음."
+    },
+    {
+      "item": "Q2",
+      "status": "missing",
+      "score": null,
+      "rationale": "",
+      "raw": null,
+      "evidence": [],
+      "note": "제공된 원문에 시장 점유율·경쟁 현황·산업통계 관련 서술이 없음."
+    },
+    {
+      "item": "Q3",
+      "status": "missing",
+      "score": null,
+      "rationale": "",
+      "raw": null,
+      "evidence": [],
+      "note": "제공된 원문에 연구개발 실적·특허·인증 현황 서술이 없음."
+    },
+    {
+      "item": "Q4",
+      "status": "missing",
+      "score": null,
+      "rationale": "",
+      "raw": null,
+      "evidence": [],
+      "note": "제공된 원문에 산업 현황·규제 방향 서술이 없음. 보고기간 후 사건(중동 군사적 충돌) 언급은 있으나 산업 수요 방향을 판단할 정량 근거는 아님."
+    },
+    {
+      "item": "Q5",
+      "status": "missing",
+      "score": null,
+      "rationale": "",
+      "raw": null,
+      "evidence": [],
+      "note": "제공된 원문에 신사업·수주 파이프라인·타 산업 연결 관련 서술이 없음."
+    },
+    {
+      "item": "Q6",
+      "status": "observed",
+      "score": 35,
+      "rationale": "당기(2025년) 특수관계자와의 매출 등 합계는 219,928백만원, 매입 등 합계는 280,702백만원+133,854백만원으로, 지배기업 (주)두산과의 매출 8백만원·기타수익 241백만원·매입 44,272백만원·기타비용 50,294백만원 등 비연결 특수관계자 거래가 확인된다. 다만 총매출액이 원문에 제시되지 않아 related_party_ratio를 확정할 수 없고, 사외이사 수·총 이사 수도 원문에 없어 지배구조 독립성을 판단할 수 없다. 특수관계자 거래 규모가 크고 지배기업 의존 거래가 확인되어 결격 리스크가 높은 것으로 보이나, 정량 비율 미확인으로 F 고정은 보수적으로 적용한다.",
+      "raw": {
+        "outside_directors": null,
+        "total_directors": null,
+        "related_party_ratio": null,
+        "related_party_trend_3y": null,
+        "spinoff_relisting": null,
+        "executive_fraud_5y": null,
+        "unfair_merger_ratio": null,
+        "basis": "disclosed"
+      },
+      "evidence": [
+        {
+          "source": "사업보고서 (2025.12)",
+          "date": "2025-12-31",
+          "grade": 1,
+          "quote": "1) 당기말 현재 당사의 지배기업은 (주)두산(당기말 현재 지분율: 30.40%)입니다.",
+          "locator": "주석 33. 특수관계자 거래 (1) 특수관계자의 현황"
+        },
+        {
+          "source": "사업보고서 (2025.12)",
+          "date": "2025-12-31",
+          "grade": 1,
+          "quote": "합계\n\n219,928\n\n35,363\n\n280,702\n\n133,854",
+          "locator": "주석 33. 특수관계자 거래 (2) 1) 당기"
+        },
+        {
+          "source": "사업보고서 (2025.12)",
+          "date": "2025-12-31",
+          "grade": 1,
+          "quote": "지배기업\n\n(주)두산\n\n8\n\n241\n\n44,272\n\n50,294",
+          "locator": "주석 33. 특수관계자 거래 (2) 1) 당기"
+        }
+      ],
+      "note": "총매출액이 원문에 없어 related_party_ratio 산출 불가. 사외이사·총이사 수 미제시."
+    },
+    {
+      "item": "Q7",
+      "status": "observed",
+      "score": 35,
+      "rationale": "당기(2025년) 영업활동에서 창출된 현금은 (91,816)백만원으로 마이너스이고, 당기순이익은 507,666백만원이다. 결손금처리액 223,376백만원이 주식발행초과금에서 처리된 것으로 보아 배당이 영업현금흐름 내에서 충당되지 못했을 가능성이 높다. 자기주식 소각·취득 관련 서술과 영업권 손상차손 주석은 원문에 없어 확인 불가하다.",
+      "raw": {
+        "buyback_cancelled": null,
+        "dividend_within_ocf": false,
+        "goodwill_impairment_count_10y": null
+      },
+      "evidence": [
+        {
+          "source": "사업보고서 (2025.12)",
+          "date": "2025-12-31",
+          "grade": 1,
+          "quote": "영업활동에서 창출된 현금\n\n(91,816)\n\n(65,375)",
+          "locator": "주석 35. 현금흐름표 (1)"
+        },
+        {
+          "source": "사업보고서 (2025.12)",
+          "date": "2025-12-31",
+          "grade": 1,
+          "quote": "II. 결손금처리액\n\n-\n\n223,376\n\n   주식발행초과금\n\n-\n\n223,376",
+          "locator": "자본 변동 표"
+        }
+      ],
+      "note": "영업현금흐름이 마이너스로 배당 재원 부족. 자기주식 소각·영업권 손상 이력은 원문에 없음."
+    },
+    {
+      "item": "Q8",
+      "status": "missing",
+      "score": null,
+      "rationale": "",
+      "raw": null,
+      "evidence": [],
+      "note": "제공된 원문에 영업부문(세그먼트) 주석·주요 고객 매출 비중 서술이 없음."
+    },
+    {
+      "item": "Q9",
+      "status": "missing",
+      "score": null,
+      "rationale": "",
+      "raw": null,
+      "evidence": [],
+      "note": "제공된 원문에 지역별 매출·생산 설비 소재·환위험 헤지 관련 서술이 없음. 특수관계자 현황에 해외 종속기업이 다수 언급되나 국가별 매출 비중 수치는 없음."
+    }
+  ],
+  "source_title": "사업보고서 (2025.12) (접수 20260320)",
+  "tier": "quick",
+  "model": "deepseek-flash"
+}
