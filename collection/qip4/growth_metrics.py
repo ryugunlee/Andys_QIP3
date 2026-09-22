@@ -125,9 +125,18 @@ def _growth_self_funding(series: FinancialSeries) -> float | None:
 
 
 def _revenue_cagr(series: FinancialSeries) -> float | None:
-    """매출 연평균 성장률. 구조적 역성장(음수) 판정에 쓴다."""
+    """매출 연평균 성장률. 구조적 역성장(음수) 판정에 쓴다.
+
+    **양 끝이 모두 양수일 때만 정의된다.** 첫해가 0 이하면 성장률의 분모가 없고,
+    마지막 해가 음수면 비(比)가 음수가 되는데 파이썬의 음수 실수 분수 거듭제곱은
+    nan이 아니라 **복소수**를 돌려준다. 그러면 컬럼 dtype이 complex128이 되어
+    DuckDB 저장 단계에서 수집 실행 전체가 죽는다 (`.claude/PROBLEMS.md` #40).
+    매출이 음수인 기업에 연평균 성장률은 애초에 의미가 없으므로 결측이 옳은 해석이다.
+    """
     revenues = recent_values(series.annual("revenue"), CONTINUITY_WINDOW_YEARS)
-    if len(revenues) < MIN_PERIODS_REQUIRED or revenues[0] <= 0:
+    if len(revenues) < MIN_PERIODS_REQUIRED:
+        return None
+    if revenues[0] <= 0 or revenues[-1] <= 0:
         return None
     years = len(revenues) - 1
     return (revenues[-1] / revenues[0]) ** (1 / years) - 1

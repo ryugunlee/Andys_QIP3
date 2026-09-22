@@ -69,6 +69,9 @@
   다르다** — 야후 `Total Debt`에 리스가 이미 포함돼 있어 별도 가산하면 이중계상(CAT 실측 확인).
 - `growth_metrics.py`: `compute_growth_metrics(series)` → 매출 성장률 변동계수, 자본집약도,
   성장 자기조달률, 매출 CAGR, 마진 방향(Y/N), 성장 연속성(연간 대체 기준).
+  매출 CAGR(`_revenue_cagr`)은 **양 끝 해가 모두 양수일 때만** 값을 낸다 — 마지막 해가 음수면
+  비(比)가 음수가 되고 파이썬의 음수 실수 분수 거듭제곱은 nan이 아니라 복소수를 돌려주기 때문이다
+  (PROBLEMS #40).
 - `value_metrics.py`: `compute_value_metrics(series, market_cap)` → FCF Yield, EV/EBIT,
   배당수익률, 순현금 연수. 자사주 매입분은 기존 `Buyback Yield`가 담당해 중복하지 않는다.
 - `efficiency_metrics.py`: `compute_efficiency_metrics(series)` → 재고·채권 경보, CCC 악화 여부,
@@ -403,6 +406,11 @@ git에 커밋하지 않는다.
 - `update_snapshot_scores(conn, scores)`: 점수 파이프라인(analysis.compute_scores) 결과를
   (run_id, ticker) 기준 UPDATE. 점수 모집단이 통화권 전체(여러 run)라 INSERT가 아닌 UPDATE.
   새 점수 컬럼은 `_ensure_snapshot_columns`로 동적 추가.
+- `_drop_imaginary_parts(df)`: 위 두 저장 함수의 진입부에 걸린 방어선. 복소수(complex128) 컬럼을
+  실수로 되돌린다 — 허수부가 0이면 실수부를 쓰고, 허수부가 있으면 결측 처리한 뒤 경고를 출력한다.
+  DuckDB가 complex128을 몰라 `conn.register()`에서 몇 시간짜리 수집 실행이 **마지막 저장 단계에서**
+  통째로 죽기 때문이다(PROBLEMS #40 — QIP4 매출 CAGR이 음수 매출에서 복소수를 만들어 9월 미국 수집
+  2회를 날렸다). 중복 티커 방어선(#30)과 같은 성격이다.
 - `save_standard_cutlines(conn, run_id, standard_data, sector_standard_data, country_standard_data)`:
   `get_standard_data()` 결과(전체/섹터/국가 표)를 long format으로 변환해 저장.
 

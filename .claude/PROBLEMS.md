@@ -571,3 +571,56 @@ WiseFn(cF3002.aspx)은 우선주처럼 재무제표를 제공하지 않는 종�
 - **Edge Function의 게이트웨이 JWT 검증(verify_jwt)에 1차로 기댄다.** 설령 꺼져도 함수가 사용자 토큰으로
   PostgREST를 거치므로 권한 밖 동작은 없다.
 
+
+---
+
+## 40. (해결) QIP4 정량 기준이 한 번도 DB에 반영되지 않았다 — 음수 매출 CAGR이 복소수를 만들어 수집이 통째로 죽었다
+
+### 증상
+사이트의 모든 종목 상세(6,327개)에서 `QIP4 종합 점수`를 비롯한 QIP4 지표가 전부 `—`,
+`docs/stocks/index.html`에 QIP4 선별 섹션이 아예 렌더링되지 않았다(`get_goodstock3()`가 빈 결과).
+한국·미국 양쪽 동일. QIP3는 정상 작동 중이라 표현/저장 계층 일반의 문제는 아니었다.
+
+data-store 릴리스의 `andys_qip_kr.duckdb`를 받아 확인하니 `snapshot_factors` 581컬럼 중
+**QIP3 55개, QIP4 0개.** 합성 데이터로 수집→저장→채점→저장→조회 왕복을 돌리면 QIP4 153컬럼이
+정상 생성됐으므로, 파이프라인이 아니라 **실행이 한 번도 성공하지 못한 것**이 원인이었다.
+
+### 원인 1 — QIP4 커밋이 main에 늦게 올라왔다
+`799c8644c`/`efe7f847a`의 author date는 2026-09-07~08이지만 main 반영(commit date)은 **2026-09-16**이다.
+2026-09-15 KOSPI 수집은 QIP4가 없는 코드로 돌았으므로 KR DB에 QIP4 컬럼이 없는 것이 당연했다.
+
+### 원인 2 — 반영 이후의 수집은 전부 저장 단계에서 크래시
+QIP4가 main에 들어간 뒤 실행된 수집 2건(9/17 NASDAQ, 9/18 NYSE)이 **둘 다 같은 자리**에서 죽었다.
+
+```
+File "Andys_QIP2.py", line 82, in main
+  storage.save_snapshot_factors(conn, run_id, stockdata[curated_columns])
+_duckdb.NotImplementedException: Not implemented Error: Data type 'complex128' not recognized
+```
+
+범인은 `collection/qip4/growth_metrics.py::_revenue_cagr`.
+`revenues[0] <= 0`은 막았지만 **`revenues[-1] < 0`(최근 매출이 음수)은 막지 않았다.**
+파이썬은 음수 실수의 분수 거듭제곱에서 nan이 아니라 **복소수**를 돌려준다.
+
+```python
+(-50.0 / 100.0) ** (1 / 4) - 1   # → (-0.405+0.594j),  dtype complex128
+```
+
+종목 하나만 이래도 `QIP4 Revenue CAGR` 컬럼 전체가 complex128이 되고, DuckDB `conn.register()`가
+이 타입을 몰라 **1~4시간짜리 수집 실행이 마지막 저장 단계에서 통째로 죽는다.** #30과 같은 실패 모양이다.
+
+### 조치 (2026-09-22)
+- **계산 쪽(근본)**: `_revenue_cagr`에 `revenues[-1] <= 0` 가드 추가 → 결측(None).
+  매출이 음수인 기업에 연평균 성장률은 정의되지 않으므로 결측이 옳은 해석이고,
+  `qip4_gate`의 `Revenue CAGR < 0` 밸류트랩 판정도 결측이면 보정을 걸지 않아 무해하다.
+- **저장 쪽(안전망)**: `storage/snapshot_repository.py::_drop_imaginary_parts`를
+  `save_snapshot_factors`/`update_snapshot_scores` 진입부에 걸었다. 복소수 컬럼을 실수로 되돌리고
+  (허수부가 있는 값은 결측) 경고를 출력한다. #30의 중복 티커 방어선과 같은 성격 —
+  계산 버그는 계산 쪽에서 고치되, 저장 경계가 수집 실행 전체를 죽이지는 않게 한다.
+
+### 남은 문제 (별건)
+`build_and_commit_site.sh` 마지막의 `git pull --rebase`가 docs/ 충돌로 실패해,
+**9/10 NASDAQ · 9/11 NYSE · 9/15 KOSPI는 "DB 저장까지 성공했는데 워크플로는 failure"** 로 끝났다.
+매크로/뉴스 워크플로가 같은 시간대에 docs/를 먼저 커밋해 생기는 충돌이다. 데이터 손실은 없지만
+매주 워크플로가 실패로 뜨고 사이트 갱신이 하루 늦어진다. → 원인이 완전히 달라 **별건으로 분리**했다
+(2026-09-22 기준 미착수).
