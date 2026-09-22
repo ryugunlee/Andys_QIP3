@@ -10,6 +10,7 @@ from pathlib import Path
 
 from jinja2 import Environment
 
+from presentation import config
 from presentation.formatters import (
     MISSING,
     format_metric,
@@ -182,6 +183,8 @@ def build_detail_pages(
             qualitative=_qualitative_card(repository, detail),
             financial_table=_financial_table(charts, detail.market),
             financial_table_quarterly=_financial_table_quarterly(charts, detail.market),
+            dispatch_function_name=config.DISPATCH_FUNCTION_NAME,
+            cost_hints=config.QUALITATIVE_COST_HINTS,
         )
         (stocks_dir / ticker_filename(detail.ticker)).write_text(
             html, encoding="utf-8"

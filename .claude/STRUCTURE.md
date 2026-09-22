@@ -445,7 +445,8 @@ git에 커밋하지 않는다.
 - `get_latest_news(conn, limit)`: 최신 기사부터 limit건 반환.
 
 ## storage/qualitative_repository.py
-- `upsert_qualitative_grade(conn, row)`: 정성 등급 결과 1행 upsert (ticker, graded_on). `item_scores`는
+- `upsert_qualitative_grade(conn, row)`: 정성 등급 결과 1행 upsert (ticker, graded_on). `macro_exposure`는
+  Q9 실측 민감도 JSON(없으면 NULL). `item_scores`는
   `{코드: {score, grade}}` JSON 문자열, 사유·주의 항목은 `|` 구분 코드, `trend_flag`는 ★ 플래그 코드,
   `tier`/`model`은 채점 출처. `observed_asof`인 이유: `asof`가 DuckDB 예약어. 새 컬럼은 `connect()`가
   `ALTER TABLE ADD COLUMN IF NOT EXISTS`로 기존 테이블에 더한다.
@@ -632,30 +633,45 @@ QIP4 정량 규칙(`.claude/투자 규칙.md`). QIP3와 **병행**하며 QIP3는
 - `schema.py`: `Evidence` / `Observation`(status: observed·weak·missing·not_investigated, score, rationale,
   raw, evidence, note) / `ObservationSet`(ticker, asof, sector_group, observations, source_title).
   `save_observations`/`load_observations` → `qualitative/observations/<티커>.json`.
-- `weights.py`: 항목 가중(Q1 15/Q2 15/Q3 10/Q4 10/Q5 10/Q6 15/Q7 10/Q8 10/Q9 5), 등급 밴드(S90/A80/B65/
-  C50/D35), 앵커 점수, weak 상한 65, 유효 항목 최소 6, 배수표(S1.25~F0)와 Q6 하한, 판정 문구,
-  수치 재계산 꺾은선(확정매출·특수관계자·고객·세그먼트·국가 비중), ★ 플래그 임계값(6개월 ±30%, 영업이익 ±10%).
-- `rubric.py`: `interpolate(value, points)`, `recompute_score(code, raw)` — Q1·Q6·Q8·Q9만 raw 수치로 점수를
-  다시 낸다(None이면 채점자 점수 유지). `pipeline_ratio()`(Q5 근거 표시용), `veto_reasons_for_governance()`.
-- `grader.py`: `qualitative_grade(ObservationSet) → GradeResult(items, composite, score, multiplier,
-  decision, veto_reasons, cap_reasons, watch_items, valid_items)`. 순서: 항목 점수(근거 없음·결측 →
-  None, 재계산, weak 상한) → 결격(Q6 → F·기각) → 유효 항목 6개 미만이면 판정 미완료 → 유효 항목
-  가중 평균 → 종합 밴드 → 배수 + Q6 C 이하 상한 1.0 → 판정. C 이하 항목은 `watch_items`.
-  문서 7·8절 예시(종합 73.1 → B, 배수 1.00)를 그대로 재현한다.
+- `weights.py`: 항목 가중(Q1 15/Q2 15/Q3 10/Q4 10/Q5 10/Q6 15/Q7 10/Q9 10 — **합 95**, Q8은 채점 제외),
+  등급 밴드(S90/A80/B65/C50/D35), 앵커 점수, weak 상한 65, 유효 항목 최소 6, 배수표(S1.25~F0)와 Q6 하한,
+  판정 문구, 수치 재계산 꺾은선(확정매출·특수관계자·국가 비중), ★ 플래그 임계값(6개월 ±30%, 영업이익 ±10%),
+  매크로 민감도 임계값(3년 주간 156주·최소 104주, |t|≥2.0, |표준화 계수|≥0.15, 감점 요인당 5점·최대 15점).
+- `rubric.py`: `interpolate(value, points)`, `recompute_score(code, raw)` — Q1·Q6·Q9만 raw 수치로 점수를
+  다시 낸다(None이면 채점자 점수 유지). `exposure_penalty(raw, exposure) → (감점, 요인명들)` — 단일 국가
+  집중 ≥50% **AND** 미헤지 **AND** 유의한 매크로 노출, 세 조건이 겹칠 때만 깎는다. `hedge_claim_conflict()`
+  — 헤지 공시와 실측 환율 노출이 어긋난 경우(표시 전용, 감점 없음). `pipeline_ratio()`(Q5 근거 표시용),
+  `veto_reasons_for_governance()`.
+- `grader.py`: `qualitative_grade(ObservationSet, exposure=None) → GradeResult(items, composite, score,
+  multiplier, decision, veto_reasons, cap_reasons, watch_items, valid_items, exposure_factors,
+  hedge_conflict)`. 순서: 항목 점수(표시 전용·근거 없음·결측 → None, 재계산, weak 상한, Q9 실측 감점) →
+  결격(Q6 → F·기각) → 유효 항목 6개 미만이면 판정 미완료 → 유효 항목 가중 평균 → 종합 밴드 →
+  배수 + Q6 C 이하 상한 1.0 → 판정. C 이하 항목은 `watch_items`. `score_item()`은 `ItemSpec.scored`가
+  False인 항목(Q8 다각화)을 무조건 None으로 돌려 분모에서 뺀다. 문서 8·9절 예시(종합 72.9 → B)를 재현한다.
 - `trend_flag.py`: `compute_trend_flag(conn, ticker, source) → TrendFlag(code, return_6m, income_change)`.
   `price_daily` 6개월 수익률과 `financial_statements` 최근 2개 연도 영업이익 변화율만 쓴다(뉴스 미사용).
   |수익률| ≥ 30%인데 영업이익 변화가 같은 방향이 아니거나 ±10% 이내 → `UNEXPLAINED_UP/DOWN`.
+- `macro_exposure.py`: `compute_macro_exposure(stock_conn, macro_conn, ticker, market) → MacroExposure |
+  None` — Q9 실측 민감도. 주간 수익률(`price_daily`)을 **시장 지수로 통제한 뒤** 매크로 요인
+  (`macro_daily`: 한국 달러/원·WTI·미10년·VIX·국제금 / 미국 달러인덱스·WTI·미10년·VIX·국제금)에
+  다변량 OLS. 금리는 변화폭(%p), 나머지는 변화율. `FactorExposure(indicator, name_ko, beta,
+  standardized, t_stat, significant)`, `MacroExposure(weeks, r_squared, factors)` +
+  `significant_factors`·`significant_fx`. `exposure_to_dict()`로 `qualitative_grades.macro_exposure`
+  (JSON 컬럼)에 저장한다. 데이터 104주 미만이면 None — Q9는 공시 노출만으로 판정된다. LLM 미사용.
 
 
 ## presentation/qualitative_view.py
 - `build_qualitative_card(row, today) → QualitativeCardView` — `qualitative_grades` 한 행 + 관측값 JSON
   (`row["observations_path"]`, 저장소에 git 추적)으로 상세 페이지 등급카드 뷰를 만든다. 점수·weak·해당 없음은
   JSON을 다시 판정해 얻고(판정기는 결정적), JSON이 없으면 DB의 item_scores만 쓴다. 코드→한국어(결격·상한·
-  ★ 플래그·증거 등급·티어)는 여기에만. `QualitativeItemView`(code/title/short/weight/score/grade/weak/
-  status_label/rationale/note/evidence), `expired`(valid_until < 오늘).
+  ★ 플래그·증거 등급·티어)는 여기에만. `QualitativeItemView`(code/title/short/weight/**scored**/score/
+  grade/weak/status_label/rationale/note/evidence), `expired`(valid_until < 오늘).
+  `_exposure_view(payload) → MacroExposureView(weeks, r_squared, factors)` — `macro_exposure` JSON을
+  뷰로 바꾸고 유의한 요인을 위로 정렬한다. `FactorExposureView.direction`이 부호를 한국어로 옮긴다.
 - 저장소 계약 `StockRepository.qualitative_grade_row(ticker, market)`(DuckDB: `get_latest_qualitative_grade`,
   CSV: None). 빌더 `detail_pages._qualitative_card()` → 템플릿 `partials/_qualitative_card.html`
-  (종합·배수·판정일·유효·티어·모델 → 결격/★ 패널 → 9항목 `<details>` 칩(펼치면 근거 서술·인용) → 주의 항목).
+  (종합·배수·판정일·유효·티어·모델 → 결격/★ 패널 → **외부 요인 민감도 표**(`.qual-exposure`, 접이식) →
+  9항목 `<details>` 칩(펼치면 근거 서술·인용; 참고 표시 항목은 등급 대신 "참고 표시") → 주의 항목).
   CSS `.qual-*`(관문 팔레트와 같은 색: S·A 초록, B 남색, C 주황, D·F 빨강). `StockDetail.qualitative` 문자열
   칸은 이 카드로 대체돼 제거했다.
 
@@ -1016,6 +1032,31 @@ GitHub PAT를 숨기는 "서버 한 조각". 정적 사이트에 PAT를 실으�
 JS가 상태에 맞는 것만 연다. Edge Function 이름과 비용 안내는 `#admin-console`의 `data-*`에 싣는다 —
 ES 모듈에서는 `document.currentScript`가 null이라 script 태그에서 읽을 수 없기 때문이다.
 비용 JSON은 작은따옴표 속성에 넣는다(Jinja `tojson`은 `"`를 이스케이프하지 않는다).
+
+## presentation/templates/partials/_qualitative_run_panel.html + static/qual_run_widget.js
+종목 상세 페이지에서 정성 평가를 바로 실행하는 위젯. 한국 종목(`is_kr_market(detail.market)`,
+`environment.py`가 Jinja 전역으로 등록)에만 렌더링하고, 미국 종목 페이지는 이 스크립트 자체를
+싣지 않는다 — 실행 서버 IP가 SEC EDGAR에 막혀 있어 눌러도 항상 실패하기 때문이다.
+`stock_detail.html`에서 headline-scores 다음, `_qip4_gate.html`보다 앞에 include한다(기존
+정성 평가 등급카드가 있어도 그 위에 실행/재실행 패널이 오도록).
+- 로그인 안 한 방문자에게는 이 위젯을 **아예 보여주지 않는다**(패널이 `hidden`으로 남는다) —
+  일반 투자자용 기능이 아니라서, 관리자 화면과 달리 "로그인해 주세요" 안내조차 띄우지 않기로
+  했다(`.claude/DECISIONS.md` 2026-09-21).
+- 로그인했지만 실행 권한이 없으면(`qip_my_access().max_tier === null`) "실행 권한이 없습니다"만
+  보이고 폼은 감춘다. 권한이 있으면 admin 콘솔과 같은 티어(quick/deep)·모델(compat/anthropic)
+  선택 폼이 나온다 — 티커 입력칸만 없다(이 페이지 티커로 고정, `data-ticker`).
+- 실행 요청은 관리자 화면과 **같은** `qualitative-dispatch` Edge Function을 그대로 부른다. 새
+  실행 경로나 권한 판정을 만들지 않았다 — 결과 확인은 관리자 화면의 "최근 실행" 목록으로 안내한다
+  (이 위젯은 실행 목록을 따로 그리지 않는다 — 스코프를 줄인 선택).
+- 마크업은 새 CSS 없이 기존 `.admin-*`(admin-form/admin-field/admin-message/admin-button 등)
+  클래스를 그대로 재사용한다 — admin.html 전용이 아니라 전역 클래스였기 때문에 가능했다.
+
+## presentation/static/qual_run_shared.js (ES 모듈)
+`admin.js`와 `qual_run_widget.js`가 함께 쓰는 순수 계산 로직(DOM을 만들지 않는다) — 두 화면
+모두 "deep 티어 게이팅·비용 안내 문구·확인창 문구·오늘 사용량 문구"가 똑같아야 해서 분리했다.
+`TIER_QUICK`/`TIER_DEEP`/`PROVIDER_ANTHROPIC` 상수, `applyDeepGating`·`costHintFor`·
+`costHintText`·`confirmRunPrompt`·`quotaText`·`selectedValue`를 내보낸다. admin.js는 이 파일이
+생기기 전에는 같은 로직을 직접 갖고 있었고, 이번에 가져다 쓰도록 리팩터링했다(동작은 그대로).
 
 ## presentation/static/supabase.js (ES 모듈)
 Andys_PFmanager `public/supabase.js`에서 이 프로젝트가 쓰는 부분만 가져온 얇은 계층. 두 저장소의

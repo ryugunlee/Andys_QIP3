@@ -8,7 +8,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from presentation import config
-from presentation.formatters import MISSING, register_filters
+from presentation.formatters import MISSING, is_kr_market, register_filters
 
 TEMPLATES_DIR: Path = Path(__file__).resolve().parent.parent / "templates"
 
@@ -30,4 +30,7 @@ def create_environment() -> Environment:
     env.globals["app_background_color"] = config.APP_BACKGROUND_COLOR
     env.globals["news_featured_limit"] = config.NEWS_FEATURED_LIMIT
     env.globals["news_list_limit"] = config.NEWS_LIST_LIMIT
+    # 종목 상세 페이지의 정성 평가 실행 위젯을 한국 종목에만 보이려고 템플릿에서 직접 쓴다
+    # (미국 종목은 실행 서버 IP가 SEC EDGAR에 막혀 웹 실행 자체가 안 됨).
+    env.globals["is_kr_market"] = is_kr_market
     return env

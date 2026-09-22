@@ -20,15 +20,22 @@ import {
   signOut,
   upsert,
 } from "./supabase.js";
+import {
+  PROVIDER_ANTHROPIC,
+  TIER_DEEP,
+  TIER_QUICK,
+  applyDeepGating,
+  confirmRunPrompt,
+  costHintFor,
+  costHintText,
+  quotaText,
+  selectedValue,
+} from "./qual_run_shared.js";
 
 const PERMISSIONS_TABLE = "qip_permissions";
 /* 실행을 요청해도 GitHub이 러너를 붙잡아 목록에 띄우기까지 몇 초 걸린다.
    그 사이 "최근 실행"이 비어 보이지 않도록 두 번만 다시 읽는다(무한 폴링은 하지 않는다). */
 const RUN_REFRESH_DELAYS_MS = [4000, 12000];
-
-const TIER_QUICK = "quick";
-const TIER_DEEP = "deep";
-const PROVIDER_ANTHROPIC = "anthropic";
 
 const RUN_STATE_LABELS = new Map([
   ["queued", "대기 중"],
@@ -172,10 +179,7 @@ async function refresh(view, functionName) {
 }
 
 function applyAccess(view, access) {
-  const quota =
-    access.daily_limit === null
-      ? `오늘 ${access.used_today}건 실행 (상한 없음)`
-      : `오늘 ${access.used_today} / ${access.daily_limit}건`;
+  const quota = quotaText(access);
 
   if (access.max_tier === null) {
     setMessage(view.accessSummary, "실행 권한이 없습니다. 관리자에게 문의해 주세요.", true);
@@ -192,13 +196,7 @@ function applyAccess(view, access) {
   }
 
   // deep 권한이 없으면 고를 수 없게 한다. 서버도 같은 판단을 다시 한다.
-  const deepInput = view.deepLabel.querySelector("input");
-  const deepAllowed = access.max_tier === TIER_DEEP;
-  deepInput.disabled = !deepAllowed;
-  view.deepLabel.classList.toggle("admin-choice--disabled", !deepAllowed);
-  if (!deepAllowed && deepInput.checked) {
-    view.runForm.querySelector(`input[name="tier"][value="${TIER_QUICK}"]`).checked = true;
-  }
+  applyDeepGating(view.runForm, view.deepLabel, access.max_tier === TIER_DEEP);
 
   if (access.is_admin) {
     show(view.permissionsPanel);
@@ -208,10 +206,6 @@ function applyAccess(view, access) {
 }
 
 /* ── 실행 ───────────────────────────────────────────────────── */
-
-function selectedValue(form, name) {
-  return form.querySelector(`input[name="${name}"]:checked`)?.value ?? "";
-}
 
 function bindCostHint(view, costHints) {
   const update = () => {
@@ -224,11 +218,7 @@ function bindCostHint(view, costHints) {
     view.providerField.disabled = isDeep;
     view.providerField.classList.toggle("admin-choice--disabled", isDeep);
     const provider = selectedValue(view.runForm, "provider");
-    const cost = costHints[`${tier}:${provider}`];
-    view.costHint.textContent =
-      cost === undefined
-        ? ""
-        : `예상 비용 약 ${cost.toLocaleString("ko-KR")}원 (원문 분량에 따라 달라집니다)`;
+    view.costHint.textContent = costHintText(costHintFor(costHints, tier, provider));
   };
   view.runForm.addEventListener("change", update);
   update();
@@ -240,10 +230,9 @@ function bindRunForm(view, functionName, costHints) {
     const ticker = view.ticker.value.trim();
     const tier = selectedValue(view.runForm, "tier");
     const provider = selectedValue(view.runForm, "provider");
-    const cost = costHints[`${tier}:${provider}`];
-    const price = cost === undefined ? "" : ` 약 ${cost.toLocaleString("ko-KR")}원이 듭니다.`;
+    const cost = costHintFor(costHints, tier, provider);
 
-    if (!window.confirm(`${ticker} 종목을 ${tier} 티어로 채점합니다.${price}\n실행할까요?`)) return;
+    if (!window.confirm(confirmRunPrompt(ticker, tier, cost))) return;
 
     setMessage(view.runMessage, "실행을 요청하는 중…");
     view.runSubmit.disabled = true;

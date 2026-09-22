@@ -700,6 +700,41 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
   margin-right: 4px;
 }
 
+/* 외부 요인 민감도 — 접어 두되 요약 한 줄은 항상 보인다 */
+.qual-exposure {
+  margin-top: 12px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.qual-exposure > summary {
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.qual-exposure > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius); }
+.qual-exposure .gate-note { padding: 0 14px 12px; margin: 0; }
+.qual-exposure-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.qual-exposure-table th, .qual-exposure-table td {
+  padding: 6px 14px;
+  text-align: right;
+  border-top: 1px dashed var(--border);
+}
+.qual-exposure-table th:first-child, .qual-exposure-table td:first-child,
+.qual-exposure-table th:last-child, .qual-exposure-table td:last-child { text-align: left; }
+.qual-exposure-table thead th { color: var(--ink-muted); font-weight: 500; }
+.qual-exposure-significant { font-weight: 600; }
+
 /* --- 푸터 --- */
 .site-footer {
   margin-top: 56px;
@@ -936,6 +971,11 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
   color: var(--muted, #6b7280);
   line-height: 1.5;
 }
+
+/* --- 종목 상세 페이지의 정성 평가 실행 위젯 (한국 종목만) ---
+   admin-panel 카드 모양을 그대로 쓰되, 이 페이지의 다른 section들과 리듬이 맞도록
+   위아래 여백만 page-section과 맞춘다. */
+.qual-run-panel { margin: 36px 0; }
 
 /* --- 관리자 화면 (admin/index.html) --- */
 /* 정성 평가를 웹에서 실행하는 화면. 일반 방문자는 오지 않는 페이지라 폭을 좁혀 읽기 쉽게 둔다. */
