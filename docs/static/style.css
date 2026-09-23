@@ -648,13 +648,13 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
   gap: 10px;
   margin-top: 12px;
 }
-.qual-item {
+.qual-item, .gate-item {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0;
 }
-.qual-item summary {
+.qual-item summary, .gate-item summary {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -662,8 +662,9 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
   cursor: pointer;
   list-style: none;
 }
-.qual-item summary::-webkit-details-marker { display: none; }
-.qual-item summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius); }
+.qual-item summary::-webkit-details-marker,
+.gate-item summary::-webkit-details-marker { display: none; }
+.qual-item summary:focus-visible, .gate-item summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--radius); }
 .qual-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; color: var(--ink-muted); }
 .qual-short { font-weight: 600; flex: 1; }
 .qual-chip {
@@ -686,7 +687,7 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
 .qual-composite.qual-grade-c { background: none; color: #b58900; }
 .qual-composite.qual-grade-d, .qual-composite.qual-grade-f { background: none; color: #b3261e; }
 .qual-composite.qual-grade-none { background: none; color: var(--ink-muted); font-size: 1rem; }
-.qual-item-body { padding: 0 14px 12px; border-top: 1px dashed var(--border); }
+.qual-item-body, .gate-item-body { padding: 0 14px 12px; border-top: 1px dashed var(--border); }
 .qual-question { margin: 10px 0 6px; font-size: 0.82rem; color: var(--ink-muted); }
 .qual-rationale { margin: 0 0 6px; font-size: 0.9rem; line-height: 1.6; }
 .qual-evidence { margin: 6px 0 0; padding-left: 16px; font-size: 0.82rem; color: var(--ink-secondary); line-height: 1.55; }
@@ -971,6 +972,37 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
   color: var(--muted, #6b7280);
   line-height: 1.5;
 }
+
+/* 평가기준 카드 — 걸린 항목만이 아니라 전 기준을 상태와 함께 늘어놓는다.
+   접힌 상태에서는 "이름 + 상태"만 보이므로, 페이지 맨 위에 와도 답답하지 않다. */
+.gate-block .section-head { align-items: center; flex-wrap: wrap; }
+.gate-criteria-group { margin-top: 18px; }
+.gate-criteria-group h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.gate-criteria-group .gate-note { margin-top: 0; margin-bottom: 8px; }
+.gate-criteria {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+}
+.gate-item-name { font-weight: 600; flex: 1; }
+.gate-chip {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.gate-status-pass { color: #0f7b4f; background: #e7f6ee; border-color: #bde5d0; }
+.gate-status-warn { color: #8a6a00; background: #fdf4dd; border-color: #ecd9a3; }
+.gate-status-fail { color: #b3261e; background: #fdecea; border-color: #f5c6c2; }
+.gate-status-unknown { color: var(--ink-muted); background: var(--page-bg); border-color: var(--border); }
+.gate-item-rule { margin: 10px 0 6px; font-size: 0.85rem; font-weight: 600; line-height: 1.55; }
+.gate-item-desc { margin: 0; font-size: 0.88rem; line-height: 1.65; color: var(--ink-secondary); }
 
 /* --- 종목 상세 페이지의 정성 평가 실행 위젯 (한국 종목만) ---
    admin-panel 카드 모양을 그대로 쓰되, 이 페이지의 다른 section들과 리듬이 맞도록
