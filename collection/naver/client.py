@@ -14,6 +14,7 @@ from collection.constants import (
     NAVER_MAX_RETRIES,
     NAVER_USER_AGENT,
     NAVER_WISE_FRQ_ANNUAL,
+    NETWORK_RETRY_BACKOFF_SECONDS,
     REQUEST_THROTTLE_SECONDS,
     TOO_MANY_REQUESTS_WAIT_SECONDS,
 )
@@ -33,16 +34,40 @@ _REQUEST_TIMEOUT_SECONDS: float = 10
 _INVALID_TICKER_STATUS_CODES: tuple[int, ...] = (404, 409)
 _WISE_ENCPARAM_PATTERN = re.compile(r"encparam:\s*'([^']+)'")
 
+# 재시도할 네트워크 수준 실패. 연결 자체가 안 되는 상황(소스 차단·일시 장애)이라
+# 상태 코드가 없어 위의 429 분기로는 잡히지 않는다.
+_TRANSIENT_NETWORK_ERRORS = (
+    requests.exceptions.ConnectionError,  # ConnectTimeout의 상위 클래스이기도 하다
+    requests.exceptions.Timeout,
+)
+
 
 def _get(
     url: str, params: dict | None = None, extra_headers: dict | None = None
 ) -> requests.Response | None:
-    """잘못된 티커(404/409)는 None, 성공은 Response, 그 외에는 재시도 후 예외를 던진다."""
+    """잘못된 티커(404/409)는 None, 성공은 Response, 그 외에는 재시도 후 예외를 던진다.
+
+    **네트워크 수준 실패(연결 타임아웃·끊김)도 재시도 대상이다.** 원래는 상태 코드만
+    재시도해서 `requests.exceptions.ConnectTimeout`이 첫 시도에 그대로 빠져나갔다. 그래서
+    소스가 연결을 거부하기 시작하면 `NAVER_MAX_RETRIES`도 `TOO_MANY_REQUESTS_WAIT_SECONDS`도
+    적용되지 않고 남은 종목이 백오프 한 번 없이 줄줄이 실패했다 — 2026-09-22 KOSPI 수집에서
+    746종목이 이렇게 유실됐다 (`.claude/PROBLEMS.md` #43).
+    """
     headers = {**_HEADERS, **extra_headers} if extra_headers else _HEADERS
     response = None
-    for _ in range(NAVER_MAX_RETRIES):
+    for attempt in range(NAVER_MAX_RETRIES):
         time.sleep(REQUEST_THROTTLE_SECONDS)
-        response = requests.get(url, params=params, headers=headers, timeout=_REQUEST_TIMEOUT_SECONDS)
+        try:
+            response = requests.get(
+                url, params=params, headers=headers, timeout=_REQUEST_TIMEOUT_SECONDS
+            )
+        except _TRANSIENT_NETWORK_ERRORS:
+            # 마지막 시도였다면 호출부가 종목 단위로 처리하도록 그대로 올려보낸다.
+            if attempt == NAVER_MAX_RETRIES - 1:
+                raise
+            # 지수 백오프: 소스가 잠깐 막힌 경우 다음 시도에 여유를 준다.
+            time.sleep(NETWORK_RETRY_BACKOFF_SECONDS * (2**attempt))
+            continue
         if response.status_code == 200:
             return response
         if response.status_code in _INVALID_TICKER_STATUS_CODES:

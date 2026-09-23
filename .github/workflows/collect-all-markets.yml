@@ -1,0 +1,52 @@
+name: Collect All Markets
+
+# 4개 시장을 **한 번에 순차로** 재수집하는 수동 통로.
+#
+# 왜 필요한가: 정기 스케줄(cron)은 시장을 요일별로 흩어 놓아 네 시장을 다 채우려면 일주일이
+# 걸린다. 수정 배포 직후처럼 전체를 빨리 다시 채워야 할 때가 있는데, 그때 워크플로 4개를
+# 사람이 순서 지켜 눌러야 했다.
+#
+# 왜 순차인가: KOSPI·KOSDAQ은 andys_qip_kr.duckdb를, NASDAQ·NYSE는 andys_qip_us.duckdb를
+# 릴리스 자산으로 주고받는다. 겹쳐 돌면 나중에 끝난 쪽이 자기가 시작할 때 복원한 낡은
+# 사본으로 상대의 run을 통째로 덮어쓴다 (`.claude/PROBLEMS.md` #41).
+# `needs:`로 이어 붙여 **GitHub Actions 안에서** 순서를 보장한다 — 이 순서를 외부 스크립트가
+# 쥐고 있으면 그 프로세스가 죽는 순간 체인도 끊긴다(#43의 재발 경로).
+#
+# 각 시장 워크플로를 직접 호출하지 않고 `gh workflow run` + 완료 대기로 부르는 이유:
+# 시장 워크플로들이 이미 자기 몫의 restore/collect/save/build 순서와 concurrency 그룹을
+# 갖고 있어, 그 정의를 한 곳에 두고 재사용하는 편이 중복이 없다. KOSDAQ은 조각 4개 +
+# finalize의 다중 job 구조라 재사용이 특히 중요하다(`collect-kosdaq.yml`).
+
+on:
+  workflow_dispatch:
+    inputs:
+      markets:
+        description: "돌릴 시장 (쉼표로 구분, 순서대로 실행)"
+        required: false
+        default: "kospi,nasdaq,nyse,kosdaq"
+
+concurrency:
+  # 시장 워크플로들과 겹치지 않도록 전용 그룹. 이 체인 자체도 동시 2개가 돌면 안 된다.
+  group: collect-all-markets
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  chain:
+    runs-on: ubuntu-latest
+    # 4개 시장 합계는 KOSPI 4시간 + NASDAQ 2시간 + NYSE 1시간 + KOSDAQ 9시간 ≈ 16시간이지만,
+    # 이 job은 기다리기만 하므로 가장 긴 개별 수집보다 넉넉하면 된다. GitHub 상한은 35일.
+    timeout-minutes: 1200
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run markets sequentially
+        env:
+          MARKETS: ${{ inputs.markets }}
+        run: bash .github/scripts/run_markets_sequentially.sh

@@ -39,6 +39,11 @@ from collection import (
     split_raw_and_curated,
 )
 from collection.stock_base import BaseStock
+from storage.run_selection import (
+    COMPLETENESS_RATIO,
+    completeness_baseline,
+    required_minimum,
+)
 
 # 이 값을 넘는 종목만 "신뢰할 수 있는 데이터"로 세어 보고한다 (기존 main()의 기준).
 RELIABILITY_REPORT_THRESHOLD: int = 50
@@ -114,19 +119,42 @@ def collect_market(
     return stockdata, error_tickers
 
 
+class PartialRunError(RuntimeError):
+    """수집 종목 수가 직전 정상 run 대비 급감해 기록을 거부했을 때."""
+
+
 def record_snapshot(
     conn: duckdb.DuckDBPyConnection,
     market: str,
     source: str,
     stockdata: pd.DataFrame,
     error_tickers: list[str],
+    allow_partial: bool = False,
 ) -> int:
     """run 1건을 기록하고 curated 팩터를 그 run의 스냅샷으로 저장한 뒤 run_id를 반환한다.
 
     **수집이 전부 끝난 뒤에 한 번만 부른다.** 조각 수집에서도 확정 job이 조각을 합친
     표로 한 번 부르므로, `collection_runs`의 의미("1 run = 완성된 시장 스냅샷 1개")가
     분할 실행에서도 그대로 유지된다.
+
+    종목 수가 기준선(그 시장 최근 run들의 최대치) 대비 급감하면 `PartialRunError`를 던져
+    **기록 자체를 거부한다** — 소스가 중간에 막혀 반쪽만 받은 run이 최신 run이 되면
+    나머지 수천 종목이 사이트에서 사라진다(PROBLEMS #43). `allow_partial=True`로 덮어쓸 수
+    있고, 그렇게 들어온 run도 조회 단계 가드가 한 번 더 걸러 준다.
     """
+    baseline = completeness_baseline(conn, market)
+    if baseline is not None:
+        minimum = required_minimum(baseline)
+        if len(stockdata) < minimum:
+            message = (
+                f"{market} 수집 종목 수 {len(stockdata)}개가 기준선 {baseline}개의 "
+                f"{COMPLETENESS_RATIO:.0%}({minimum}개)에 미달합니다 — 소스 차단·네트워크 장애로"
+                f" 반쪽만 받은 run일 수 있어 기록을 건너뜁니다."
+            )
+            if not allow_partial:
+                raise PartialRunError(message)
+            print(f"[market_run] 경고: {message} (--allow-partial로 강제 기록)")
+
     run_id = storage.record_collection_run(
         conn, market, source, len(stockdata), error_tickers
     )
@@ -190,7 +218,7 @@ def report_run(
     )
 
 
-def run_market(market: str) -> None:
+def run_market(market: str, allow_partial: bool = False) -> None:
     """한 시장을 통째로 수집·저장·채점한다 (`Andys_QIP2.py`의 기존 동작).
 
     산출물은 통화권별 DuckDB(qipinfos/andys_qip_kr.duckdb / andys_qip_us.duckdb)에 저장한다.
@@ -201,7 +229,12 @@ def run_market(market: str) -> None:
     try:
         stockdata, error_tickers = collect_market(conn, market, get_tickers(market))
         run_id = record_snapshot(
-            conn, market, source_for_market(market), stockdata, error_tickers
+            conn,
+            market,
+            source_for_market(market),
+            stockdata,
+            error_tickers,
+            allow_partial=allow_partial,
         )
         scored = finalize_run(conn, run_id)
         report_run(conn, run_id, scored, len(stockdata))

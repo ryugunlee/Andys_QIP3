@@ -84,6 +84,12 @@
   **조각을 이으면 정확히 원래 목록**이 된다(결정적 분할 — 재실행해도 같은 몫).
 - `parse_chunk_spec("2/4")` → `(2, 4)`. 범위를 벗어나면 `ValueError`.
 
+## collection/naver/client.py (재시도 규칙)
+- `_get`은 상태 코드(404/409 → None, 429 → 5분 대기 후 재시도)뿐 아니라 **네트워크 수준 실패**
+  (`_TRANSIENT_NETWORK_ERRORS` = ConnectionError/Timeout)도 지수 백오프(2s→4s)로 재시도한다.
+  원래는 상태 코드만 재시도해 `ConnectTimeout`이 첫 시도에 그대로 빠져나갔고, 소스가 연결을
+  거부하기 시작하면 남은 종목이 백오프 없이 줄줄이 실패했다(PROBLEMS #43에서 746종목 유실).
+
 ## collection/sector_groups.py
 - `sector_group(sector, industry)`: 업종명 → 가치 가중치용 4분류
   (`일반`/`자산형`/`무형자산형`/`자본집약사이클`). 한국 한글 업종명과 미국 영문 sector/industry를
@@ -420,6 +426,19 @@ git에 커밋하지 않는다.
 - `save_standard_cutlines(conn, run_id, standard_data, sector_standard_data, country_standard_data)`:
   `get_standard_data()` 결과(전체/섹터/국가 표)를 long format으로 변환해 저장.
 
+## storage/run_selection.py
+"쓸 만큼 완전한 run"을 고르는 규칙. 기록 단계와 조회 단계가 **같은 기준**을 쓰게 한 곳에 뒀다
+(PROBLEMS #43).
+- `COMPLETENESS_RATIO`(0.7) / `RECENT_RUNS_WINDOW`(5) / `MIN_RUNS_FOR_BASELINE`(1).
+- `run_row_counts(conn)`: run별 (market, run_id, run_at, row_count). `collection_runs.ticker_count`가
+  아니라 **실제 스냅샷 행 수**를 센다 — 사이트가 보게 되는 양이 그것이다.
+- `completeness_baseline(conn, market)`: 그 시장 최근 5개 run의 최대 행 수(이력이 없으면 None).
+  직전 run이 아니라 창 안의 최대치를 쓰는 이유는 래칫 방지 — 직전이 반쪽이면 기준선도 같이
+  내려가 반쪽이 정상으로 굳는다.
+- `required_minimum(baseline)`: 기준선 × 비율.
+- `latest_complete_runs(conn)`: 시장별로 "쓸 만큼 완전한" 최신 run 1건씩. 급감 run은 건너뛰고
+  로그를 남긴다. `get_latest_snapshots`(저장)와 `db_repository`(사이트 빌드)가 둘 다 이걸 쓴다.
+
 ## storage/report_export.py
 - `get_run_snapshot` / `get_goodstock` / `get_market_cutlines`: run의 스냅샷, goodstock(원래
   `main()`의 필터: Finalscore 상위 10% & reliability>80 & Quant score>50 & Fscore>50), 시장
@@ -485,8 +504,11 @@ git에 커밋하지 않는다.
 - `curated_columns_only(stockdata)`: 수집 표에서 `raw_` 접두사 컬럼을 뺀 표(스냅샷 저장용).
 - `collect_market(conn, market, tickers)` → `(수집 표, 실패 티커)`. **`collection_runs` 행을
   만들지 않는다** — 조각 수집이 실패해도 반쪽 run이 DB에 남지 않게 하려는 의도적 분리다.
-- `record_snapshot(conn, market, source, stockdata, error_tickers)` → run_id.
+- `record_snapshot(conn, market, source, stockdata, error_tickers, allow_partial=False)` → run_id.
   run 1건을 기록하고 curated 팩터를 스냅샷으로 저장한다. **수집이 다 끝난 뒤 한 번만** 부른다.
+  종목 수가 `run_selection`의 기준선 대비 급감하면 `PartialRunError`를 던져 **기록을 거부**한다
+  (PROBLEMS #43). `allow_partial=True`(진입점의 `--allow-partial`)로 강제할 수 있고, 그렇게 들어온
+  run도 조회 단계 가드가 한 번 더 걸러 준다.
 - `finalize_run(conn, run_id)` → 채점 결과. 시총가중 지수 갱신 → `get_latest_snapshots`
   (통화권 전체 모집단) → `attach_qip4_inputs` → `compute_scores` → `update_snapshot_scores` →
   커트라인(`save_standard_cutlines`) → 섹터/산업 자체 평가(`upsert_group_summary`).
@@ -972,6 +994,13 @@ builders·templates(어떻게 보여주나)**. 공개 페이지의 JS는 검색�
 - **같은 통화권 DB를 쓰는 워크플로는 동시에 돌리지 않는다**(KOSPI·KOSDAQ → KR, NASDAQ·NYSE → US).
   각 워크플로는 `save_db.sh`에 자기 통화권 DB만 넘기지만, 같은 파일을 쓰는 둘이 겹치면
   여전히 덮어쓴다. cron은 24시간 간격이라 겹치지 않으며, 수동 실행 시에는 순차로 돌려야 한다.
+- `collect-all-markets.yml`(수동 전용): 4개 시장을 **한 번에 순차로** 재수집하는 통로.
+  `inputs.markets`(기본 `kospi,nasdaq,nyse,kosdaq`) 순서대로 `.github/scripts/run_markets_sequentially.sh`가
+  각 시장 워크플로를 `gh workflow run`으로 부르고 완료를 기다린다. 시장 워크플로 정의를 그대로
+  재사용하므로 중복이 없다(KOSDAQ의 조각 4개 + finalize 구조까지 그대로 쓴다).
+  "성공" 판정은 워크플로 결론이 아니라 **`Save DuckDB` 스텝**으로 본다 — 사이트 커밋만 실패한
+  경우 몇 시간짜리 수집을 헛돌리지 않기 위해서다. 순서를 저장소 안에 두는 이유는 PROBLEMS #43:
+  외부(로컬 셸) 프로세스가 순서를 쥐면 그 프로세스가 죽는 순간 체인이 끊긴다.
 - `collect-macro.yml`(매일 23:30 UTC): restore_db/save_db를 매크로 DB 하나로 한정해서만
   호출하고, `collect_macro.py` 실행 후 사이트는 다시 빌드하지 않는다 — 그 주의 시장별
   수집이 사이트를 재빌드할 때까지 경제지표 반영이 지연된다는 뜻(`.claude/PROBLEMS.md`

@@ -38,18 +38,13 @@ from storage.qip3_selection import get_goodstock2
 from storage.qip4_selection import get_goodstock3
 from storage.qualitative_repository import get_latest_qualitative_grade
 from storage.report_export import get_goodstock, get_run_snapshot
+from storage.run_selection import latest_complete_runs
 
 DEFAULT_STOCK_DB_PATHS: tuple[str, ...] = (KR_STOCK_DB_PATH, US_STOCK_DB_PATH)
 
 # 그룹 요약(long format)에서 상대 점수·종합 중앙값의 기준이 되는 팩터
 _GROUP_SCORE_FACTOR = "Finalscore"
 
-_LATEST_RUNS_QUERY = """
-    SELECT market, max(run_id) AS run_id, max(run_at) AS run_at
-    FROM collection_runs
-    GROUP BY market
-    ORDER BY max(run_at) DESC
-"""
 
 
 class DuckDbStockRepository:
@@ -89,7 +84,9 @@ class DuckDbStockRepository:
         for path in self._existing_paths():
             conn = duckdb.connect(str(path), read_only=True)
             try:
-                runs = conn.execute(_LATEST_RUNS_QUERY).fetchdf()
+                # 소스 차단으로 종목 수가 급감한 run은 건너뛰고 직전 정상 run을 쓴다
+                # (storage/run_selection.py, PROBLEMS #43).
+                runs = latest_complete_runs(conn)
                 for run in runs.itertuples():
                     frame = loader(conn, int(run.run_id))
                     if frame.empty:

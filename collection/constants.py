@@ -3,6 +3,8 @@
 # yfinance 요청 사이 대기 시간 (레이트리밋 방지)
 REQUEST_THROTTLE_SECONDS: float = 0.5
 TOO_MANY_REQUESTS_WAIT_SECONDS: int = 300
+# 연결 타임아웃 등 네트워크 실패 재시도의 기본 백오프 (시도마다 2배)
+NETWORK_RETRY_BACKOFF_SECONDS: float = 2.0
 
 # yfinance/네이버에 요청할 일봉 조회 기간 (년)
 HISTORY_PERIOD_YEARS: int = 5

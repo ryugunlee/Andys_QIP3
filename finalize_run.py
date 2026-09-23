@@ -17,7 +17,13 @@ import sys
 from pathlib import Path
 
 import storage
-from pipeline import finalize_run, record_snapshot, report_run, source_for_market
+from pipeline import (
+    PartialRunError,
+    finalize_run,
+    record_snapshot,
+    report_run,
+    source_for_market,
+)
 from pipeline.chunk_store import read_chunks
 
 DEFAULT_CHUNK_DIR = Path("qipinfos/chunks")
@@ -33,6 +39,11 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_CHUNK_DIR,
         help=f"조각 결과가 있는 폴더 (기본값: {DEFAULT_CHUNK_DIR})",
+    )
+    parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="종목 수가 급감해도 기록한다 (소스 장애가 아님을 확인했을 때만)",
     )
     return parser.parse_args()
 
@@ -53,9 +64,17 @@ def main() -> None:
 
     conn = storage.connect(storage.stock_db_path_for_market(market))
     try:
-        run_id = record_snapshot(
-            conn, market, source_for_market(market), stockdata, error_tickers
-        )
+        try:
+            run_id = record_snapshot(
+                conn,
+                market,
+                source_for_market(market),
+                stockdata,
+                error_tickers,
+                allow_partial=args.allow_partial,
+            )
+        except PartialRunError as error:
+            sys.exit(f"[finalize_run] 기록 중단: {error}")
         print(f"[finalize_run] {market} run {run_id} 기록 — {len(stockdata)}종목")
         scored = finalize_run(conn, run_id)
         report_run(conn, run_id, scored, len(stockdata))

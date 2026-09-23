@@ -689,3 +689,63 @@ artifact로 넘기고, 확정 job이 성공할 때만 run이 생긴다. 조각�
   기준이라, KOSDAQ이 들어오면 **한국 종목의 percentile·standard 점수가 한 번 크게 바뀐다**
   (모집단이 2.9배가 되므로 정상적인 변화지 버그가 아니다).
 - 조각 수 4개는 조각당 약 2시간 기준이다. KOSDAQ 종목이 크게 늘면 조각 수를 올려야 한다.
+
+---
+
+## 43. (해결) 반쪽 수집 run이 최신 run이 되어 한국 종목이 사이트에서 942→188개로 줄었다
+
+2026-09-22 KOSPI 수집(run 11)이 **942종목 중 194종목만** 담은 채 성공으로 끝나 그 시장의
+최신 run이 됐다. `get_latest_snapshots`와 사이트 빌드가 시장별 `max(run_id)`만 보기 때문에,
+나머지 748종목(삼성전자 포함)이 목록·추천·검색에서 조용히 사라졌다. 검색 인덱스의 한국 종목이
+942 → 188개로 줄었고, 빠진 종목의 페이지는 9/15 상태로 남았다(#27 고아 산출물).
+**#28이 예고한 사고가 그대로 났다.**
+
+### 원인 1 — 소스 쪽 차단
+`navercomp.wisereport.co.kr`(FnGuide)가 01:32Z부터 종료까지 연결을 거부했다
+(`ConnectTimeout` 4,458건). 194종목 수집 시점(약 52분)에 시작되어 **그 뒤 성공한 종목은 0개**다.
+스로틀링이 아니라 하드 차단이다. 종목당 WiseFn 요청이 7건(encparam + 연간 3 + 분기 3)이라
+약 26 req/min을 단일 데이터센터 IP에서 지속한 결과로 보인다. 분기 실적 연동은 7/17부터라
+9/8·9/15 수집(825·828종목 성공)과 요청량 차이는 없다 — 소스 쪽 정책·상태 변화로 추정된다.
+
+### 원인 2 — 네트워크 실패에 재시도·백오프가 전혀 없었다
+`collection/naver/client.py::_get`의 재시도 루프가 **상태 코드만** 다뤘다.
+`requests.exceptions.ConnectTimeout`은 첫 시도에서 그대로 빠져나가 `NAVER_MAX_RETRIES`도
+`TOO_MANY_REQUESTS_WAIT_SECONDS`도 적용되지 않았다. 그래서 차단이 시작된 뒤 746종목이
+백오프 한 번 없이 줄줄이 실패했다.
+
+### 조치 (2026-09-23)
+- **`storage/run_selection.py` 신설 — 기록·조회 두 단계에서 같은 기준으로 막는다.**
+  기준선은 그 시장 **최근 5개 run의 최대 행 수**이고, 그 70% 미만이면 "쓸 만큼 완전하지 않다".
+  기준선을 직전 run으로 잡으면 반쪽이 기준선을 끌어내려 정상으로 굳고(래칫), 전체 이력
+  최대치로 잡으면 상장폐지로 실제 감소했을 때 영구히 못 넘으므로 창을 뒀다.
+  - 기록 단계: `pipeline.record_snapshot`이 `PartialRunError`로 **기록을 거부**한다.
+    `--allow-partial`로 덮어쓸 수 있다.
+  - 조회 단계: `get_latest_snapshots`와 사이트 빌드(`db_repository`)가 급감 run을 건너뛰고
+    직전 정상 run으로 폴백한다. 가드 이전에 이미 들어온 run 11도 이것으로 즉시 무해해졌다
+    (실측: `get_latest_snapshots` 194 → 828종목, 005930 복귀).
+- **네트워크 실패도 재시도 대상으로.** `_TRANSIENT_NETWORK_ERRORS`(ConnectionError/Timeout)를
+  잡아 지수 백오프(2s→4s)로 최대 `NAVER_MAX_RETRIES`회 시도한 뒤 전파한다.
+- **`collect-all-markets.yml` + `run_markets_sequentially.sh` 신설.** 4개 시장 순차 재수집을
+  GitHub Actions 안에서 수행한다. 순서를 외부 스크립트가 쥐면 그 프로세스가 죽는 순간 체인이
+  끊긴다 — 실제로 이번에 로컬 오케스트레이터가 사라져 NASDAQ·NYSE·KOSDAQ이 실행되지 않았다.
+  "성공" 판정은 워크플로 결론이 아니라 `Save DuckDB` 스텝으로 본다(사이트 커밋만 실패한
+  경우 몇 시간짜리 수집을 헛돌리지 않기 위해).
+
+### 남은 것 — 한국 데이터 소스의 정당성 (별도 판단 필요)
+조사 결과 현재 한국 수집 경로는 약관·robots 측면에서 문제가 있다.
+
+- `finance.naver.com`, `m.stock.naver.com`, `api.finance.naver.com`: 세 호스트 모두
+  `robots.txt`가 `User-agent: * / Disallow: /`다(2026-09-23 직접 확인).
+- `navercomp.wisereport.co.kr`: robots.txt 없음(404). **FnGuide 운영**이며 콘텐츠 저작권과
+  무단 사용·데이터베이스 구축 금지를 명시한다. 이 프로젝트는 정확히 "데이터베이스 구축"을 한다.
+
+정당한 대안이 존재한다.
+- **OpenDART `fnlttSinglAcntAll`** — 금융감독원 공식·무료, 재무상태표·손익·포괄손익·현금흐름·
+  자본변동표 전체를 회사/연도/보고서별로 준다(비교표시로 직전 기간 포함). 한도 약 20,000 호출/일.
+  2,762종목(KOSPI+KOSDAQ)을 연 1회씩 받아도 2,762 호출로 여유가 크다.
+  **이미 `collection/qualitative/dart_source.py`로 연동돼 있고 `DART_API_KEY`도 설정돼 있다.**
+- **KRX Data Marketplace OpenAPI**(openapi.krx.co.kr) — 공식·무료(키 발급 + API별 승인),
+  주식 일별 매매정보·기본정보 제공. 일봉 경로의 대안.
+
+WiseFn → OpenDART 전환은 계정과목 매핑(ACCODE ↔ DART 계정명)을 다시 세워야 하는 큰 작업이라
+별도 과제로 남긴다.

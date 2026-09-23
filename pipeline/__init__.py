@@ -8,6 +8,7 @@
 from pipeline.market_run import (
     collect_market,
     curated_columns_only,
+    PartialRunError,
     finalize_run,
     persist_ticker_data,
     record_snapshot,
@@ -19,6 +20,7 @@ from pipeline.market_run import (
 __all__ = [
     "collect_market",
     "curated_columns_only",
+    "PartialRunError",
     "finalize_run",
     "persist_ticker_data",
     "record_snapshot",

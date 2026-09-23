@@ -4,6 +4,7 @@ import duckdb
 import pandas as pd
 
 from collection.stock_base import CURATED_COLUMNS
+from storage.run_selection import latest_complete_runs
 
 GOODSTOCK_FINALSCORE_QUANTILE: float = 0.9
 GOODSTOCK_RELIABILITY_THRESHOLD: float = 80
@@ -39,15 +40,11 @@ def get_latest_snapshots(conn: duckdb.DuckDBPyConnection) -> pd.DataFrame:
 
     점수 산출의 모집단이 된다. 같은 티커가 여러 시장 run에 있으면(예: KRX와
     KOSPI를 둘 다 실행) 최신 run의 행만 남긴다.
+
+    "최신"은 **쓸 만큼 완전한 최신**이다 — 소스 차단으로 종목 수가 급감한 run은 건너뛰고
+    직전 정상 run을 쓴다 (`storage/run_selection.py`, PROBLEMS #43).
     """
-    runs = conn.execute(
-        """
-        SELECT market, max(run_id) AS run_id
-        FROM collection_runs
-        GROUP BY market
-        ORDER BY max(run_at) DESC
-        """
-    ).fetchdf()
+    runs = latest_complete_runs(conn)
     frames = [
         get_run_snapshot(conn, int(run.run_id)) for run in runs.itertuples()
     ]
