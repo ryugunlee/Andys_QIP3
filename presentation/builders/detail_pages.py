@@ -179,7 +179,7 @@ def build_detail_pages(
             headline_scores=_headline_scores(detail),
             metric_groups=_metric_groups(detail),
             chart_data=_chart_data(charts),
-            qip4_gate=build_gate_view(detail.values),
+            qip4_gate=build_gate_view(detail.values, detail.market),
             qualitative=_qualitative_card(repository, detail),
             financial_table=_financial_table(charts, detail.market),
             financial_table_quarterly=_financial_table_quarterly(charts, detail.market),

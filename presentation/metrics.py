@@ -26,6 +26,7 @@ class MetricFormat(Enum):
     PERCENT = "percent"  # 이미 % 단위인 값: 12.4%
     FRACTION_PERCENT = "fraction_percent"  # 소수(0.124)를 ×100 해서 12.4%
     NUMBER = "number"  # 단순 숫자 (소수 2자리)
+    COUNT = "count"  # 개수·연수 같은 정수 (소수점 없음)
     SCORE = "score"  # 0~100 점수 (소수 1자리, 게이지 표시 가능)
 
 
@@ -193,6 +194,15 @@ GATE_VALUE_COLUMNS: list[str] = [
     "QIP4 Efficiency Reasons",
     "QIP4 Efficiency Multiplier",
     "QIP4 Execution Rate",
+    # 평가기준 카드가 "걸리지 않았다"와 "판정할 데이터가 없다"를 가르는 데 쓰는
+    # 원시값. 값 자체를 지표 표에 줄로 세우면 읽히지 않아 METRIC_SPECS에는 넣지
+    # 않고(또는 이미 다른 그룹에 있고), 여기서만 상세 페이지로 넘긴다.
+    "QIP4 OCF Negative Years",
+    "QIP4 Interest Coverage Fail Years",
+    "QIP4 Accrual Ratio",
+    "QIP4 Inventory Alarm",
+    "QIP4 Receivables Alarm",
+    "QIP4 CCC Deteriorating",
 ]
 
 # StockDetail.values에 담아야 하는 전체 컬럼 목록 (repository가 사용)

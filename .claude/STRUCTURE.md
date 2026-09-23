@@ -774,10 +774,21 @@ QIP4 정량 규칙(`.claude/투자 규칙.md`). QIP3와 **병행**하며 QIP3는
   칸은 이 카드로 대체돼 제거했다.
 
 ## presentation/qip4_view.py
-- `build_gate_view(values)` → `GateView` — QIP4 관문·경보 **코드를 한국어 문구로** 바꾼다.
+- `build_gate_view(values, market=None)` → `GateView` — QIP4 관문·경보 **코드를 한국어 문구로**
+  바꾸고, **평가기준 카드**(`GateView.criteria_groups`)까지 만든다.
   분석 계층은 사유를 코드로만 남기고(`"S1_OCF|REPAYMENT_YEARS"`), 언어는 표현 계층 책임이라
   변환표를 이 파일 한 곳에만 둔다 (`korean_names.py`가 종목명을 맡는 것과 같은 층위).
   QIP4가 아직 계산되지 않은 데이터면 None → 화면이 블록을 통째로 숨긴다.
+- `_CriterionSpec` 표 — 기준 하나의 `code`/`name`/`reason`(걸렸을 때 한 줄)/`rule`(임계값)/
+  `description`(왜 보는가)/`value_column`(판정 근거 원시값)을 한곳에 모은다. 임계값 문구는
+  `analysis/qip4_weights.py` 상수를 f-string으로 끼워 만들어, 규칙이 바뀌면 화면 문구도 따라간다.
+  기존 사유 변환표(`_REASON_LABELS`)는 이 표의 `reason`에서 파생시켜 같은 문장을 두 번 적지 않는다.
+- `_criteria_groups(values, market)` → `list[CriteriaGroupView]` — 안정성 관문 / 자산 품질 경고 /
+  효율성 감사 세 묶음. 관문은 `QIP4 Sector Group == "자산형"`이면 S1~S3·상환연수 대신 F1·F2를 쓴다
+  (`analysis/qip4_gate.py`의 분기와 같은 기준). 각 항목 상태는 **걸림 → 탈락/경고·경보**,
+  **안 걸렸고 원시값 있음 → 통과/해당 없음/이상 없음**, **원시값 없음 → 판정 불가**의 3분기다
+  — 걸린 항목만 보여주던 이전 화면과 달리 "무엇을 보고 통과시켰는지"까지 드러낸다.
+  0/1 플래그 컬럼(`show_value=False`)은 데이터 유무만 보고 측정값 줄은 내보내지 않는다.
 
 ## analysis/group_summary.py
 - `compute_group_summary(scored, group_column)`: 섹터/산업 자체 평가. 그룹별 팩터 **중앙값**을
@@ -835,15 +846,20 @@ builders·templates(어떻게 보여주나)**. 공개 페이지의 JS는 검색�
 ## presentation/metrics.py
 - 지표 메타데이터 단일 소스: `MetricSpec(column, label, format, group)` (개수는 계속 늘어남 —
   정확한 수는 `len(METRIC_SPECS)`로 확인), `MetricFormat`(MONEY/PRICE/MULTIPLE/PERCENT/
-  FRACTION_PERCENT/SCORE/TEXT/NUMBER), `MetricGroup`(밸류에이션~종합 점수, 선언 순서=표시 순서),
+  FRACTION_PERCENT/SCORE/TEXT/NUMBER/COUNT), `MetricGroup`(밸류에이션~종합 점수, 선언 순서=표시 순서),
   `HEADLINE_SCORE_COLUMNS`, `specs_by_group()`.
+  `GATE_VALUE_COLUMNS`는 지표 표에 줄로 세우지 않고 `_qip4_gate.html`이 해석하는 QIP4 관문 컬럼
+  모음이다 — 판정 결과·사유에 더해 **평가기준 카드가 "안 걸림"과 "판정할 데이터가 없음"을 가르는
+  데 쓰는 원시값**(OCF 음수 연수, 이자 미충당 연수, 발생액 비율, 경보 플래그 3종)도 여기 있다.
+  `DETAIL_VALUE_COLUMNS = METRIC_SPECS의 컬럼 + GATE_VALUE_COLUMNS`가 repository가 담을 값 목록.
   **분석에서 지표가 추가되면 여기 한 줄 추가로 상세 페이지 자동 반영.** GROWTH 그룹에
   `Revenue Trend (5Y)`/`Operating Income Trend (5Y)`(TEXT, Y/N)가 있다 — `formatters.py`의
   `_SIGNAL_LABELS`가 "Y"→"오름세 확실"/"N"→"오름세 불확실"로 표시한다.
 
 ## presentation/formatters.py
 - `format_money`(조/억·$T/$B), `format_price`(₩/$), `format_percent`/`format_fraction_percent`,
-  `format_multiple`, `format_score`, `format_text`(영문 신호→한국어: Heating→상승 흐름 등),
+  `format_multiple`, `format_score`, `format_count`(개수·연수를 정수로),
+  `format_text`(영문 신호→한국어: Heating→상승 흐름 등),
   `format_metric`(MetricFormat dispatcher), `meter_width`(0~100 클램프), `change_class`(up/down),
   `sparkline_points(values, width, height)`: 값 목록 → SVG `<polyline points="...">` 좌표 문자열
   (빌드 타임에 계산되는 정적 스파크라인 — 우측 추이 사이드바 전용, 인터랙티브 차트는 charts.js가 담당),
@@ -1152,12 +1168,24 @@ JS가 상태에 맞는 것만 연다. Edge Function 이름과 비용 안내는 `
 ES 모듈에서는 `document.currentScript`가 null이라 script 태그에서 읽을 수 없기 때문이다.
 비용 JSON은 작은따옴표 속성에 넣는다(Jinja `tojson`은 `"`를 이스케이프하지 않는다).
 
+## presentation/templates/partials/_qip4_gate.html
+QIP4 **평가기준** 블록. 2026-09-23부터 `stock_detail.html`의 종목 헤더 바로 아래(가격 차트보다 위)에
+include한다 — 이 종목을 무슨 기준으로 봤는지가 페이지에서 가장 먼저 읽히도록.
+구성: 제목 + 통과/탈락 배지(`.gate-verdict`) → 걸린 것이 있을 때만 나오는 탈락 사유·자산 품질 경고
+요약 패널(`.gate-panel`) → **평가기준 묶음 3개**(안정성 관문 / 자산 품질 경고 / 효율성 감사).
+각 기준은 `<details class="gate-item">`이라 접힌 상태에서는 "이름 + 상태 칩"만 보이고, 누르면
+임계값(`.gate-item-rule`)·설명(`.gate-item-desc`)·측정값이 펼쳐진다. 효율성 감사 묶음에만 점수 승수
+문구가 붙는다(`CriteriaGroupView.shows_multiplier` — 템플릿이 제목 문자열을 비교하지 않게 한 플래그).
+상태 칩 CSS는 `.gate-status-pass/warn/fail/unknown`이고, 펼침 카드 골격(`.gate-item` 등)은 정성 평가
+항목(`.qual-item`)과 선택자를 함께 묶어 규칙을 복제하지 않는다.
+
 ## presentation/templates/partials/_qualitative_run_panel.html + static/qual_run_widget.js
 종목 상세 페이지에서 정성 평가를 바로 실행하는 위젯. 한국 종목(`is_kr_market(detail.market)`,
 `environment.py`가 Jinja 전역으로 등록)에만 렌더링하고, 미국 종목 페이지는 이 스크립트 자체를
 싣지 않는다 — 실행 서버 IP가 SEC EDGAR에 막혀 있어 눌러도 항상 실패하기 때문이다.
-`stock_detail.html`에서 headline-scores 다음, `_qip4_gate.html`보다 앞에 include한다(기존
-정성 평가 등급카드가 있어도 그 위에 실행/재실행 패널이 오도록).
+`stock_detail.html`에서 headline-scores 다음, 정성 평가 등급카드보다 앞에 include한다(기존
+등급카드가 있어도 그 위에 실행/재실행 패널이 오도록). `_qip4_gate.html`은 2026-09-23부터
+종목 헤더 바로 아래로 올라가 이 위젯보다 위에 있다.
 - 로그인 안 한 방문자에게는 이 위젯을 **아예 보여주지 않는다**(패널이 `hidden`으로 남는다) —
   일반 투자자용 기능이 아니라서, 관리자 화면과 달리 "로그인해 주세요" 안내조차 띄우지 않기로
   했다(`.claude/DECISIONS.md` 2026-09-21).

@@ -116,6 +116,13 @@ def format_number(value: float | None) -> str:
     return f"{value:,.2f}"
 
 
+def format_count(value: float | None) -> str:
+    """개수·연수처럼 정수로 읽어야 하는 값. 소수점을 붙이면 오히려 읽기 어렵다."""
+    if value is None:
+        return MISSING
+    return f"{round(value):,d}"
+
+
 def format_text(value: object) -> str:
     """신호/텍스트 값. 알려진 영문 신호는 한국어로 바꾼다."""
     if value is None:
@@ -147,6 +154,8 @@ def format_metric(value: object, metric_format: MetricFormat, market: str | None
         return format_fraction_percent(number)
     if metric_format is MetricFormat.SCORE:
         return format_score(number)
+    if metric_format is MetricFormat.COUNT:
+        return format_count(number)
     return format_number(number)
 
 
