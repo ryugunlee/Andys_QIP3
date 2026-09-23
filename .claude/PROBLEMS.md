@@ -749,3 +749,75 @@ artifact로 넘기고, 확정 job이 성공할 때만 run이 생긴다. 조각�
 
 WiseFn → OpenDART 전환은 계정과목 매핑(ACCODE ↔ DART 계정명)을 다시 세워야 하는 큰 작업이라
 별도 과제로 남긴다.
+
+---
+
+## 44. (진행 중) 한국 재무제표를 WiseFn 스크레이핑에서 OpenDART 공식 API로 옮긴다
+
+#43 조사에서 드러난 두 가지 때문이다. ① WiseFn(`navercomp.wisereport.co.kr`)이 실제로 연결을
+차단해 746종목을 날렸다. ② 그 사이트는 **FnGuide** 운영이며 저작권과 **무단 데이터베이스 구축
+금지**를 명시하는데, 이 프로젝트가 하는 일이 정확히 데이터베이스 구축이다.
+
+### 대체 범위 — 네이버 의존은 WiseFn 하나가 아니다
+| 현재 소스 | 주는 것 | DART 대체 |
+|---|---|---|
+| `navercomp.wisereport.co.kr` (FnGuide) | 손익·재무상태·현금흐름표 | **가능 (이번 작업)** |
+| `m.stock.naver.com/.../integration` | 시가총액·PER·PBR·EPS·배당수익률 | 불가 (DART에 시장 데이터 없음) |
+| `m.stock.naver.com/.../finance/annual` | 매출·영업이익·순이익 + **컨센서스** | 불가 (DART는 공시만) |
+| `api.finance.naver.com/siseJson` | 5년 일봉 | 불가 |
+| `finance.naver.com/sise/sise_group` | 업종 한글명 | 불가 |
+
+**컨센서스는 WiseFn이 아니라 모바일 API에서 온다**(`to_consensus_rows`가 `annual_statements`를
+쓴다). 그래서 WiseFn을 떼도 QIP4 이익 모멘텀은 영향이 없다 — 전환의 가장 큰 걸림돌이 없다.
+남는 한계: 네이버 3개 호스트는 `Disallow: /`인 채 남는다. 시세까지 공식화하려면 KRX Data
+Marketplace OpenAPI가 필요한데 사용자가 직접 키 발급·API별 승인을 받아야 해서 별건이다.
+
+### 요청 수·시간
+사업보고서 응답 1건이 당기·전기·전전기 **3개년**을 준다(`thstrm`/`frmtrm`/`bfefrmtrm`).
+종목당 연간 2콜 + 분기 3콜 = 5콜. KOSPI 942종목 → 4,710콜, KOSDAQ 1,820종목 → 9,100콜.
+시장별 수집이 요일마다 나뉘어 하루 최대치는 9,100콜(한도 20,000의 46%).
+종목당 요청이 11 → 6으로 줄어 **KOSDAQ이 6시간 잡 한도 안에 들어올 여지**가 생긴다(#42 재검토 대상).
+
+### 가장 큰 난점 — WiseFn의 "정규화 계정"이 DART엔 없다
+WiseFn ACCODE `19xxxx` 계열은 FnGuide가 만든 파생 항목이다. DART는 **회사가 공시한 계정을
+그대로** 준다.
+- `190980` 이자발생부채 → 단기차입금 + 유동성장기차입금 + 사채 + 장기차입금 + 리스부채 **합산**
+- `191000` CAPEX → 현금흐름표 "유형자산의 취득" + "무형자산의 취득" **합산**
+- `190560` 매출채권 → 회사별 계정명 상이(매출채권 / 매출채권및기타유동채권 …)
+
+그래서 `collection/dart/accounts.py`가 3층으로 푼다:
+**① XBRL 표준계정ID → ② 한글 계정명 정규식 → ③ 합산 규칙**(`name_excludes`로 "상환"·"처분" 같은
+반대 방향 계정을 뺀다). 못 찾으면 예외가 아니라 결측 — WiseFn 실패 때와 같은 태도다.
+
+### 1단계 (2026-09-23 완료) — 검증 진입점
+표준계정ID는 IFRS 택사노미 기준 **잠정값**이다. 실제 공시에서 어떤 ID가 오는지 확인하지 않고
+수집 경로를 바꾸면 매핑이 틀린 팩터가 조용히 잘못된 값으로 채워진다. **#43의 가드는 종목 수만
+보므로 값의 오류를 잡지 못한다.** 그래서 전환보다 검증을 먼저 만들었다.
+
+- `collection/dart/` 신설 — `client.py`(HTTP·키·corp_code, 정성 평가와 공유) /
+  `accounts.py`(32개 지표 매핑 단일 소스) / `parsers.py`(응답 → long format, 계정 덤프) /
+  `statements.py`(연간 N개년·분기 조합, `latest_annual_year`).
+- `collection/qualitative/dart_source.py`는 공용부를 `collection/dart/client.py`에서 가져오도록
+  바꿨다. 기존 이름(`DartError`·`corp_code_for`·`_get`…)을 재수출해 **호출부 계약은 그대로**다.
+- `verify_dart_mapping.py` + `.github/workflows/verify-dart.yml` — 업종이 다른 표본 6종목에서
+  ① DART가 준 계정 전체를 CSV로 덤프 ② 32지표 매핑 성공/결측 ③ WiseFn 값과 지표×기간 대조
+  (상대오차 1% 초과 = 불일치). `DART_API_KEY`가 Actions Secrets에만 있어 Actions에서 돈다.
+- `item` 규약은 `"<지표>:<한글 계정명>"` — WiseFn의 `"ACCODE:계정명"`과 같은 모양이라
+  읽는 쪽(`series_adapter`, `presentation/financial_series`)이 접두사 매칭을 재사용한다.
+- 합성 응답으로 리졸버 3층을 검증했다(표준ID / 계정명 폴백 / 합산+제외 / 결측 / 금융사 변형).
+
+### 2단계 (미착수) — 수집 경로 전환
+검증 결과로 매핑을 고친 **뒤에** 진행한다.
+1. `collection/qip4/series_adapter.py`의 소스 설정을 dataclass로 바꿔 DART 경로 추가
+   (지금은 `_is_naver` 불리언 하나로 스케일·항목표·statement_type을 고른다 — 소스 3개는 못 담는다).
+   **DART는 원 단위라 `NAVER_EOK_TO_WON` 환산을 적용하지 않는다.**
+2. `presentation/repository/financial_series.py`에 DART 분기 추가(실적 차트).
+3. `collection/naver/naver_stock.py`의 `_fetch_wise_statements` → DART 경로로 교체.
+4. WiseFn 관련 코드·ACCODE 상수 제거.
+
+### 남은 위험
+- 12월 결산 가정: DART 응답에 회계기간 종료월이 없어 `period`를 `YYYY12`(분기는 03/06/09)로 만든다.
+  3월 결산 회사도 같은 라벨 체계를 쓰므로 **문자열 정렬(=시간 정렬)은 보존**되지만 월 자체는
+  실제 결산월과 다를 수 있다. 월을 보는 곳은 분기 라벨(Q1~Q4)뿐이다.
+- 연결/별도: `fs_div=CFS` 우선, 없으면 `OFS` 폴백(WiseFn의 MAIN과 같은 성격).
+- DART는 2015년 이후 데이터만 제공한다(5개년에는 충분).

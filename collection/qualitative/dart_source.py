@@ -12,26 +12,31 @@ IX(계열회사) 7만 자. 정성 항목이 읽는 것은 I(연혁·주식 총�
 """
 
 import io
-import json
-import os
 import re
 import zipfile
 from datetime import date, timedelta
 from pathlib import Path
-from xml.etree import ElementTree
 
-import requests
-
+from collection.dart import client
 from collection.qualitative.sources import SourceDocument, html_to_text
 
-DART_BASE_URL: str = "https://opendart.fss.or.kr/api"
-REQUEST_TIMEOUT_SECONDS: int = 60
 ANNUAL_REPORT_DETAIL_TYPE: str = "A001"  # 정기공시 > 사업보고서
-STATUS_OK: str = "000"
-STATUS_NO_DATA: str = "013"
 # 사업보고서는 연 1회라 이 기간 안에 최신본이 반드시 하나 있다.
 LOOKBACK_DAYS: int = 400
-CORP_CODE_CACHE_PATH: Path = Path("qipinfos/dart_corp_codes.json")
+
+# HTTP·키·corp_code는 수집 영역과 공유한다 (collection/dart/client.py).
+# 아래 재수출은 이 모듈을 import하던 기존 호출부의 계약을 유지하기 위한 것이다.
+DART_BASE_URL = client.DART_BASE_URL
+REQUEST_TIMEOUT_SECONDS = client.REQUEST_TIMEOUT_SECONDS
+STATUS_OK = client.STATUS_OK
+STATUS_NO_DATA = client.STATUS_NO_DATA
+CORP_CODE_CACHE_PATH = client.CORP_CODE_CACHE_PATH
+DartError = client.DartError
+_api_key = client._api_key
+_get = client.get
+parse_corp_codes = client.parse_corp_codes
+_load_corp_codes = client.load_corp_codes
+corp_code_for = client.corp_code_for
 
 DEFAULT_SECTIONS: tuple[str, ...] = ("I", "II", "VI", "VII", "X", "XI")
 SECTION_NAMES: dict[str, str] = {
@@ -54,55 +59,6 @@ _NOTE_HEADING = re.compile(r"^\s*(\d{1,2}(?:-\d)?)\.\s*([가-힣A-Za-z][^\n]{1,4
 # 삼성전자 실측: 현금흐름표·무형자산·자본금·재무위험관리·부문별 보고·특수관계자·배당 ≈ 2.5만 자.
 NOTE_KEYWORDS: tuple[str, ...] = ("현금흐름표", "무형자산", "자본금", "재무위험관리", "부문별 보고", "특수관계자", "배당")
 NOTES_PSEUDO_SECTION: str = "III*"  # 섹션 목록에서 "III의 핵심 주석만"을 뜻하는 표기
-
-
-class DartError(RuntimeError):
-    """OpenDART에서 원문을 받지 못했다."""
-
-
-def _api_key() -> str:
-    key = os.getenv("DART_API_KEY")
-    if not key:
-        raise DartError("DART_API_KEY 미설정 — .env(로컬) 또는 Actions Secrets에 넣어라 (opendart.fss.or.kr 무료 발급)")
-    return key
-
-
-def _get(path: str, **params) -> requests.Response:
-    response = requests.get(
-        f"{DART_BASE_URL}/{path}", params={"crtfc_key": _api_key(), **params}, timeout=REQUEST_TIMEOUT_SECONDS
-    )
-    response.raise_for_status()
-    return response
-
-
-# --- corp_code ---
-def parse_corp_codes(xml_bytes: bytes) -> dict[str, str]:
-    """corpCode.xml → {종목코드: corp_code}. 비상장(종목코드 공백)은 뺀다."""
-    root = ElementTree.fromstring(xml_bytes)
-    mapping: dict[str, str] = {}
-    for entry in root.iter("list"):
-        stock_code = (entry.findtext("stock_code") or "").strip()
-        corp_code = (entry.findtext("corp_code") or "").strip()
-        if stock_code and corp_code:
-            mapping[stock_code] = corp_code
-    return mapping
-
-
-def _load_corp_codes() -> dict[str, str]:
-    if CORP_CODE_CACHE_PATH.exists():
-        return json.loads(CORP_CODE_CACHE_PATH.read_text(encoding="utf-8"))
-    archive = zipfile.ZipFile(io.BytesIO(_get("corpCode.xml").content))
-    mapping = parse_corp_codes(archive.read(archive.namelist()[0]))
-    CORP_CODE_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CORP_CODE_CACHE_PATH.write_text(json.dumps(mapping, ensure_ascii=False), encoding="utf-8")
-    return mapping
-
-
-def corp_code_for(stock_code: str) -> str:
-    mapping = _load_corp_codes()
-    if stock_code not in mapping:
-        raise DartError(f"DART corp_code 목록에 종목코드 {stock_code}가 없다")
-    return mapping[stock_code]
 
 
 # --- 공시 검색 ---

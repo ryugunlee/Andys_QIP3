@@ -84,6 +84,36 @@
   **조각을 이으면 정확히 원래 목록**이 된다(결정적 분할 — 재실행해도 같은 몫).
 - `parse_chunk_spec("2/4")` → `(2, 4)`. 범위를 벗어나면 `ValueError`.
 
+## collection/dart/ (OpenDART — 한국 재무제표 공식 경로)
+WiseFn(FnGuide) 스크레이핑을 대체하기 위한 패키지 (PROBLEMS #44). 금융감독원 공식 무료 API로
+일일 약 20,000 호출을 쓸 수 있다. **2026-09-23 기준 1단계(검증 진입점)만 완료**이며 수집 경로는
+아직 WiseFn이다 — 매핑 검증 뒤에 전환한다.
+
+- `client.py`: OpenDART HTTP(`get`)·API 키(`DART_API_KEY`)·corp_code 매핑
+  (`corp_code_for`/`load_corp_codes`, `qipinfos/dart_corp_codes.json`에 캐시). `DartError`.
+  **정성 평가(`collection/qualitative/dart_source.py`)와 공유한다** — 그쪽이 이 모듈을
+  import하고 기존 이름을 재수출해 호출부 계약을 유지한다.
+- `accounts.py`: 정규화 지표 32개(WiseFn ACCODE 32개와 1:1 대응)를 DART 계정에서 찾는 규칙의
+  단일 소스. `AccountSpec`(statements/account_ids/name_patterns/aggregate/name_excludes)과
+  `ACCOUNT_SPECS`. **3층 해결** — ① XBRL 표준계정ID ② 한글 계정명 정규식 ③ 합산.
+  WiseFn의 `19xxxx`(이자발생부채·CAPEX 등)는 DART에 단일 계정이 없어 합산으로 만든다.
+  `item_key`/`metric_of`가 `item` 규약(`"<지표>:<한글 계정명>"`)을 담당한다.
+- `parsers.py`: `parse_amount`(콤마·음수·빈값), `parse_statements(payload, statement_type,
+  {기간: 금액필드})` → long format(WiseFn과 같은 계약), `account_inventory(payload)`(응답에
+  실제로 온 계정 전체 덤프 — 매핑을 고칠 근거). **금액 단위는 원(KRW)**이라 억원 환산을 하지 않는다.
+- `statements.py`: `latest_annual_year(today)`(사업보고서 제출기한 90일 반영),
+  `fetch_payload(corp_code, year, reprt_code)`(연결 CFS → 별도 OFS 폴백),
+  `fetch_annual(corp_code, latest_year, years)`(응답 1건이 3개년이라 6개년을 2콜로),
+  `fetch_quarterly(corp_code, latest_year)`(1분기·반기·3분기 3콜).
+
+# verify_dart_mapping.py (진입점 — DART 매핑 검증)
+- `python verify_dart_mapping.py [티커...] [--out-dir DIR] [--skip-wise]`.
+  업종이 다른 표본 6종목(삼성전자·신한지주·한국전력·셀트리온·현대차·NAVER)마다
+  ① DART 계정 전체를 CSV로 덤프 ② 32지표 매핑 성공/결측 ③ WiseFn 값과 지표×기간 대조
+  (상대오차 1% 초과 = 불일치)를 내고, "손봐야 할 지표" 목록으로 끝난다.
+  WiseFn 대조는 ACCODE를 직접 읽어 32지표 전부를 덮는다(`series_adapter`의 표는 23개뿐).
+  **수집 경로를 DART로 바꾸기 전 필수 단계다** — 값의 오류는 #43의 종목 수 가드가 못 잡는다.
+
 ## collection/naver/client.py (재시도 규칙)
 - `_get`은 상태 코드(404/409 → None, 429 → 5분 대기 후 재시도)뿐 아니라 **네트워크 수준 실패**
   (`_TRANSIENT_NETWORK_ERRORS` = ConnectionError/Timeout)도 지수 백오프(2s→4s)로 재시도한다.
@@ -994,6 +1024,10 @@ builders·templates(어떻게 보여주나)**. 공개 페이지의 JS는 검색�
 - **같은 통화권 DB를 쓰는 워크플로는 동시에 돌리지 않는다**(KOSPI·KOSDAQ → KR, NASDAQ·NYSE → US).
   각 워크플로는 `save_db.sh`에 자기 통화권 DB만 넘기지만, 같은 파일을 쓰는 둘이 겹치면
   여전히 덮어쓴다. cron은 24시간 간격이라 겹치지 않으며, 수동 실행 시에는 순차로 돌려야 한다.
+- `verify-dart.yml`(수동 전용): `verify_dart_mapping.py`를 Actions에서 돌린다 —
+  `DART_API_KEY`가 Actions Secrets에만 있기 때문이다. 입력(`tickers`/`skip_wise`)은 전부
+  `env:`를 거쳐 셸에 넘긴다(script injection 차단, `qualitative-run.yml`과 같은 규약).
+  결과는 artifact `dart-verify`(계정 덤프 CSV + `comparison.csv`)로 14일간 보관한다.
 - `collect-all-markets.yml`(수동 전용): 4개 시장을 **한 번에 순차로** 재수집하는 통로.
   `inputs.markets`(기본 `kospi,nasdaq,nyse,kosdaq`) 순서대로 `.github/scripts/run_markets_sequentially.sh`가
   각 시장 워크플로를 `gh workflow run`으로 부르고 완료를 기다린다. 시장 워크플로 정의를 그대로

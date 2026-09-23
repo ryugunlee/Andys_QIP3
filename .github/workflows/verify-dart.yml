@@ -1,0 +1,73 @@
+name: Verify DART Mapping
+
+# DART 계정 매핑을 실제 응답으로 검증한다. **수집 경로를 DART로 바꾸기 전의 필수 단계다.**
+#
+# `collection/dart/accounts.py`의 표준계정ID·계정명 패턴은 IFRS 택사노미 기준의 잠정값이라,
+# 실제 공시에서 어떤 계정이 오는지 확인하지 않으면 매핑이 틀린 팩터가 조용히 잘못된 값으로
+# 채워진다. 종목 수 급감 가드(PROBLEMS #43)는 개수만 보므로 값의 오류를 잡지 못한다.
+#
+# 이 워크플로가 Actions에서 도는 이유: `DART_API_KEY`가 Actions Secrets에만 있다.
+#
+# 결과물(artifact `dart-verify`):
+#   - {티커}-accounts-{연도}.csv  DART가 실제로 준 계정 전체 (매핑을 고칠 근거)
+#   - comparison.csv              지표×기간 DART↔WiseFn 대조표
+# 실행 로그의 "손봐야 할 지표" 목록부터 보면 된다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tickers:
+        description: "검증할 종목코드 (공백 구분, 비우면 기본 표본 6종목)"
+        required: false
+        default: ""
+      skip_wise:
+        description: "WiseFn 대조를 건너뛴다 (DART 덤프만)"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: verify-dart
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify DART account mapping
+        env:
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+          TICKERS: ${{ inputs.tickers }}
+          SKIP_WISE: ${{ inputs.skip_wise }}
+        # 입력은 전부 env를 거쳐 셸에 넘긴다 (Actions script injection 차단) —
+        # 다른 워크플로(qualitative-run.yml)와 같은 규약이다.
+        run: |
+          arguments=""
+          if [ "$SKIP_WISE" = "true" ]; then
+            arguments="--skip-wise"
+          fi
+          # shellcheck disable=SC2086  # 티커는 공백 구분 목록이라 분할이 의도된 것이다
+          python verify_dart_mapping.py $TICKERS $arguments
+
+      - name: Upload verification output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dart-verify
+          path: qipinfos/dart_verify/
+          retention-days: 14
+          if-no-files-found: warn
