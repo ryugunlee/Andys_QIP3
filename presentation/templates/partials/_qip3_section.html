@@ -1,8 +1,9 @@
-{# QIP3 5요인 선별 섹션. 컨텍스트: qip3_recommended, qip3_total,
+{# QIP3 5요인 선별 섹션. 컨텍스트: qip3_recommended (MarketGroup 목록), qip3_total,
    qip3_by_sector, qip3_by_market (ConcentrationRow), root #}
 {% with selection_heading = "QIP3 5요인 선별",
-        selection_sub = "안정성 하위 20%를 제외하고 가치성·성장성·모멘텀·재무건전성을 종합해 시장별 상위 10%를 뽑은 종목 (선별 " ~ qip3_total ~ "개 중 " ~ (qip3_recommended | length) ~ "개 표시)",
-        selection_stocks = qip3_recommended,
+        selection_sub = "안정성 하위 20%를 제외하고 가치성·성장성·모멘텀·재무건전성을 종합해 시장별 상위 10%를 뽑은 종목 (전체 선별 " ~ qip3_total ~ "개)",
+        selection_groups = qip3_recommended,
+        selection_tab_group = "qip3-market",
         score_field = "qip3_score",
         score_label = "QIP3 점수",
         selection_by_sector = qip3_by_sector,

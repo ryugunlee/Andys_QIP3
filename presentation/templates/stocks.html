@@ -15,34 +15,32 @@
 </p>
 {% endif %}
 
+{# 현재 주력 기준이 QIP4라 가장 위에 둔다. 기존 종합(추천 종목)과 QIP3는 참고로 아래에 온다. #}
+{% include "partials/_qip4_section.html" %}
+
 <section class="page-section">
   <div class="section-head">
     <h2>추천 종목</h2>
-    <span class="section-sub">종합 점수 상위 10% 중 신뢰도·펀더멘털 조건을 통과한 종목</span>
+    <span class="section-sub">기존 종합 점수 상위 10% 중 신뢰도·펀더멘털 조건을 통과한 종목 (전체 {{ recommended_total }}개)</span>
   </div>
-  {% if recommended %}
-  <div class="card-grid">
-    {% for stock in recommended %}
-    {% include "partials/_stock_card.html" %}
-    {% endfor %}
-  </div>
-  {% else %}
-  <div class="placeholder-card">추천 종목 데이터가 아직 없습니다. 분석 파이프라인 실행 후 다시 생성해 주세요.</div>
-  {% endif %}
+  {% with card_groups = recommended,
+          tab_group = "good-market",
+          empty_message = "이 시장의 추천 종목 데이터가 아직 없습니다. 분석 파이프라인 실행 후 다시 생성해 주세요." %}
+  {% include "partials/_market_card_tabs.html" %}
+  {% endwith %}
 </section>
 
 {% include "partials/_qip3_section.html" %}
-{% include "partials/_qip4_section.html" %}
 
 <section class="page-section tabs">
   <div class="section-head">
     <h2>시가총액 상위</h2>
   </div>
-  <input type="radio" name="cap-tab" id="tab-kr" checked>
-  <input type="radio" name="cap-tab" id="tab-us">
+  <input type="radio" class="tab-kr" name="cap-tab" id="cap-kr" checked>
+  <input type="radio" class="tab-us" name="cap-tab" id="cap-us">
   <div class="tab-labels">
-    <label for="tab-kr">한국</label>
-    <label for="tab-us">미국</label>
+    <label class="label-kr" for="cap-kr">한국</label>
+    <label class="label-us" for="cap-us">미국</label>
   </div>
   <div class="tab-panel panel-kr">
     {% with rows = top_kr %}{% include "partials/_top_cap_table.html" %}{% endwith %}

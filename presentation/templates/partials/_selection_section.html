@@ -1,17 +1,18 @@
 {# 선별 결과 섹션 공용 틀. QIP3·QIP4가 같은 모양을 쓰므로 카드 마크업을 복제하지 않는다.
-   컨텍스트: selection_heading, selection_sub, selection_stocks,
-             score_field, score_label, selection_by_sector, selection_by_market, root #}
-{% if selection_stocks %}
+   컨텍스트: selection_heading, selection_sub, selection_groups (MarketGroup 목록),
+             selection_tab_group, score_field, score_label,
+             selection_by_sector, selection_by_market, root #}
+{% if selection_groups and selection_groups[0].total %}
 <section class="page-section">
   <div class="section-head">
     <h2>{{ selection_heading }}</h2>
     <span class="section-sub">{{ selection_sub }}</span>
   </div>
-  <div class="card-grid">
-    {% for stock in selection_stocks %}
-    {% include "partials/_stock_card.html" %}
-    {% endfor %}
-  </div>
+  {% with card_groups = selection_groups,
+          tab_group = selection_tab_group,
+          empty_message = "이 시장에서 선별된 종목이 없습니다." %}
+  {% include "partials/_market_card_tabs.html" %}
+  {% endwith %}
 
   {% if selection_by_sector or selection_by_market %}
   <div class="concentration-grid">

@@ -941,7 +941,14 @@ builders·templates(어떻게 보여주나)**. 공개 페이지의 JS는 검색�
   리스트를 만든다 — Jinja `groupby` 필터는 키를 알파벳순으로 재정렬해버려서 선언 순서를
   못 지키므로 파이썬에서 미리 묶는다. history가 2개 미만인 지표(추이를 그릴 수 없음)는 제외.
   `trend_groups` 컨텍스트로 템플릿에 전달.
-- `stocks_page.py`: `build_stocks_page()` — 주식 분석 (추천 카드·KR/US 시총 상위 CSS 탭·뉴스).
+- `stocks_page.py`: `build_stocks_page()` — 주식 분석. 섹션 순서는 **QIP4 선별 → 추천 종목(기존
+  종합) → QIP3 선별 → KR/US 시총 상위 → 뉴스** (2026-09-24부터 QIP4가 맨 앞).
+  - `market_groups(stocks, limit)` → `list[MarketGroup]` — 종목 목록을 **전체 / 한국 / 미국**
+    탭으로 나눈다. `MarketGroup(key, label, total, stocks)`에서 `total`은 그 시장의 선별 총수,
+    `stocks`는 카드로 보여줄 상위 `limit`개다(표시 제한을 탭마다 따로 적용). 한국·미국 판정은
+    `config.is_korean_market_name`(시장명 첫 글자 K) — `top_by_market_cap`과 같은 규칙.
+    세 카드 섹션(QIP4·추천·QIP3)이 모두 이 함수를 쓴다.
+  - `_concentration(stocks, key)`: 섹터/시장 쏠림 — 탭과 무관하게 **전체 선별 종목** 기준이다.
 - `detail_pages.py`: `build_detail_pages()` — 전 종목 상세. `ticker_filename()` sanitize,
   metrics 스펙 순회로 그룹 표 조립(템플릿은 CSV 컬럼명을 모름), 대표 점수 4종은 상단 타일.
   `repository.chart_bundle()`을 종목마다 호출해 `_chart_data()`(JS용 콤팩트 JSON, 일봉은
@@ -1196,6 +1203,21 @@ GitHub PAT를 숨기는 "서버 한 조각". 정적 사이트에 PAT를 실으�
 JS가 상태에 맞는 것만 연다. Edge Function 이름과 비용 안내는 `#admin-console`의 `data-*`에 싣는다 —
 ES 모듈에서는 `document.currentScript`가 null이라 script 태그에서 읽을 수 없기 때문이다.
 비용 JSON은 작은따옴표 속성에 넣는다(Jinja `tojson`은 `"`를 이스케이프하지 않는다).
+
+## presentation/templates/partials/_market_card_tabs.html + _selection_section.html
+주식 분석 페이지의 카드 섹션 공용 틀.
+- `_market_card_tabs.html`: **전체/한국/미국 시장 탭 + 카드 그리드.** 컨텍스트는
+  `card_groups`(MarketGroup 목록), `tab_group`(페이지 내 유일한 radio 그룹 이름),
+  `empty_message`. JS 없이 radio + 형제 선택자로 전환하며, CSS가 id가 아니라
+  **`tab-{all|kr|us}` 클래스**를 보므로 한 페이지에 탭 그룹을 여럿 둘 수 있다
+  (`qip4-market`/`good-market`/`qip3-market`/`cap-tab` 4개). 탭 라벨에 그 시장의 총수를
+  `.tab-count`로 붙이고, 표시 개수보다 많으면 `.tab-more`로 "N개 중 상위 M개" 한 줄을 남긴다.
+  `score_field`/`score_label`은 감싼 `{% with %}`에서 그대로 전파돼 `_stock_card.html`에 닿는다.
+- `_selection_section.html`: 선별 결과 섹션 틀(제목·설명 → 시장 탭 카드 → 섹터/시장 쏠림).
+  `_qip3_section.html`·`_qip4_section.html`이 `{% with %}`로 제목·점수 필드·탭 그룹 이름만
+  바꿔 쓴다. `selection_groups[0].total`(전체 탭 총수)이 0이면 섹션을 통째로 숨긴다.
+- 탭 CSS는 `style.css`의 "CSS 전용 탭" 블록. 시가총액 상위 표도 같은 클래스 규칙을 쓴다
+  (예전에는 `#tab-kr`/`#tab-us` id 고정이라 한 페이지에 한 그룹만 가능했다).
 
 ## presentation/templates/partials/_score_panel.html
 점수 종합 섹션. `stock_detail.html`에서 종목 헤더 다음, `_qip4_gate.html`보다 **앞**에

@@ -1,0 +1,36 @@
+{# 시장(전체/한국/미국) 탭 + 종목 카드 그리드. 세 카드 섹션이 공용으로 쓴다.
+   컨텍스트: card_groups (MarketGroup 목록), tab_group (페이지 내 유일한 radio 그룹 이름),
+             empty_message, root
+   선택 컨텍스트: score_field, score_label (_stock_card.html이 그대로 받는다)
+
+   JS 없이 radio + 형제 선택자로 전환한다(기존 시가총액 상위 표와 같은 방식).
+   CSS가 id가 아니라 `tab-{{key}}` 클래스를 보므로 한 페이지에 여러 탭 그룹을 둘 수 있다. #}
+<div class="tabs market-tabs">
+  {% for group in card_groups %}
+  <input type="radio" class="tab-{{ group.key }}" name="{{ tab_group }}"
+         id="{{ tab_group }}-{{ group.key }}"{% if loop.first %} checked{% endif %}>
+  {% endfor %}
+  <div class="tab-labels">
+    {% for group in card_groups %}
+    <label class="label-{{ group.key }}" for="{{ tab_group }}-{{ group.key }}">
+      {{ group.label }}<span class="tab-count">{{ group.total }}</span>
+    </label>
+    {% endfor %}
+  </div>
+  {% for group in card_groups %}
+  <div class="tab-panel panel-{{ group.key }}">
+    {% if group.stocks %}
+    <div class="card-grid">
+      {% for stock in group.stocks %}
+      {% include "partials/_stock_card.html" %}
+      {% endfor %}
+    </div>
+    {% if group.total > group.stocks | length %}
+    <p class="tab-more">{{ group.total }}개 중 상위 {{ group.stocks | length }}개를 보여줍니다.</p>
+    {% endif %}
+    {% else %}
+    <div class="placeholder-card">{{ empty_message }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
