@@ -10,6 +10,7 @@ import pandas as pd
 from presentation.korean_names import display_name
 from presentation.metrics import DETAIL_VALUE_COLUMNS
 from presentation.models import SearchEntry, StockDetail, StockSummary
+from presentation.score_ranks import RANK_VALUE_COLUMNS
 
 # 분석 산출물의 원문 컬럼명
 COL_TICKER = "Ticker"
@@ -83,7 +84,12 @@ def summary_from_row(row: pd.Series) -> StockSummary:
 
 
 def detail_from_row(row: pd.Series) -> StockDetail:
-    values = {column: row_value(row, column) for column in DETAIL_VALUE_COLUMNS}
+    # 순위 컬럼은 저장 산출물에 없고 repository가 빌드 때 계산해 붙인다
+    # (presentation/score_ranks.py). 없으면 row_value가 None을 돌려준다.
+    values = {
+        column: row_value(row, column)
+        for column in DETAIL_VALUE_COLUMNS + RANK_VALUE_COLUMNS
+    }
     return StockDetail(
         ticker=str(row[COL_TICKER]),
         name=_display_name(row),

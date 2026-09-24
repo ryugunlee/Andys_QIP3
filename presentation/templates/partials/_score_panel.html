@@ -1,0 +1,104 @@
+{# 점수 종합 섹션. 컨텍스트: score_panel (ScorePanelView 또는 None)
+   기존에는 종합 점수가 상세 지표 표 맨 아래에 QIP3·QIP4·기존 체계가 섞여 늘어서서,
+   어느 숫자가 어느 기준인지 읽히지 않았다. 여기서는 QIP4를 위에 크게 세우고 같은
+   시장·섹터 안에서의 위치를 함께 보여준 뒤, 세 체계 비교는 펼쳐 보게 둔다. #}
+{% if score_panel %}
+<section class="page-section score-block">
+  <div class="section-head">
+    <h2>점수 종합</h2>
+    <span class="section-sub">점수와 함께 같은 시장·섹터 안에서의 위치를 봅니다</span>
+  </div>
+
+  {% set headline = score_panel.headline %}
+  <div class="score-headline">
+    <div class="score-headline-top">
+      <span class="score-headline-name">{{ headline.name }}</span>
+      {% if headline.market_rank %}
+      <span class="score-tier {{ headline.market_rank.tier_class }}">{{ headline.market_rank.tier_label }}</span>
+      {% endif %}
+    </div>
+
+    {% if score_panel.headline_available %}
+    <div class="score-headline-value">
+      {{ headline.score_text }}<span class="score-headline-max"> / 100</span>
+    </div>
+    <div class="score-meter">
+      <div class="meter-track">
+        <div class="meter-fill" style="width: {{ headline.score | meter_width }}%"></div>
+      </div>
+    </div>
+    {% if headline.ranks %}
+    <ul class="score-rank-list">
+      {% for rank in headline.ranks %}
+      <li>
+        <span class="score-rank-pop">{{ rank.population }}</span>
+        <strong class="score-rank-top">{{ rank.top_percent_text }}</strong>
+        <span class="score-rank-count">{{ rank.rank_text }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="gate-note">순위를 낼 모집단이 너무 작아 위치는 표시하지 않습니다.</p>
+    {% endif %}
+    {% else %}
+    <p class="score-missing">
+      이 종목은 {{ headline.name }} 점수가 아직 없습니다 — 해당 시장의 다음 수집·재점수
+      이후에 채워집니다. 아래 표에서 다른 체계의 점수는 볼 수 있습니다.
+    </p>
+    {% endif %}
+  </div>
+
+  <details class="reveal-block score-detail">
+    <summary>
+      <span class="reveal-title">점수 자세히 보기 — 세 체계 비교</span>
+      <span class="reveal-hint">클릭하여 펼치기</span>
+    </summary>
+    <div class="reveal-body">
+      <p class="gate-note">{{ score_panel.selection_note }}</p>
+      <div class="table-scroll">
+        <table class="fin-table score-table">
+          <thead>
+            <tr>
+              <th>체계</th><th>종합 점수</th><th>시장 내</th><th>섹터 내</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for system in score_panel.systems %}
+            <tr>
+              <td>{{ system.name }}</td>
+              <td>{{ system.score_text }}</td>
+              {% for rank in (system.market_rank, system.sector_rank) %}
+              <td>
+                {% if rank %}
+                {{ rank.top_percent_text }}
+                <span class="score-tier {{ rank.tier_class }}">{{ rank.tier_label }}</span>
+                <small class="score-rank-count">{{ rank.rank_text }}</small>
+                {% else %}
+                {{ missing }}
+                {% endif %}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% for system in score_panel.systems %}
+      <div class="score-axes">
+        <h4>{{ system.name }} — 축별 점수</h4>
+        <p class="gate-note">{{ system.purpose }}</p>
+        <dl class="metric-table">
+          {% for axis in system.axes %}
+          <div class="metric-row">
+            <dt>{{ axis.label }}</dt>
+            <dd>{{ axis.text }}</dd>
+          </div>
+          {% endfor %}
+        </dl>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+</section>
+{% endif %}

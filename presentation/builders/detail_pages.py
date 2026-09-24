@@ -28,6 +28,7 @@ from presentation.qip4_view import build_gate_view
 from presentation.qualitative_view import build_qualitative_card
 from presentation.models import AnnualFinancials, StockCharts, StockDetail
 from presentation.repository.base import StockRepository
+from presentation.score_ranks import build_score_panel
 
 # 티커는 원래 [A-Za-z0-9.\-]만 오지만(get_tickers 필터), 파일명 안전을 위해 방어한다.
 # 카드/검색의 링크는 urlencode(티커)를 쓰므로, 안전 문자 집합 안에서는 둘이 일치한다.
@@ -179,6 +180,9 @@ def build_detail_pages(
             headline_scores=_headline_scores(detail),
             metric_groups=_metric_groups(detail),
             chart_data=_chart_data(charts),
+            score_panel=build_score_panel(
+                detail.values, detail.market, detail.sector
+            ),
             qip4_gate=build_gate_view(detail.values, detail.market),
             qualitative=_qualitative_card(repository, detail),
             financial_table=_financial_table(charts, detail.market),

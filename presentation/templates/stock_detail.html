@@ -15,6 +15,8 @@
   </div>
 </div>
 
+{% include "partials/_score_panel.html" %}
+
 {% include "partials/_qip4_gate.html" %}
 
 {% if chart_data and chart_data.prices %}
@@ -36,6 +38,12 @@
 {% endif %}
 
 <section class="page-section">
+  {# 제목 없이 게이지 4개만 있어서 QIP4·QIP3 점수와 구별되지 않았다. 어느 체계의
+     숫자인지 밝히는 것만으로 혼동이 줄어든다 (타일 자체는 그대로 둔다). #}
+  <div class="section-head">
+    <h2>기존 종합 점수</h2>
+    <span class="section-sub">이 프로그램의 첫 점수 체계 — QIP4·QIP3와는 다른 기준입니다</span>
+  </div>
   <div class="headline-scores">
     {% for score in headline_scores %}
     {% include "partials/_score_bar.html" %}
@@ -44,7 +52,6 @@
 </section>
 
 {% include "partials/_qualitative_run_panel.html" %}
-
 
 {% include "partials/_qualitative_card.html" %}
 
@@ -125,6 +132,9 @@
   <div class="section-head">
     <h2>상세 지표</h2>
     <span class="section-sub">값이 없는 지표는 {{ missing }} 로 표시됩니다</span>
+    {% if score_panel %}
+    <span class="section-sub">종합 점수의 체계별 비교는 위 &ldquo;점수 종합&rdquo;에서 볼 수 있습니다</span>
+    {% endif %}
   </div>
   {% for group in metric_groups %}
   {% include "partials/_metric_table.html" %}

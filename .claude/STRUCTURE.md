@@ -776,6 +776,28 @@ QIP4 정량 규칙(`.claude/투자 규칙.md`). QIP3와 **병행**하며 QIP3는
   CSS `.qual-*`(관문 팔레트와 같은 색: S·A 초록, B 남색, C 주황, D·F 빨강). `StockDetail.qualitative` 문자열
   칸은 이 카드로 대체돼 제거했다.
 
+## presentation/score_ranks.py
+종합 점수의 **모집단 내 순위**와 3체계 비교 패널. 분석 계층은 점수(0~100)만 내므로,
+"그 점수가 또래 중 어디쯤인가"는 여기서 답한다. 사이트 빌드가 이미 시장별 최신 스냅샷
+전체를 한 프레임으로 들고 있어(`repository._all()`) DB 재점수 없이 횡단면 한 번으로 나온다.
+- `attach_score_ranks(df)` → 순위·모집단 크기 컬럼을 붙인 사본. 대상 점수는
+  `QIP4 Score`·`QIP3 Score`·`Finalscore` 3종, 모집단은 **시장 내**(`Market`)와
+  **같은 시장의 같은 섹터 내**(`Market`+`Sector`) 2종 → 컬럼 12개
+  (`{점수} MarketRank`/`MarketCount`/`SectorRank`/`SectorCount`). 섹터만으로 묶으면
+  KOSPI와 NASDAQ이 섞여 의미가 없어 시장 안에서 묶는다. 표본이 `MIN_GROUP_POPULATION`
+  미만인 모집단은 순위를 비운다(3개 중 1위는 착시). **두 repository의 `_all()`이 호출한다.**
+- `RANK_VALUE_COLUMNS` — 위 12개 컬럼 목록. `row_mapping.detail_from_row`가
+  `DETAIL_VALUE_COLUMNS`와 합쳐 `StockDetail.values`에 담는다(저장 산출물에는 없는 컬럼이다).
+- `build_score_panel(values, market, sector)` → `ScorePanelView | None` — 헤드라인(QIP4)과
+  3체계 비교표. `_SYSTEM_SPECS`가 체계별 (이름, 종합점수 컬럼, 한 줄 설명, 축별 컬럼)을 쥔다.
+  세 체계 모두 점수가 없으면 None → 섹션 숨김.
+- 구간 분류(`_TIER_BANDS`): 시장 내 상위 % 기준으로 **최상위(≤10%) / 상위권(≤25%) /
+  평균 이상(≤50%) / 평균 이하**. 첫 구간은 `analysis/qip4_weights.SELECTION_RATIO`에서
+  파생시켜 실제 선별 컷과 어긋나지 않게 한다. 중위 아래는 "상위 100%"가 아니라
+  "하위 N%"로 읽는다(`_position_text`).
+- **`QIP4 Score`는 퍼센타일·스탠다드 계열의 평균이라 그 값 자체가 백분위가 아니다**
+  (`analysis/qip4_pipeline._attach_averages`). 그래서 점수를 백분위로 읽지 않고 실제 순위를 센다.
+
 ## presentation/qip4_view.py
 - `build_gate_view(values, market=None)` → `GateView` — QIP4 관문·경보 **코드를 한국어 문구로**
   바꾸고, **평가기준 카드**(`GateView.criteria_groups`)까지 만든다.
@@ -1174,6 +1196,17 @@ GitHub PAT를 숨기는 "서버 한 조각". 정적 사이트에 PAT를 실으�
 JS가 상태에 맞는 것만 연다. Edge Function 이름과 비용 안내는 `#admin-console`의 `data-*`에 싣는다 —
 ES 모듈에서는 `document.currentScript`가 null이라 script 태그에서 읽을 수 없기 때문이다.
 비용 JSON은 작은따옴표 속성에 넣는다(Jinja `tojson`은 `"`를 이스케이프하지 않는다).
+
+## presentation/templates/partials/_score_panel.html
+점수 종합 섹션. `stock_detail.html`에서 종목 헤더 다음, `_qip4_gate.html`보다 **앞**에
+include한다 — "몇 점이고 상위 몇 %인가" 다음에 "어떤 기준을 통과해서 나왔나"가 오는 순서다.
+구성: 헤드라인 카드(`.score-headline` — QIP4 종합 점수 큰 숫자 + 구간 칩 + 게이지 +
+시장 내·섹터 내 위치 목록) → 접이식 `details.reveal-block`(3체계 비교표 + 체계별 축 점수).
+QIP4 점수가 없으면 헤드라인이 "미평가" 안내로 바뀌고 비교표는 그대로 나온다.
+구간 칩 CSS는 `.score-tier.tier-top/high/mid/low`, 펼침 골격은 실적 블록의
+`.reveal-block`을 그대로 쓴다.
+`stock_detail.html`의 기존 headline-scores 게이지 4개는 제목이 없어 QIP4·QIP3 점수와
+구별되지 않았는데, **"기존 종합 점수"** 제목을 붙여 어느 체계인지 밝혔다(타일은 그대로).
 
 ## presentation/templates/partials/_qip4_gate.html
 QIP4 **평가기준** 블록. 2026-09-23부터 `stock_detail.html`의 종목 헤더 바로 아래(가격 차트보다 위)에

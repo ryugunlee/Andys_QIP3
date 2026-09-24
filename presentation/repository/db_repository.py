@@ -26,6 +26,7 @@ from presentation.models import (
     StockSummary,
 )
 from presentation.repository import row_mapping as rows
+from presentation.score_ranks import attach_score_ranks
 from presentation.repository.financial_series import (
     annual_financials_from_df,
     quarterly_financials_from_df,
@@ -103,7 +104,7 @@ class DuckDbStockRepository:
 
     def _all(self) -> pd.DataFrame:
         if self._all_stocks is None:
-            self._all_stocks = self._load_runs(get_run_snapshot)
+            self._all_stocks = attach_score_ranks(self._load_runs(get_run_snapshot))
         return self._all_stocks
 
     def _good(self) -> pd.DataFrame:

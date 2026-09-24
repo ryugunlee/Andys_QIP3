@@ -973,6 +973,67 @@ h1, h2, h3 { margin: 0; line-height: 1.3; }
   line-height: 1.5;
 }
 
+/* --- 종목 상세: 점수 종합 --- */
+/* 종합 점수가 상세 지표 표 맨 아래에 세 체계 섞여 있어 어느 숫자가 어느 기준인지
+   읽히지 않았다. 대표 체계(QIP4)를 위에 크게 세우고 모집단 내 위치를 붙이며,
+   체계 비교는 기존 펼침 블록(.reveal-block)을 그대로 재사용해 접어 둔다. */
+.score-headline {
+  padding: 18px 20px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+}
+.score-headline-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.score-headline-name { font-size: 14px; font-weight: 600; color: var(--ink-secondary); }
+.score-headline-value {
+  font-size: 34px;
+  font-weight: 800;
+  margin: 2px 0 10px;
+  font-variant-numeric: tabular-nums;
+}
+.score-headline-value .score-headline-max {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.score-rank-list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.score-rank-list li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 14px;
+}
+.score-rank-pop { color: var(--ink-muted); min-width: 108px; }
+.score-rank-top { font-variant-numeric: tabular-nums; }
+.score-rank-count { color: var(--ink-muted); font-size: 12px; }
+.score-missing { margin: 8px 0 0; font-size: 14px; line-height: 1.65; color: var(--ink-secondary); }
+/* 구간 칩 — 상위 몇 % 이내인지의 분류. 색만으로 구분하지 않고 문구를 함께 둔다. */
+.score-tier {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.score-tier.tier-top { color: #0f7b4f; background: #e7f6ee; border-color: #bde5d0; }
+.score-tier.tier-high { color: #1c5cab; background: #e8f1fe; border-color: #c3d9f7; }
+.score-tier.tier-mid { color: var(--ink-secondary); background: var(--card-bg-strong); border-color: var(--border); }
+.score-tier.tier-low { color: var(--ink-muted); background: var(--page-bg); border-color: var(--border); }
+.score-table td { vertical-align: top; }
+.score-table td .score-tier { margin-left: 4px; }
+.score-table td small { display: block; margin-top: 2px; }
+.score-axes { margin-top: 18px; }
+.score-axes h4 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+.score-axes .gate-note { margin: 0 0 8px; }
+
 /* 평가기준 카드 — 걸린 항목만이 아니라 전 기준을 상태와 함께 늘어놓는다.
    접힌 상태에서는 "이름 + 상태"만 보이므로, 페이지 맨 위에 와도 답답하지 않다. */
 .gate-block .section-head { align-items: center; flex-wrap: wrap; }

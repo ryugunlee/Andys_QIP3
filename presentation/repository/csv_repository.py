@@ -24,6 +24,7 @@ from presentation.models import (
     StockSummary,
 )
 from presentation.repository import row_mapping as rows
+from presentation.score_ranks import attach_score_ranks
 
 # Andys_QIP2.py의 과거 CSV 저장 규칙과 일치해야 하는 경로 템플릿
 _STOCKDATA_PATH = "{market}stockdata2/{market}stockdata.csv"
@@ -60,7 +61,7 @@ class CsvStockRepository:
 
     def _all(self) -> pd.DataFrame:
         if self._all_stocks is None:
-            self._all_stocks = self._load_markets(_STOCKDATA_PATH)
+            self._all_stocks = attach_score_ranks(self._load_markets(_STOCKDATA_PATH))
         return self._all_stocks
 
     def _good(self) -> pd.DataFrame:
