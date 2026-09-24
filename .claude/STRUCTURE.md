@@ -1022,7 +1022,11 @@ builders·templates(어떻게 보여주나)**. 공개 페이지의 JS는 검색�
 - `save_db.sh [파일 경로...]`: 인자 없으면 kr/us/macro 3종 전체, 있으면 넘겨준 파일만 `data-store`
   릴리스에 업로드(`--clobber`)한다. 릴리스가 없으면 draft로 새로 만든다.
 - `build_and_commit_site.sh`: `build_site.py` 실행 후 `docs/`에 변경이 있을 때만
-  `github-actions[bot]` 이름으로 커밋·푸시한다 (동시 실행 대비 `git pull --rebase` 포함).
+  `github-actions[bot]` 이름으로 커밋·푸시한다. **rebase를 쓰지 않는다** — docs/는 전량
+  생성물이라 rebase가 거의 항상 충돌했다(PROBLEMS #45). 대신 `git reset --mixed
+  origin/<브랜치>`로 기준만 최신 origin으로 옮기고 `git add --ignore-removal docs`로 다시
+  스테이징해 커밋 한 개를 얹는다(`--ignore-removal`이 없으면 동시 빌드가 추가한 페이지가
+  삭제로 올라가 사라진다). push가 거부되면 fetch부터 최대 5회 재시도한다.
 
 ## .github/workflows/ (시장별·매크로 스케줄)
 - `collect-kospi.yml`(월 22:00 UTC), `collect-nasdaq.yml`(수 23:00 UTC),

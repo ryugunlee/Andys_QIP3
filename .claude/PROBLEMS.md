@@ -843,3 +843,36 @@ WiseFn ACCODE `19xxxx` 계열은 FnGuide가 만든 파생 항목이다. DART는 
 **영향.** 과대평가 방향이 아니라 과소표기 방향이다 — 없는 경보를 만들어내지는 않고,
 "안 따진 것"을 "따져봤더니 괜찮다"로 읽히게 한다. 관문(탈락) 조건은 해당 없고
 효율성 경보 4종에만 해당한다.
+
+---
+
+## 45. (해결) 사이트 커밋의 `git pull --rebase`가 거의 항상 충돌해 수집이 실패로 끝났다
+
+`build_and_commit_site.sh`가 `git commit` 후 `git pull --rebase`로 경합을 풀었다. 그런데
+docs/는 **전량 생성물**이라 같은 파일이 양쪽에서 통째로 바뀐다 — rebase가 병합할 수 있는
+구조가 아니다. 그래서 **수집과 DB 저장은 성공했는데 마지막 커밋에서만 깨지는 실행**이 반복됐다.
+
+실측: 2026-09-10 NASDAQ, 09-11 NYSE, 09-15 KOSPI, 09-23 KOSPI, 09-23 NASDAQ — 전부
+`Save DuckDB` 성공 + `Rebuild site and commit` 실패. 데이터 손실은 없지만 워크플로가 매번
+실패로 뜨고 사이트 갱신이 다음 재빌드(매크로/뉴스)까지 늦어졌다. #43의 순차 실행 스크립트가
+"성공" 판정을 워크플로 결론이 아니라 `Save DuckDB` 스텝으로 봐야 했던 이유가 이것이다.
+
+### 조치 (2026-09-24) — rebase를 버리고 origin 위에 다시 얹는다
+```
+git fetch origin <브랜치>
+git reset --mixed origin/<브랜치>   # HEAD·인덱스만 최신 origin으로, 작업 트리(생성된 docs)는 유지
+git add --ignore-removal docs
+git commit && git push origin HEAD:<브랜치>
+```
+docs/는 생성물이라 "방금 만든 쪽이 항상 옳다" — 병합할 내용이 애초에 없다. 커밋이 항상 origin
+최신 위에 한 개 올라가므로 충돌이 생길 수 없다. push 직전에 누가 끼어들면 fetch부터 다시 돈다
+(최대 5회, 5·10·15…초 백오프).
+
+**`--ignore-removal`이 중요하다.** 처음에 `git add -A docs`로 만들었더니, 우리가 체크아웃한
+뒤 다른 워크플로가 새로 만든 페이지가 "삭제"로 올라가 사라졌다(로컬 재현으로 실측). 기준이
+origin 최신으로 바뀌었기 때문이다. build_site.py는 낡은 산출물을 지우지 않으므로(#27) 진짜
+삭제할 것도 없다 — 없애야 할 파일이 생기는 날에는 build_site.py 쪽에서 명시적으로 정리해야 한다.
+
+로컬에 bare origin + 두 클론을 만들어 네 시나리오를 실측 검증했다:
+경합 없음 / 다른 워크플로가 먼저 push(예전 충돌 케이스) / 변경 없음 / **push 직전 경합→재시도**
+(pre-push 훅으로 실제 경합을 만들어 `remote rejected` 후 2회차에 성공하는 것을 확인).
