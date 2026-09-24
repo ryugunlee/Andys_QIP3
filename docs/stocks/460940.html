@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>피앤에스로보틱스 — Andy&#39;s QIP</title>
+  <meta name="description" content="투자자가 스스로 판단할 수 있도록 정보를 제공하는 정량 분석 리포트">
+  <link rel="stylesheet" href="../static/style.css">
+  <link rel="manifest" href="../manifest.webmanifest">
+  <link rel="icon" href="../static/icons/icon-192.png" type="image/png">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="../static/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="QIP">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-root="..">
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="logo" href="../index.html">Andy's <span>QIP</span></a>
+    <nav class="main-nav" aria-label="주요 메뉴">
+      <a href="../index.html">홈</a>
+      <a href="../stocks/index.html" class="active" aria-current="page">주식 분석</a>
+      <a href="../sectors/index.html">섹터·산업</a>
+    </nav>
+    <div class="search-box" data-root="..">
+      <input type="search" id="stock-search" placeholder="종목명·티커 검색"
+             autocomplete="off" aria-label="종목 검색">
+      <ul id="search-results" class="search-results" hidden></ul>
+    </div>
+<div class="install-cta" hidden>
+  <button type="button" class="install-button" aria-expanded="false" aria-controls="install-guide">
+    앱 설치
+  </button>
+  <div class="install-guide" id="install-guide" role="dialog" aria-label="앱 설치 안내" hidden>
+    <p class="install-guide-title">홈 화면에 추가하기</p>
+    <ol class="install-guide-steps">
+      <li>아래쪽 <strong>공유</strong> 버튼을 누릅니다.</li>
+      <li>목록에서 <strong>홈 화면에 추가</strong>를 고릅니다.</li>
+      <li>오른쪽 위 <strong>추가</strong>를 누르면 끝납니다.</li>
+    </ol>
+    <button type="button" class="install-guide-close">닫기</button>
+  </div>
+</div>    <a class="admin-corner-link" href="../admin/index.html" aria-label="관리자 로그인" title="관리자 로그인">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="5" y="11" width="14" height="9" rx="2"></rect>
+        <path d="M8 11V7a4 4 0 0 1 8 0v4"></path>
+      </svg>
+    </a>
+  </div>
+</header><main class="container">
+<div class="detail-head">
+  <div class="detail-badges">
+    <span class="badge accent">KOSDAQ</span>
+<span class="badge">281</span><span class="badge">281</span><span class="badge">South Korea</span>  </div>
+  <h1>피앤에스로보틱스 <span class="detail-ticker">460940</span></h1>
+  <div class="detail-price">
+    <span class="price">₩5,160</span>
+    <span class="cap">시가총액 694억</span>
+  </div>
+</div>
+
+<section class="page-section gate-block">
+  <div class="section-head">
+    <h2>QIP4 평가기준</h2>
+    <span class="gate-verdict gate-fail">
+      탈락
+    </span>
+    <span class="section-sub">항목을 누르면 기준과 뜻이 펼쳐집니다</span>
+  </div>
+
+  <div class="gate-panel gate-panel-fail">
+    <h3>탈락 사유</h3>
+    <ul>
+<li>누적 현금전환율이 0.7 미만 (이익이 현금으로 들어오지 않음)</li>    </ul>
+  </div>
+
+
+  <div class="gate-criteria-group">
+    <h3>안정성 관문</h3>
+    <div class="gate-criteria">
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">S1 · 영업활동현금흐름</span>
+          <span class="gate-chip gate-status-pass">통과</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">최근 3년 중 영업활동현금흐름이 음수인 해가 2년 이상이면 탈락</p>
+          <p class="gate-item-desc">장사를 해서 실제로 현금이 들어오는지 묻는 가장 기본적인 조건이다. 이익은 회계 처리로 만들 수 있지만 현금은 그렇지 않다. 영업에서 현금이 계속 빠져나가는 회사는 성장 중이더라도 외부 자금에 생존을 의존한다.</p>
+<p class="gate-note">최근 3년 중 음수 연수 1</p>        </div>
+      </details>
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">S2 · 현금전환율</span>
+          <span class="gate-chip gate-status-fail">탈락</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">3년 누적 영업활동현금흐름 ÷ 3년 누적 순이익이 0.7 미만이면 탈락</p>
+          <p class="gate-item-desc">장부에 적힌 이익이 실제 현금으로 얼마나 들어왔는지 보는 비율이다. 1에 가까울수록 이익과 현금이 일치한다. 낮다면 매출채권·재고에 이익이 묶여 있거나 이익 자체가 부풀려졌을 가능성을 의심해야 한다. 단년도는 운전자본 사정으로 흔들리므로 3년 누적으로 본다.</p>
+<p class="gate-note">측정값 0.07</p>        </div>
+      </details>
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">S3 · 이자보상배율</span>
+          <span class="gate-chip gate-status-pass">통과</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">이자보상배율이 1 미만인 해가 2년 연속이면 탈락</p>
+          <p class="gate-item-desc">영업이익으로 이자비용을 감당하는지 본다. 1 미만은 번 돈으로 이자도 못 낸다는 뜻이라, 빚으로 빚을 갚는 구간에 들어섰다는 신호다. 한 해는 업황 탓일 수 있어 2년 연속일 때만 탈락시킨다.</p>
+<p class="gate-note">이자 미충당 연수 0</p>        </div>
+      </details>
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">상환연수</span>
+          <span class="gate-chip gate-status-pass">통과</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">순부채 ÷ 영업활동현금흐름이 5년을 넘으면 탈락 (유틸리티·리츠·인프라는 8년)</p>
+          <p class="gate-item-desc">지금 버는 속도로 순부채를 모두 갚는 데 몇 년이 걸리는지를 뜻한다. 길수록 금리 상승이나 업황 둔화 한 번에 재무가 흔들린다. 규제요금·장기계약으로 현금흐름이 예측 가능한 업종은 부채를 오래 끌고 가는 것이 정상이라 완화된 기준을 쓴다.</p>
+<p class="gate-note">상환연수 0.00</p>        </div>
+      </details>
+    </div>
+  </div>
+  <div class="gate-criteria-group">
+    <h3>자산 품질 경고</h3>
+    <div class="gate-criteria">
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">실질 자기자본</span>
+          <span class="gate-chip gate-status-pass">해당 없음</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">(자기자본 − 영업권 − 이연법인세자산) ÷ 자기자본이 75% 미만이면 경고</p>
+          <p class="gate-item-desc">영업권과 이연법인세자산은 팔아서 현금이 되는 자산이 아니다. 장부상 자본이 두꺼워 보여도 이런 항목이 큰 비중이면 실제로 손실을 흡수할 수 있는 자본은 그만큼 얇다. PBR이 낮아 보이는 착시의 흔한 원인이다.</p>
+<p class="gate-note">실질 자기자본 비율 96.9%</p>        </div>
+      </details>
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">영업권 비중</span>
+          <span class="gate-chip gate-status-pass">해당 없음</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">영업권 ÷ 총자산이 20%를 넘으면 경고</p>
+          <p class="gate-item-desc">영업권은 인수할 때 순자산보다 더 얹어준 금액이다. 비중이 크다는 것은 자산의 상당 부분이 과거 인수가 성공한다는 가정 위에 서 있다는 뜻이고, 가정이 깨지면 손상차손으로 한 번에 사라진다.</p>
+<p class="gate-note">영업권 비중 0.0%</p>        </div>
+      </details>
+    </div>
+  </div>
+  <div class="gate-criteria-group">
+    <h3>효율성 감사</h3>
+<p class="gate-note">경보는 탈락 사유가 아니라 점수를 깎는 요소다. 3개 이상이면 승수가 0이 되어 사실상 탈락한다.</p>    <div class="gate-criteria">
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">재고</span>
+          <span class="gate-chip gate-status-pass">이상 없음</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">재고 증가율이 매출 증가율을 넘으면 경보 (선수금이 함께 늘면 해제)</p>
+          <p class="gate-item-desc">팔리는 속도보다 쌓이는 속도가 빠르다는 뜻이라, 수요가 꺾였거나 유통망에 물건을 밀어넣어 매출을 만든 것일 수 있다. 다만 선수금이 함께 늘고 있다면 주문을 받아놓고 미리 확보한 재고이므로 경보를 해제한다.</p>
+        </div>
+      </details>
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">매출채권</span>
+          <span class="gate-chip gate-status-warn">경보</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">매출채권 증가율이 매출 증가율을 넘으면 경보</p>
+          <p class="gate-item-desc">매출은 잡혔는데 돈은 아직 못 받은 몫이 커지고 있다는 뜻이다. 무리한 외상 조건으로 매출을 늘렸거나 거래처 사정이 나빠지는 신호일 수 있다.</p>
+        </div>
+      </details>
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">발생액</span>
+          <span class="gate-chip gate-status-warn">경보</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">발생액 비율이 같은 업종 상위 10%에 들면 경보</p>
+          <p class="gate-item-desc">발생액은 순이익에서 영업활동현금흐름을 뺀 값, 즉 현금이 뒷받침하지 않는 이익이다. 회계 관행은 업종마다 다르므로 절대값이 아니라 같은 업종 안에서의 상대 위치로 판단한다.</p>
+<p class="gate-note">발생액 비율 0.1%</p>        </div>
+      </details>
+      <details class="gate-item">
+        <summary>
+          <span class="gate-item-name">현금전환주기</span>
+          <span class="gate-chip gate-status-warn">경보</span>
+        </summary>
+        <div class="gate-item-body">
+          <p class="gate-item-rule">현금전환주기(재고+매출채권−매입채무 회전일)가 연속으로 길어지면 경보</p>
+          <p class="gate-item-desc">재고를 사서 팔고 대금을 회수하기까지 현금이 묶여 있는 기간이다. 계속 길어진다면 같은 매출을 내는 데 더 많은 운전자본이 필요해진다는 뜻이고, 그만큼 성장이 현금을 잡아먹는다.</p>
+        </div>
+      </details>
+    </div>
+    <p class="gate-note">
+      경보 3개 → 점수 승수 0.0 (경보 3개 이상이라 탈락)    </p>
+  </div>
+
+  <p class="gate-note">
+    모멘텀이 정한 집행률 <strong>60%</strong>
+    — 무엇을 살지가 아니라 얼마나 살지에만 관여하는 값이다.
+  </p>
+</section>
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>가격</h2>
+  </div>
+  <div class="price-chart" data-chart="price" data-market="KOSDAQ">
+    <div class="range-tabs" role="tablist">
+      <button type="button" class="range-tab" data-range="1">1개월</button>
+      <button type="button" class="range-tab" data-range="3">3개월</button>
+      <button type="button" class="range-tab" data-range="6">6개월</button>
+      <button type="button" class="range-tab active" data-range="12">1년</button>
+      <button type="button" class="range-tab" data-range="60">5년</button>
+    </div>
+    <div class="chart-canvas"></div>
+  </div>
+</section>
+
+<section class="page-section">
+  <div class="headline-scores">
+<div class="score-tile">
+  <div class="tile-label">종합 점수</div>
+  <div class="tile-value">28.6<span class="tile-max"> / 100</span></div>
+  <div class="score-meter">
+    <div class="meter-track">
+      <div class="meter-fill" style="width: 28.584396467784867%"></div>
+    </div>
+  </div>
+</div><div class="score-tile">
+  <div class="tile-label">가치 점수</div>
+  <div class="tile-value">26.7<span class="tile-max"> / 100</span></div>
+  <div class="score-meter">
+    <div class="meter-track">
+      <div class="meter-fill" style="width: 26.719653596156%"></div>
+    </div>
+  </div>
+</div><div class="score-tile">
+  <div class="tile-label">모멘텀 점수</div>
+  <div class="tile-value">31.8<span class="tile-max"> / 100</span></div>
+  <div class="score-meter">
+    <div class="meter-track">
+      <div class="meter-fill" style="width: 31.759499195152937%"></div>
+    </div>
+  </div>
+</div><div class="score-tile">
+  <div class="tile-label">펀더멘털 점수</div>
+  <div class="tile-value">51.2<span class="tile-max"> / 100</span></div>
+  <div class="score-meter">
+    <div class="meter-track">
+      <div class="meter-fill" style="width: 51.214581250435174%"></div>
+    </div>
+  </div>
+</div>  </div>
+</section>
+
+<section class="admin-panel qual-run-panel" id="qual-run-panel"
+         data-ticker="460940"
+         data-function-name="qualitative-dispatch"
+         data-cost-hints='{"deep:anthropic": 3200, "quick:anthropic": 350, "quick:compat": 30}' hidden>
+  <h2>정성 평가 실행</h2>
+
+  <p class="admin-message admin-message--error" id="qualrun-denied" hidden>
+    실행 권한이 없습니다. 관리자에게 문의해 주세요.
+  </p>
+
+  <form class="admin-form" id="qualrun-form" hidden>
+    <p class="admin-hint" id="qualrun-quota"></p>
+
+    <fieldset class="admin-field admin-field--choice">
+      <legend>채점 티어</legend>
+      <label><input type="radio" name="tier" value="quick" checked> quick — 사업보고서 핵심 섹션</label>
+      <label id="qualrun-tier-deep-label">
+        <input type="radio" name="tier" value="deep"> deep — 재무·주석까지 (Opus 5)
+      </label>
+    </fieldset>
+
+    <fieldset class="admin-field admin-field--choice" id="qualrun-provider-field">
+      <legend>모델</legend>
+      <label><input type="radio" name="provider" value="compat" checked> DeepSeek (저가)</label>
+      <label><input type="radio" name="provider" value="anthropic"> Anthropic</label>
+    </fieldset>
+
+    <p class="admin-cost" id="qualrun-cost-hint"></p>
+    <p class="admin-message" id="qualrun-message" role="alert"></p>
+    <button type="submit" class="admin-button" id="qualrun-submit">이 종목 정성 평가 실행</button>
+  </form>
+</section>
+<script type="module" src="../static/qual_run_widget.js"></script>
+
+
+
+<section class="page-section">
+  <details class="reveal-block">
+    <summary>
+      <span class="reveal-title">실적 (매출·영업이익·순이익)</span>
+      <span class="reveal-hint">클릭하여 펼치기</span>
+    </summary>
+    <div class="reveal-body">
+      <div class="bar-chart-toolbar">
+        <div class="bar-legend">
+          <span class="legend-item"><i class="swatch rev"></i>매출</span>
+          <span class="legend-item"><i class="swatch op"></i>영업이익</span>
+          <span class="legend-item"><i class="swatch net"></i>순이익</span>
+        </div>
+        <div class="range-tabs bar-period-tabs" role="tablist">
+          <button type="button" class="range-tab active" data-period="annual">연간</button>
+          <button type="button" class="range-tab" data-period="quarterly">분기</button>
+        </div>
+      </div>
+      <div class="bar-chart" data-chart="financials" data-market="KOSDAQ"></div>
+      <div class="table-scroll fin-table-panel" data-period="annual">
+        <table class="fin-table">
+          <thead>
+            <tr>
+              <th>연도</th><th>매출</th><th>영업이익</th>
+              <th>순이익</th><th>영업이익률</th><th>매출성장률</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2025</td>
+              <td>76억</td>
+              <td>10억</td>
+              <td>27억</td>
+              <td>13.1%</td>
+              <td>+7.5%</td>
+            </tr>
+            <tr>
+              <td>2024</td>
+              <td>71억</td>
+              <td>16억</td>
+              <td>23억</td>
+              <td>22.8%</td>
+              <td>+18.2%</td>
+            </tr>
+            <tr>
+              <td>2023</td>
+              <td>60억</td>
+              <td>13억</td>
+              <td>14억</td>
+              <td>22.0%</td>
+              <td>+15.2%</td>
+            </tr>
+            <tr>
+              <td>2022</td>
+              <td>52억</td>
+              <td>20억</td>
+              <td>15억</td>
+              <td>38.6%</td>
+              <td>-10.3%</td>
+            </tr>
+            <tr>
+              <td>2021</td>
+              <td>58억</td>
+              <td>21억</td>
+              <td>17억</td>
+              <td>36.1%</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-scroll fin-table-panel" data-period="quarterly" hidden>
+        <table class="fin-table">
+          <thead>
+            <tr>
+              <th>분기</th><th>매출</th><th>영업이익</th>
+              <th>순이익</th><th>영업이익률</th><th>매출성장률(QoQ)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>2026 Q2</td>
+              <td>17억</td>
+              <td>-5억</td>
+              <td>2억</td>
+              <td>-26.5%</td>
+              <td>+85.4%</td>
+            </tr>
+            <tr>
+              <td>2026 Q1</td>
+              <td>9억</td>
+              <td>-4억</td>
+              <td>-1억</td>
+              <td>-38.3%</td>
+              <td>-56.0%</td>
+            </tr>
+            <tr>
+              <td>2025 Q4</td>
+              <td>21억</td>
+              <td>3억</td>
+              <td>13억</td>
+              <td>16.4%</td>
+              <td>+170.1%</td>
+            </tr>
+            <tr>
+              <td>2025 Q3</td>
+              <td>8억</td>
+              <td>-8억</td>
+              <td>-2억</td>
+              <td>-104.3%</td>
+              <td>-70.4%</td>
+            </tr>
+            <tr>
+              <td>2025 Q2</td>
+              <td>26억</td>
+              <td>12억</td>
+              <td>12억</td>
+              <td>45.8%</td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+</section>
+
+<section class="page-section">
+  <div class="section-head">
+    <h2>상세 지표</h2>
+    <span class="section-sub">값이 없는 지표는 — 로 표시됩니다</span>
+  </div>
+<div class="metric-section">
+  <h3>밸류에이션</h3>
+  <dl class="metric-table">
+    <div class="metric-row">
+      <dt>PER (주가수익비율)</dt>
+      <dd>52.12배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>PBR (주가순자산비율)</dt>
+      <dd>1.63배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>PSR (주가매출비율)</dt>
+      <dd>9.13배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>PCR (주가현금흐름비율)</dt>
+      <dd>-43.87배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>EV/매출</dt>
+      <dd>7.28배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>EV/EBITDA</dt>
+      <dd>45.43배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>PEGR (PER/성장률)</dt>
+      <dd>13.29배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>PFCR (주가잉여현금흐름비율)</dt>
+      <dd>369.80배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>NCAV/시가총액</dt>
+      <dd>55.1%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>EPS (주당순이익)</dt>
+      <dd>₩99</dd>
+    </div>
+    <div class="metric-row">
+      <dt>FCF 수익률</dt>
+      <dd>-4.8%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>EV/EBIT</dt>
+      <dd>55.22배</dd>
+    </div>
+  </dl>
+</div><div class="metric-section">
+  <h3>수익성</h3>
+  <dl class="metric-table">
+    <div class="metric-row">
+      <dt>ROE (자기자본이익률)</dt>
+      <dd>6.6%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>ROA (총자산이익률)</dt>
+      <dd>6.3%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>ROC (투하자본이익률)</dt>
+      <dd>2.3%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>GP/A (매출총이익/총자산)</dt>
+      <dd>11.3%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>매출총이익률</dt>
+      <dd>66.9%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>영업이익률</dt>
+      <dd>13.2%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>순이익률</dt>
+      <dd>36.8%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>자산회전율</dt>
+      <dd>0.17배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>재고자산회전율</dt>
+      <dd>1.05배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>매출채권회전율</dt>
+      <dd>1.59배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>유효법인세율</dt>
+      <dd>-28.0%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>매출액</dt>
+      <dd>76억</dd>
+    </div>
+    <div class="metric-row">
+      <dt>순이익</dt>
+      <dd>28억</dd>
+    </div>
+    <div class="metric-row">
+      <dt>영업현금흐름</dt>
+      <dd>-16억</dd>
+    </div>
+  </dl>
+</div><div class="metric-section">
+  <h3>성장성</h3>
+  <dl class="metric-table">
+    <div class="metric-row">
+      <dt>EPS 성장률</dt>
+      <dd>3.9%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>매출 성장률</dt>
+      <dd>7.0%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>매출 5년 오름세</dt>
+      <dd>오름세 확실</dd>
+    </div>
+    <div class="metric-row">
+      <dt>영업이익 5년 오름세</dt>
+      <dd>오름세 불확실</dd>
+    </div>
+    <div class="metric-row">
+      <dt>성장 자기조달률</dt>
+      <dd>0.19</dd>
+    </div>
+    <div class="metric-row">
+      <dt>자본집약도</dt>
+      <dd>15.76</dd>
+    </div>
+    <div class="metric-row">
+      <dt>매출 CAGR</dt>
+      <dd>7.1%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>성장 연속성 판정 기준</dt>
+      <dd>연간</dd>
+    </div>
+    <div class="metric-row">
+      <dt>성장 중 마진 방향</dt>
+      <dd>오름세 불확실</dd>
+    </div>
+  </dl>
+</div><div class="metric-section">
+  <h3>재무 건전성</h3>
+  <dl class="metric-table">
+    <div class="metric-row">
+      <dt>부채비율</dt>
+      <dd>4.3%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>순부채비율 (순부채/자본)</dt>
+      <dd>-32.5%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>부채 증가율 (1년)</dt>
+      <dd>148.5%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>유동비율</dt>
+      <dd>38.76배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>당좌비율</dt>
+      <dd>36.36배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>현금비율</dt>
+      <dd>14.82배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>이자보상배율</dt>
+      <dd>30.40배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>설비투자/매출 비율</dt>
+      <dd>23.3%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>현금흐름/부채 비율</dt>
+      <dd>-1.62배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>재무 레버리지 (자산/자본)</dt>
+      <dd>1.04배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>감가상각/설비투자 비율</dt>
+      <dd>0.12배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>발생액 비율 (이익 품질)</dt>
+      <dd>6.3%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>누적 현금전환율 (3년)</dt>
+      <dd>0.07</dd>
+    </div>
+    <div class="metric-row">
+      <dt>상환연수</dt>
+      <dd>0.00</dd>
+    </div>
+    <div class="metric-row">
+      <dt>실질 자기자본 비율</dt>
+      <dd>96.9%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>영업권 비중</dt>
+      <dd>0.0%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>자기자본비율 (자본÷자산)</dt>
+      <dd>95.9%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>최근 3년 순손실 연수</dt>
+      <dd>0.00</dd>
+    </div>
+  </dl>
+</div><div class="metric-section">
+  <h3>주주환원·지분</h3>
+  <dl class="metric-table">
+    <div class="metric-row">
+      <dt>배당수익률</dt>
+      <dd>0.8%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>자사주 매입수익률</dt>
+      <dd>-0.0%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>배당성향 (배당/이익)</dt>
+      <dd>0.41</dd>
+    </div>
+    <div class="metric-row">
+      <dt>자사주 매입/이익</dt>
+      <dd>0.00</dd>
+    </div>
+    <div class="metric-row">
+      <dt>내부자 지분율</dt>
+      <dd>—</dd>
+    </div>
+    <div class="metric-row">
+      <dt>기관 지분율</dt>
+      <dd>—</dd>
+    </div>
+    <div class="metric-row">
+      <dt>내부자 순매수 비율</dt>
+      <dd>—</dd>
+    </div>
+  </dl>
+</div><div class="metric-section">
+  <h3>수급·모멘텀</h3>
+  <dl class="metric-table">
+    <div class="metric-row">
+      <dt>3개월 수익률</dt>
+      <dd>3.4%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>6개월 수익률</dt>
+      <dd>-36.0%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>1년 수익률</dt>
+      <dd>-26.7%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>12-1 모멘텀 (최근 1개월 제외)</dt>
+      <dd>-27.4%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>거래대금/시총 (10일)</dt>
+      <dd>0.9%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>거래대금/시총 (3개월)</dt>
+      <dd>1.3%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>거래대금/시총 (1년)</dt>
+      <dd>5.0%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>단기 과열도 (10일/3개월)</dt>
+      <dd>0.66배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>중기 과열도 (3개월/1년)</dt>
+      <dd>0.26배</dd>
+    </div>
+    <div class="metric-row">
+      <dt>변동성 (3개월)</dt>
+      <dd>3.9%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>변동성 (1년)</dt>
+      <dd>4.1%</dd>
+    </div>
+    <div class="metric-row">
+      <dt>이익 모멘텀 (3개월 컨센서스 변화율)</dt>
+      <dd>—</dd>
+    </div>
+  </dl>
+</div><div class="metric-section">
+  <h3>기술적 신호</h3>
+  <dl class="metric-table">
+    <div class="metric-row">
+      <dt>MACD 신호</dt>
+      <dd>상승 흐름</dd>
+    </div>
+    <div class="metric-row">
+      <dt>RSI 신호</dt>
+      <dd>상승 전환</dd>
+    </div>
+    <div class="metric-row">
+      <dt>RSI 상태</dt>
+      <dd>중립</dd>
+    </div>
+    <div class="metric-row">
+      <dt>5일 이동평균선</dt>
+      <dd>하회</dd>
+    </div>
+    <div class="metric-row">
+      <dt>20일 이동평균선</dt>
+      <dd>상회</dd>
+    </div>
+    <div class="metric-row">
+      <dt>60일 이동평균선</dt>
+      <dd>상회</dd>
+    </div>
+    <div class="metric-row">
+      <dt>120일 이동평균선</dt>
+      <dd>하회</dd>
+    </div>
+    <div class="metric-row">
+      <dt>200일 이동평균선</dt>
+      <dd>하회</dd>
+    </div>
+  </dl>
+</div><div class="metric-section">
+  <h3>종합 점수</h3>
+  <dl class="metric-table">
+    <div class="metric-row">
+      <dt>종합 점수 (퍼센타일 계열)</dt>
+      <dd>30.4</dd>
+    </div>
+    <div class="metric-row">
+      <dt>종합 점수 (스탠다드 계열)</dt>
+      <dd>26.8</dd>
+    </div>
+    <div class="metric-row">
+      <dt>종합 점수 (섹터 내)</dt>
+      <dd>42.1</dd>
+    </div>
+    <div class="metric-row">
+      <dt>종합 점수 (산업 내)</dt>
+      <dd>42.1</dd>
+    </div>
+    <div class="metric-row">
+      <dt>이익 품질 점수</dt>
+      <dd>46.7</dd>
+    </div>
+    <div class="metric-row">
+      <dt>퀀트 점수</dt>
+      <dd>30.8</dd>
+    </div>
+    <div class="metric-row">
+      <dt>기본 가치 점수 (VC1)</dt>
+      <dd>19.1</dd>
+    </div>
+    <div class="metric-row">
+      <dt>데이터 신뢰도</dt>
+      <dd>94.4</dd>
+    </div>
+    <div class="metric-row">
+      <dt>가치 리스크</dt>
+      <dd>있음</dd>
+    </div>
+    <div class="metric-row">
+      <dt>성장 리스크</dt>
+      <dd>없음</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP3 종합 점수</dt>
+      <dd>34.1</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP3 종합 점수 (섹터 내)</dt>
+      <dd>42.4</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP3 가치성</dt>
+      <dd>22.1</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP3 성장성</dt>
+      <dd>45.5</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP3 모멘텀</dt>
+      <dd>29.4</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP3 재무건전성</dt>
+      <dd>51.0</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP3 안정성</dt>
+      <dd>54.9</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP3 안정성 필터 (시장·섹터)</dt>
+      <dd>56.7</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP4 종합 점수</dt>
+      <dd>0.0</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP4 종합 점수 (섹터 내)</dt>
+      <dd>0.0</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP4 가치</dt>
+      <dd>45.7</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP4 성장성</dt>
+      <dd>54.3</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP4 모멘텀 (집행률 산정용)</dt>
+      <dd>40.8</dd>
+    </div>
+    <div class="metric-row">
+      <dt>QIP4 섹터군</dt>
+      <dd>일반</dd>
+    </div>
+    <div class="metric-row">
+      <dt>밸류 트랩 승수</dt>
+      <dd>1.00</dd>
+    </div>
+  </dl>
+</div></section>
+</main>
+<footer class="site-footer">
+  <div class="container">
+    <p>본 사이트의 모든 정보는 투자 판단을 돕기 위한 자료이며, 매수·매도를 권유하지 않습니다.</p>
+    <p class="footer-meta">데이터 기준일: 2026-09-23</p>
+    <p class="footer-meta"><a href="../admin/index.html">관리자</a></p>
+  </div>
+</footer>
+<script src="../static/search.js" defer></script>
+<script src="../static/sw-register.js" defer></script>
+<script src="../static/install.js" defer></script>
+<script type="application/json" id="chart-data">{"annual": [{"n": 1727176850.0000005, "o": 2097964049.9999998, "p": "2021", "r": 5814883870.000001}, {"n": 1503069000.0000002, "o": 2015082000.0000002, "p": "2022", "r": 5214629000.000001}, {"n": 1410470000.0, "o": 1319755000.0000002, "p": "2023", "r": 6009352000.000001}, {"n": 2322442510.0, "o": 1616767300.0, "p": "2024", "r": 7105295080.000001}, {"n": 2749973250.0000005, "o": 1002406500.0, "p": "2025", "r": 7639478060.0}], "prices": {"c": [12525.0, 11025.0, 9570.0, 7615.0, 7990.0, 7660.0, 7690.0, 7565.0, 7245.0, 6760.0, 7015.0, 7085.0, 6690.0, 6965.0, 6815.0, 6730.0, 6725.0, 6680.0, 6845.0, 6720.0, 6225.0, 6500.0, 8450.0, 8745.0, 7925.0, 7520.0, 7390.0, 7590.0, 7205.0, 6860.0, 7265.0, 7500.0, 7430.0, 7830.0, 7530.0, 7805.0, 7465.0, 7625.0, 7235.0, 7010.0, 6995.0, 6865.0, 6950.0, 6895.0, 7070.0, 6795.0, 6600.0, 6405.0, 6230.0, 6330.0, 6295.0, 6545.0, 6150.0, 6390.0, 6260.0, 6235.0, 6185.0, 5750.0, 5645.0, 5540.0, 5185.0, 5395.0, 5320.0, 5185.0, 5295.0, 5205.0, 4985.0, 4740.0, 4770.0, 4365.0, 4465.0, 4470.0, 4785.0, 4725.0, 4565.0, 4455.0, 4570.0, 4550.0, 4785.0, 4920.0, 4570.0, 4420.0, 4825.0, 4455.0, 4300.0, 4065.0, 3620.0, 3885.0, 4050.0, 4150.0, 4275.0, 4225.0, 4545.0, 4535.0, 4310.0, 4150.0, 4215.0, 4410.0, 5050.0, 4830.0, 5350.0, 5935.0, 6095.0, 6385.0, 6305.0, 6075.0, 6390.0, 5950.0, 6020.0, 6220.0, 5890.0, 6625.0, 6930.0, 7100.0, 6920.0, 6650.0, 6405.0, 6460.0, 6640.0, 7090.0, 6950.0, 7875.0, 7665.0, 7775.0, 7825.0, 7625.0, 6875.0, 7035.0, 7260.0, 7785.0, 9825.0, 9025.0, 8455.0, 8265.0, 8220.0, 8045.0, 8160.0, 8010.0, 7325.0, 7480.0, 7450.0, 7100.0, 6810.0, 6775.0, 6965.0, 7215.0, 6845.0, 7135.0, 7150.0, 6975.0, 6725.0, 6440.0, 6250.0, 6230.0, 6020.0, 6280.0, 6180.0, 5785.0, 5665.0, 5885.0, 5755.0, 5815.0, 5615.0, 5035.0, 5180.0, 5040.0, 5495.0, 5810.0, 5950.0, 6180.0, 5950.0, 6190.0, 6195.0, 6215.0, 6180.0, 6160.0, 6915.0, 6695.0, 6590.0, 6535.0, 6310.0, 6310.0, 6425.0, 6960.0, 6725.0, 6875.0, 7235.0, 7310.0, 7175.0, 7185.0, 6900.0, 6780.0, 7025.0, 6780.0, 6755.0, 6970.0, 6455.0, 6420.0, 6535.0, 6405.0, 6465.0, 6880.0, 6915.0, 6980.0, 6785.0, 6800.0, 6805.0, 6405.0, 6340.0, 6425.0, 6585.0, 6550.0, 7185.0, 8245.0, 8370.0, 7985.0, 7730.0, 7530.0, 7730.0, 7785.0, 7290.0, 7285.0, 6935.0, 7070.0, 6955.0, 7035.0, 6985.0, 7030.0, 6795.0, 7100.0, 7010.0, 6995.0, 6980.0, 6905.0, 6690.0, 6715.0, 6680.0, 6675.0, 6510.0, 6505.0, 6490.0, 6445.0, 6075.0, 6175.0, 6380.0, 6385.0, 6435.0, 6360.0, 6425.0, 6500.0, 6490.0, 6770.0, 6500.0, 6395.0, 6145.0, 6200.0, 6465.0, 6760.0, 6715.0, 6600.0, 6640.0, 6955.0, 7025.0, 7280.0, 7100.0, 7125.0, 7155.0, 7050.0, 7085.0, 7115.0, 7035.0, 7145.0, 7680.0, 7415.0, 7510.0, 7675.0, 7935.0, 7870.0, 7785.0, 7635.0, 7660.0, 7250.0, 7435.0, 7250.0, 7255.0, 7265.0, 7830.0, 8130.0, 7750.0, 8440.0, 8055.0, 7690.0, 8205.0, 8155.0, 8155.0, 7995.0, 8795.0, 8995.0, 10650.0, 10675.0, 10150.0, 10650.0, 10850.0, 11250.0, 10675.0, 10250.0, 9550.0, 9500.0, 11410.0, 12780.0, 12110.0, 11640.0, 11850.0, 10500.0, 9960.0, 10040.0, 10980.0, 13960.0, 12700.0, 12160.0, 11970.0, 11880.0, 11990.0, 12230.0, 13240.0, 13150.0, 12270.0, 12360.0, 11810.0, 11510.0, 12110.0, 13700.0, 13200.0, 12140.0, 12430.0, 12160.0, 12040.0, 12330.0, 11920.0, 11690.0, 11410.0, 11920.0, 12340.0, 11940.0, 11450.0, 10850.0, 10970.0, 10160.0, 10180.0, 10430.0, 10620.0, 10750.0, 11730.0, 11210.0, 11860.0, 11670.0, 12820.0, 11930.0, 11830.0, 12100.0, 11750.0, 12290.0, 12010.0, 11940.0, 11120.0, 11630.0, 11390.0, 10720.0, 10400.0, 10710.0, 10620.0, 10450.0, 10230.0, 9990.0, 9870.0, 9450.0, 9680.0, 9770.0, 9950.0, 9680.0, 9460.0, 8770.0, 7510.0, 8250.0, 8660.0, 7920.0, 8630.0, 8540.0, 8330.0, 8270.0, 8220.0, 8320.0, 8510.0, 8350.0, 8380.0, 7810.0, 8060.0, 8230.0, 7930.0, 7970.0, 7720.0, 7490.0, 7870.0, 7380.0, 7520.0, 7300.0, 7260.0, 7870.0, 7640.0, 7700.0, 7730.0, 7930.0, 8100.0, 8190.0, 8170.0, 8130.0, 8110.0, 8160.0, 8080.0, 8260.0, 8430.0, 8190.0, 8130.0, 8180.0, 8480.0, 8440.0, 8430.0, 8470.0, 9200.0, 8670.0, 9900.0, 9070.0, 8780.0, 8010.0, 7460.0, 7170.0, 7940.0, 8010.0, 7900.0, 7430.0, 6990.0, 6750.0, 6600.0, 6300.0, 6230.0, 5910.0, 5220.0, 5460.0, 5200.0, 5270.0, 5640.0, 5630.0, 5610.0, 5700.0, 5580.0, 6810.0, 6060.0, 5090.0, 5200.0, 4990.0, 4525.0, 5040.0, 4950.0, 4905.0, 4585.0, 4640.0, 4605.0, 4440.0, 4035.0, 4060.0, 4420.0, 4035.0, 4200.0, 4405.0, 4395.0, 4015.0, 4230.0, 4415.0, 4710.0, 4330.0, 4475.0, 4010.0, 3965.0, 3890.0, 4370.0, 4690.0, 4840.0, 5010.0, 5570.0, 5160.0, 5830.0, 5740.0, 5780.0, 5790.0, 5780.0, 5590.0, 5350.0, 5370.0, 5110.0, 4980.0, 5120.0, 5110.0, 5130.0, 5150.0, 5100.0, 5090.0, 5020.0, 4860.0, 5010.0, 5070.0, 5000.0, 5050.0, 5170.0, 5090.0, 4855.0, 5040.0, 4940.0, 5300.0, 5240.0, 5210.0, 5100.0, 5160.0], "d": ["2024-07-31", "2024-08-01", "2024-08-02", "2024-08-05", "2024-08-06", "2024-08-07", "2024-08-08", "2024-08-09", "2024-08-12", "2024-08-13", "2024-08-14", "2024-08-16", "2024-08-19", "2024-08-20", "2024-08-21", "2024-08-22", "2024-08-23", "2024-08-26", "2024-08-27", "2024-08-28", "2024-08-29", "2024-08-30", "2024-09-02", "2024-09-03", "2024-09-04", "2024-09-05", "2024-09-06", "2024-09-09", "2024-09-10", "2024-09-11", "2024-09-12", "2024-09-13", "2024-09-19", "2024-09-20", "2024-09-23", "2024-09-24", "2024-09-25", "2024-09-26", "2024-09-27", "2024-09-30", "2024-10-02", "2024-10-04", "2024-10-07", "2024-10-08", "2024-10-10", "2024-10-11", "2024-10-14", "2024-10-15", "2024-10-16", "2024-10-17", "2024-10-18", "2024-10-21", "2024-10-22", "2024-10-23", "2024-10-24", "2024-10-25", "2024-10-28", "2024-10-29", "2024-10-30", "2024-10-31", "2024-11-01", "2024-11-04", "2024-11-05", "2024-11-06", "2024-11-07", "2024-11-08", "2024-11-11", "2024-11-12", "2024-11-13", "2024-11-14", "2024-11-15", "2024-11-18", "2024-11-19", "2024-11-20", "2024-11-21", "2024-11-22", "2024-11-25", "2024-11-26", "2024-11-27", "2024-11-28", "2024-11-29", "2024-12-02", "2024-12-03", "2024-12-04", "2024-12-05", "2024-12-06", "2024-12-09", "2024-12-10", "2024-12-11", "2024-12-12", "2024-12-13", "2024-12-16", "2024-12-17", "2024-12-18", "2024-12-19", "2024-12-20", "2024-12-23", "2024-12-24", "2024-12-26", "2024-12-27", "2024-12-30", "2025-01-02", "2025-01-03", "2025-01-06", "2025-01-07", "2025-01-08", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-14", "2025-01-15", "2025-01-16", "2025-01-17", "2025-01-20", "2025-01-21", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-31", "2025-02-03", "2025-02-04", "2025-02-05", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-11", "2025-02-12", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-18", "2025-02-19", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-25", "2025-02-26", "2025-02-27", "2025-02-28", "2025-03-04", "2025-03-05", "2025-03-06", "2025-03-07", "2025-03-10", "2025-03-11", "2025-03-12", "2025-03-13", "2025-03-14", "2025-03-17", "2025-03-18", "2025-03-19", "2025-03-20", "2025-03-21", "2025-03-24", "2025-03-25", "2025-03-26", "2025-03-27", "2025-03-28", "2025-03-31", "2025-04-01", "2025-04-02", "2025-04-03", "2025-04-04", "2025-04-07", "2025-04-08", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-14", "2025-04-15", "2025-04-16", "2025-04-17", "2025-04-18", "2025-04-21", "2025-04-22", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-28", "2025-04-29", "2025-04-30", "2025-05-02", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-26", "2025-05-27", "2025-05-28", "2025-05-29", "2025-05-30", "2025-06-02", "2025-06-04", "2025-06-05", "2025-06-09", "2025-06-10", "2025-06-11", "2025-06-12", "2025-06-13", "2025-06-16", "2025-06-17", "2025-06-18", "2025-06-19", "2025-06-20", "2025-06-23", "2025-06-24", "2025-06-25", "2025-06-26", "2025-06-27", "2025-06-30", "2025-07-01", "2025-07-02", "2025-07-03", "2025-07-04", "2025-07-07", "2025-07-08", "2025-07-09", "2025-07-10", "2025-07-11", "2025-07-14", "2025-07-15", "2025-07-16", "2025-07-17", "2025-07-18", "2025-07-21", "2025-07-22", "2025-07-23", "2025-07-24", "2025-07-25", "2025-07-28", "2025-07-29", "2025-07-30", "2025-07-31", "2025-08-01", "2025-08-04", "2025-08-05", "2025-08-06", "2025-08-07", "2025-08-08", "2025-08-11", "2025-08-12", "2025-08-13", "2025-08-14", "2025-08-18", "2025-08-19", "2025-08-20", "2025-08-21", "2025-08-22", "2025-08-25", "2025-08-26", "2025-08-27", "2025-08-28", "2025-08-29", "2025-09-01", "2025-09-02", "2025-09-03", "2025-09-04", "2025-09-05", "2025-09-08", "2025-09-09", "2025-09-10", "2025-09-11", "2025-09-12", "2025-09-15", "2025-09-16", "2025-09-17", "2025-09-18", "2025-09-19", "2025-09-22", "2025-09-23", "2025-09-24", "2025-09-25", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-01", "2025-10-02", "2025-10-10", "2025-10-13", "2025-10-14", "2025-10-15", "2025-10-16", "2025-10-17", "2025-10-20", "2025-10-21", "2025-10-22", "2025-10-23", "2025-10-24", "2025-10-27", "2025-10-28", "2025-10-29", "2025-10-30", "2025-10-31", "2025-11-03", "2025-11-04", "2025-11-05", "2025-11-06", "2025-11-07", "2025-11-10", "2025-11-11", "2025-11-12", "2025-11-13", "2025-11-14", "2025-11-17", "2025-11-18", "2025-11-19", "2025-11-20", "2025-11-21", "2025-11-24", "2025-11-25", "2025-11-26", "2025-11-27", "2025-11-28", "2025-12-01", "2025-12-02", "2025-12-03", "2025-12-04", "2025-12-05", "2025-12-08", "2025-12-09", "2025-12-10", "2025-12-11", "2025-12-12", "2025-12-15", "2025-12-16", "2025-12-17", "2025-12-18", "2025-12-19", "2025-12-22", "2025-12-23", "2025-12-24", "2025-12-26", "2025-12-29", "2025-12-30", "2026-01-02", "2026-01-05", "2026-01-06", "2026-01-07", "2026-01-08", "2026-01-09", "2026-01-12", "2026-01-13", "2026-01-14", "2026-01-15", "2026-01-16", "2026-01-19", "2026-01-20", "2026-01-21", "2026-01-22", "2026-01-23", "2026-01-26", "2026-01-27", "2026-01-28", "2026-01-29", "2026-01-30", "2026-02-02", "2026-02-03", "2026-02-04", "2026-02-05", "2026-02-06", "2026-02-09", "2026-02-10", "2026-02-11", "2026-02-12", "2026-02-13", "2026-02-19", "2026-02-20", "2026-02-23", "2026-02-24", "2026-02-25", "2026-02-26", "2026-02-27", "2026-03-03", "2026-03-04", "2026-03-05", "2026-03-06", "2026-03-09", "2026-03-10", "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-16", "2026-03-17", "2026-03-18", "2026-03-19", "2026-03-20", "2026-03-23", "2026-03-24", "2026-03-25", "2026-03-26", "2026-03-27", "2026-03-30", "2026-03-31", "2026-04-01", "2026-04-02", "2026-04-03", "2026-04-06", "2026-04-07", "2026-04-08", "2026-04-09", "2026-04-10", "2026-04-13", "2026-04-14", "2026-04-15", "2026-04-16", "2026-04-17", "2026-04-20", "2026-04-21", "2026-04-22", "2026-04-23", "2026-04-24", "2026-04-27", "2026-04-28", "2026-04-29", "2026-04-30", "2026-05-04", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-11", "2026-05-12", "2026-05-13", "2026-05-14", "2026-05-15", "2026-05-18", "2026-05-19", "2026-05-20", "2026-05-21", "2026-05-22", "2026-05-26", "2026-05-27", "2026-05-28", "2026-05-29", "2026-06-01", "2026-06-02", "2026-06-04", "2026-06-05", "2026-06-08", "2026-06-09", "2026-06-10", "2026-06-11", "2026-06-12", "2026-06-15", "2026-06-16", "2026-06-17", "2026-06-18", "2026-06-19", "2026-06-22", "2026-06-23", "2026-06-24", "2026-06-25", "2026-06-26", "2026-06-29", "2026-06-30", "2026-07-01", "2026-07-02", "2026-07-03", "2026-07-06", "2026-07-07", "2026-07-08", "2026-07-09", "2026-07-10", "2026-07-13", "2026-07-14", "2026-07-15", "2026-07-16", "2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24", "2026-07-27", "2026-07-28", "2026-07-29", "2026-07-30", "2026-07-31", "2026-08-03", "2026-08-04", "2026-08-05", "2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11", "2026-08-12", "2026-08-13", "2026-08-14", "2026-08-18", "2026-08-19", "2026-08-20", "2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26", "2026-08-27", "2026-08-28", "2026-08-31", "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07", "2026-09-08", "2026-09-09", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18", "2026-09-21", "2026-09-22", "2026-09-23"], "v": [24214316.0, 5771400.0, 2794228.0, 2460354.0, 7589886.0, 1667784.0, 2004614.0, 1732058.0, 852138.0, 757656.0, 5129844.0, 1064144.0, 589704.0, 669024.0, 344358.0, 393530.0, 839728.0, 174458.0, 1630888.0, 382136.0, 405604.0, 290970.0, 10512032.0, 17337032.0, 4065620.0, 7369316.0, 6679446.0, 1628906.0, 2070318.0, 990272.0, 2352846.0, 1184644.0, 613040.0, 1568224.0, 529606.0, 438526.0, 503716.0, 277218.0, 337446.0, 247888.0, 199522.0, 164986.0, 139872.0, 81234.0, 143910.0, 152644.0, 141620.0, 124102.0, 153780.0, 80720.0, 115936.0, 149726.0, 134180.0, 124668.0, 104564.0, 63396.0, 64350.0, 202466.0, 424232.0, 109490.0, 146452.0, 128342.0, 70066.0, 113426.0, 139548.0, 84162.0, 109458.0, 192690.0, 229298.0, 199678.0, 95218.0, 69838.0, 228636.0, 81520.0, 75478.0, 97086.0, 55696.0, 55268.0, 164936.0, 156750.0, 258884.0, 102688.0, 240468.0, 177664.0, 139276.0, 127408.0, 125286.0, 103400.0, 118694.0, 59992.0, 95616.0, 63740.0, 575170.0, 195906.0, 137350.0, 105712.0, 74800.0, 168900.0, 3339438.0, 595384.0, 1531442.0, 2628248.0, 1476752.0, 1527702.0, 453974.0, 438674.0, 1096990.0, 493658.0, 477120.0, 418772.0, 273666.0, 4550178.0, 1367576.0, 2763956.0, 904040.0, 554506.0, 270722.0, 262126.0, 358296.0, 1207072.0, 866330.0, 4624266.0, 928556.0, 621734.0, 2054578.0, 609392.0, 825536.0, 354218.0, 555974.0, 1018572.0, 9386128.0, 1706828.0, 1575602.0, 3439318.0, 529520.0, 525798.0, 351714.0, 362126.0, 483630.0, 237484.0, 336238.0, 247716.0, 212826.0, 188878.0, 297534.0, 213728.0, 244290.0, 292886.0, 266260.0, 144302.0, 155404.0, 167738.0, 141778.0, 136000.0, 170244.0, 127936.0, 92692.0, 130604.0, 152734.0, 143746.0, 126978.0, 104220.0, 180252.0, 184240.0, 138172.0, 179796.0, 140026.0, 146464.0, 161642.0, 283908.0, 151470.0, 107880.0, 160148.0, 143482.0, 128870.0, 106112.0, 1912386.0, 309746.0, 209390.0, 162360.0, 159482.0, 103496.0, 86964.0, 408998.0, 187166.0, 220124.0, 1767134.0, 303340.0, 397516.0, 305744.0, 176770.0, 137854.0, 137818.0, 123224.0, 198694.0, 161392.0, 247558.0, 158522.0, 105628.0, 77084.0, 43436.0, 172220.0, 109848.0, 137530.0, 189350.0, 90922.0, 116288.0, 200722.0, 102870.0, 140684.0, 100400.0, 66750.0, 1901990.0, 3017526.0, 1549558.0, 460822.0, 362432.0, 326606.0, 208912.0, 609276.0, 285692.0, 126508.0, 190042.0, 95312.0, 105862.0, 99018.0, 96148.0, 93136.0, 151826.0, 138972.0, 86566.0, 96878.0, 76970.0, 82622.0, 114890.0, 75712.0, 75038.0, 39854.0, 69492.0, 54350.0, 62564.0, 81644.0, 131768.0, 58668.0, 57750.0, 26774.0, 56158.0, 60426.0, 78672.0, 142724.0, 33974.0, 185638.0, 95126.0, 47252.0, 122880.0, 56508.0, 93862.0, 244614.0, 103770.0, 75936.0, 288188.0, 231400.0, 259014.0, 424874.0, 267464.0, 77254.0, 95120.0, 118328.0, 81564.0, 132308.0, 107442.0, 194644.0, 2581072.0, 541380.0, 529128.0, 452190.0, 2244178.0, 454350.0, 218206.0, 252584.0, 204232.0, 240282.0, 146060.0, 155068.0, 79758.0, 119792.0, 465646.0, 800904.0, 907264.0, 1119538.0, 754922.0, 330194.0, 389762.0, 793468.0, 237280.0, 169650.0, 5649098.0, 1159350.0, 11480430.0, 2176052.0, 1063640.0, 1489248.0, 1726550.0, 1084504.0, 1030722.0, 999912.0, 702979.0, 156601.0, 3470734.0, 7156396.0, 369983.0, 219931.0, 197792.0, 529431.0, 1214126.0, 234961.0, 5062223.0, 8916839.0, 1532584.0, 926715.0, 3200093.0, 1112947.0, 2412626.0, 1426055.0, 6972476.0, 2436290.0, 1265620.0, 1054746.0, 582443.0, 551870.0, 919163.0, 9006015.0, 1681471.0, 883512.0, 1012531.0, 871285.0, 640343.0, 800698.0, 850074.0, 562791.0, 448275.0, 357817.0, 1546872.0, 498955.0, 447082.0, 519911.0, 397713.0, 601442.0, 277190.0, 467088.0, 302942.0, 408319.0, 1506307.0, 1476911.0, 779593.0, 797436.0, 3423268.0, 2733662.0, 916179.0, 883624.0, 517791.0, 1430734.0, 519513.0, 795394.0, 502297.0, 266396.0, 250801.0, 292819.0, 218177.0, 131678.0, 173718.0, 125751.0, 201864.0, 182976.0, 193520.0, 265832.0, 151367.0, 162802.0, 210368.0, 171582.0, 165694.0, 227747.0, 363658.0, 222720.0, 198579.0, 137505.0, 150789.0, 149766.0, 58416.0, 59822.0, 43893.0, 73240.0, 47499.0, 127641.0, 86388.0, 100550.0, 103924.0, 85830.0, 70637.0, 52686.0, 53940.0, 59281.0, 74355.0, 141525.0, 49236.0, 63695.0, 35903.0, 71818.0, 37230.0, 50502.0, 22629.0, 165434.0, 64648.0, 71345.0, 46352.0, 48462.0, 47896.0, 65112.0, 71497.0, 90754.0, 137097.0, 92143.0, 67438.0, 286838.0, 116056.0, 115320.0, 143655.0, 201438.0, 1352318.0, 592596.0, 3575608.0, 751172.0, 1419278.0, 368398.0, 208208.0, 146386.0, 261647.0, 101630.0, 138637.0, 177269.0, 196159.0, 130435.0, 146325.0, 171457.0, 45670.0, 110676.0, 185345.0, 90387.0, 86059.0, 56317.0, 121476.0, 80870.0, 76952.0, 40916.0, 618686.0, 3296874.0, 513816.0, 412451.0, 260885.0, 157456.0, 180869.0, 102458.0, 81340.0, 57712.0, 61092.0, 90784.0, 35556.0, 74097.0, 72139.0, 55644.0, 53814.0, 49587.0, 109829.0, 68862.0, 27419.0, 31040.0, 124530.0, 157997.0, 92618.0, 32978.0, 317819.0, 69582.0, 167716.0, 117100.0, 103507.0, 135654.0, 80421.0, 83324.0, 2917759.0, 400324.0, 2040083.0, 249776.0, 156896.0, 192762.0, 196373.0, 113215.0, 79394.0, 55810.0, 82980.0, 46304.0, 53390.0, 19055.0, 39704.0, 26038.0, 19035.0, 30721.0, 18472.0, 40872.0, 54064.0, 78009.0, 31729.0, 21981.0, 83459.0, 31074.0, 39781.0, 42303.0, 30186.0, 718787.0, 76864.0, 41792.0, 44561.0, 37138.0]}, "quarterly": [{"n": 1152043190.0, "o": 1213167130.0, "p": "2025 Q2", "r": 2648381230.0}, {"n": -156139270.0, "o": -817597210.0000001, "p": "2025 Q3", "r": 784153520.0000001}, {"n": 1309029120.0000002, "o": 347998860.0, "p": "2025 Q4", "r": 2118299490.0000005}, {"n": -57578090.00000001, "o": -356981470.0, "p": "2026 Q1", "r": 932358140.0}, {"n": 217796420.00000003, "o": -457578940.00000006, "p": "2026 Q2", "r": 1728956720.0}]}</script>
+<script src="../static/charts.js" defer></script>
+</body>
+</html>
