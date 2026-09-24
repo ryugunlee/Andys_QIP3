@@ -214,6 +214,18 @@ def _position_text(rank: float, count: float, top_percent: float) -> str:
     return f"하위 {bottom_percent:.1f}%"
 
 
+def _sector_population_label(sector: str | None) -> str | None:
+    """섹터 모집단 라벨. 이름이 아니라 코드가 들어있으면 코드를 노출하지 않는다.
+
+    한국 종목의 `Sector`에는 업종 **이름이 아니라 네이버 업종 코드**가 들어있다
+    ("278" 등 — PROBLEMS #46). 그대로 쓰면 "278 섹터 내"가 되어 뜻이 없으므로,
+    숫자만인 값은 "같은 섹터 내"로 적는다(코드 자체는 상단 배지에 그대로 남는다).
+    """
+    if not sector:
+        return None
+    return "같은 섹터 내" if sector.strip().isdigit() else f"{sector} 섹터 내"
+
+
 def _rank_view(
     values: dict, score_column: str, population_tag: str, population: str | None
 ) -> RankView | None:
@@ -250,7 +262,7 @@ def _system_view(
         score_text=format_score(score),
         market_rank=_rank_view(values, score_column, "Market", f"{market} 내"),
         sector_rank=_rank_view(
-            values, score_column, "Sector", f"{sector} 섹터 내" if sector else None
+            values, score_column, "Sector", _sector_population_label(sector)
         ),
         axes=[
             AxisView(
