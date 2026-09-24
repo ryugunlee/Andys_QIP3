@@ -96,6 +96,9 @@ WiseFn(FnGuide) 스크레이핑을 대체하기 위한 패키지 (PROBLEMS #44).
 - `accounts.py`: 정규화 지표 32개(WiseFn ACCODE 32개와 1:1 대응)를 DART 계정에서 찾는 규칙의
   단일 소스. `AccountSpec`(statements/account_ids/name_patterns/aggregate/name_excludes)과
   `ACCOUNT_SPECS`. **3층 해결** — ① XBRL 표준계정ID ② 한글 계정명 정규식 ③ 합산.
+  **`account_ids`·`name_patterns`의 나열 순서가 선호 순서다** — 앞선 후보가 맞으면 뒤는 보지
+  않는다(이자비용 vs 상위 계정 금융원가, 매출원가 vs 영업비용처럼 둘 다 존재할 때 순서로만
+  갈린다). 단 `aggregate="sum"`은 선호가 아니라 합집합이다.
   WiseFn의 `19xxxx`(이자발생부채·CAPEX 등)는 DART에 단일 계정이 없어 합산으로 만든다.
   `item_key`/`metric_of`가 `item` 규약(`"<지표>:<한글 계정명>"`)을 담당한다.
 - `parsers.py`: `parse_amount`(콤마·음수·빈값), `parse_statements(payload, statement_type,

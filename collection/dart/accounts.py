@@ -13,6 +13,10 @@ FnGuide가 미리 흡수해 준 항목이다. **DART는 회사가 공시한 계�
 3. **합산 규칙** — `aggregate="sum"`인 지표는 매칭된 계정을 전부 더한다
    (이자발생부채·CAPEX처럼 DART에 단일 계정이 없는 항목).
 
+**`account_ids`와 `name_patterns`의 나열 순서가 곧 선호 순서다.** 앞선 후보가 하나라도 맞으면
+뒤는 보지 않는다 — 이자비용과 상위 계정 금융원가처럼 둘 다 존재할 때 어느 쪽을 쓸지는 순서로만
+정해진다. 단 `aggregate="sum"`은 선호가 아니라 **합집합**이다(차입금·사채·리스부채를 다 더해야 한다).
+
 찾지 못하면 예외가 아니라 **결측**으로 남긴다 — WiseFn 실패 때와 같은 태도다.
 계정 하나 못 찾은 것으로 종목을 잃는 것보다 그 팩터만 비우는 편이 낫다.
 
@@ -97,9 +101,11 @@ ACCOUNT_SPECS: dict[str, AccountSpec] = {
         ("dart_OperatingIncomeLoss", "ifrs-full_ProfitLossFromOperatingActivities"),
         (r"^영업이익", r"^영업손익"),
     ),
+    # **나열 순서가 선호 순서다.** 이자비용과 그 상위 계정 금융원가가 같은 손익계산서에 함께
+    # 나오는데, WiseFn 202560이 가리킨 것은 이자비용이다. 상위 계정이 먼저 잡히면 값이 부풀려진다.
     "interest_expense": _spec(
         _PROFIT_STATEMENTS,
-        ("ifrs-full_FinanceCosts", "ifrs-full_InterestExpense"),
+        ("ifrs-full_InterestExpense", "ifrs-full_FinanceCosts"),
         (r"^이자비용$", r"^금융원가$", r"^금융비용$"),
     ),
     "pretax_income": _spec(

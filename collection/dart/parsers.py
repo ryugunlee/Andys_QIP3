@@ -57,8 +57,47 @@ def parse_amount(raw: object) -> float | None:
         return None
 
 
+def _entries_for(spec, candidates: list[dict]) -> list[dict]:
+    """spec이 가리키는 계정들. 단일 지표는 **우선순위대로** 하나만, 합산 지표는 전부 모은다.
+
+    우선순위가 중요하다. 예를 들어 이자비용은 `이자비용`과 그 상위 계정 `금융원가`가 같은
+    손익계산서에 함께 나오는데, 우선순위 없이 "아무거나 먼저 매칭된 것"을 쓰면 회사에 따라
+    상위 계정이 잡혀 값이 부풀려진다. 그래서 `account_ids`와 `name_patterns`의 **나열 순서가
+    곧 선호 순서**이고, 앞선 후보가 하나라도 맞으면 뒤는 보지 않는다.
+    """
+    if spec.aggregate == AGGREGATE_SUM:
+        # 합산 지표는 선호 순서가 아니라 **합집합**이다 — 이자발생부채는 차입금·사채·리스부채를
+        # 모두 더해야 하고, CAPEX는 표준ID로 잡힌 것과 계정명으로만 잡히는 것이 섞일 수 있다.
+        chosen: dict[int, dict] = {}
+        for index, entry in enumerate(candidates):
+            account_id = (entry.get("account_id") or "").strip()
+            account_name = (entry.get("account_nm") or "").strip()
+            if account_id in spec.account_ids or spec.matches_name(account_name):
+                chosen[index] = entry
+        return list(chosen.values())
+
+    # 1층: XBRL 표준계정ID — 나열 순서가 선호 순서다.
+    for account_id in spec.account_ids:
+        matched = [
+            entry for entry in candidates if (entry.get("account_id") or "").strip() == account_id
+        ]
+        if matched:
+            return matched
+    # 2층: 한글 계정명 — 표준ID가 없거나 매칭되지 않은 회사를 위한 폴백. 여기도 나열 순서대로.
+    for pattern in spec.compiled:
+        matched = [
+            entry
+            for entry in candidates
+            if spec.matches_name((entry.get("account_nm") or "").strip())
+            and pattern.search((entry.get("account_nm") or "").strip())
+        ]
+        if matched:
+            return matched
+    return []
+
+
 def _resolve_metric(entries: list[dict], metric: str) -> tuple[float, str] | None:
-    """한 지표의 (값, 계정명 라벨). 표준ID → 한글명 → 합산 순으로 찾는다."""
+    """한 지표의 (값, 계정명 라벨). 못 찾으면 None(결측)."""
     spec = ACCOUNT_SPECS[metric]
     candidates = [
         entry for entry in entries if (entry.get("sj_div") or "") in spec.statements
@@ -66,23 +105,11 @@ def _resolve_metric(entries: list[dict], metric: str) -> tuple[float, str] | Non
     if not candidates:
         return None
 
-    # 1층: XBRL 표준계정ID. 가장 안정적이라 먼저 본다.
-    by_id = [
-        entry
-        for entry in candidates
-        if (entry.get("account_id") or "") in spec.account_ids
-    ]
-    # 2층: 한글 계정명. 표준ID가 없거나 매칭되지 않은 회사를 위한 폴백.
-    matched = by_id or [
-        entry
-        for entry in candidates
-        if spec.matches_name((entry.get("account_nm") or "").strip())
-    ]
+    matched = _entries_for(spec, candidates)
     if not matched:
         return None
 
     if spec.aggregate == AGGREGATE_SUM:
-        # 3층: 합산. DART에 단일 계정이 없는 지표(이자발생부채·CAPEX 등).
         values = [
             amount
             for amount in (parse_amount(entry.get("_amount")) for entry in matched)
