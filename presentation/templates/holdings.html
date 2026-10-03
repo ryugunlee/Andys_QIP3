@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}보유 판단 — {{ site_title }}{% endblock %}
+{% block content %}
+<h1 class="page-title">보유 판단</h1>
+<p class="page-lead">
+  탈락하지 않은 종목(안정성 관문·효율성 감사·신뢰도 통과) 중 QIP4 종합 점수 상위
+  {{ holding_top_percent | round | int }}%를 시장별로 모두 보여줍니다. 이 구간 안에 있으면 보유할 만한 위치,
+  밖으로 밀려나면 보유 근거를 다시 볼 때라는 뜻입니다. 매수 후보(선별)는 그중 상위 10%입니다.
+</p>
+<p class="page-lead">
+  탈락 종목이나 구간 밖 종목은 여기 나오지 않습니다 — 상단 검색으로 종목 페이지에 들어가면
+  생존 종목 사이 어디쯤인지 볼 수 있습니다.
+</p>
+
+{% if holding_markets %}
+<section class="page-section holding-board" data-holding-board>
+  <div class="holding-controls">
+    <div class="holding-control">
+      <span class="holding-control-label">시장</span>
+      <div class="tab-labels" role="group" aria-label="시장 선택">
+        {% for group in holding_markets %}
+        <button type="button" class="holding-chip{% if loop.first %} is-active{% endif %}"
+                data-market-button="{{ group.market }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">
+          {{ group.market }}<span class="tab-count">{{ group.rows | length }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="holding-control">
+      <span class="holding-control-label">정렬 기준</span>
+      <div class="tab-labels" role="group" aria-label="정렬 기준">
+        {% for f in holding_filters %}
+        <button type="button" class="holding-chip{% if loop.first %} is-active{% endif %}"
+                data-sort-button="{{ f.key }}" title="{{ f.description }}"
+                aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ f.label }}</button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <p class="gate-note" data-sort-note>
+    {% for f in holding_filters %}<span data-sort-note-for="{{ f.key }}"{% if not loop.first %} hidden{% endif %}>
+      {{ f.description }} 기준 — 왼쪽 등수는 이 시장 보유 판단 구간 안에서의 등수입니다.</span>{% endfor %}
+  </p>
+
+  {% for group in holding_markets %}
+  <div class="holding-market" data-market="{{ group.market }}">
+    <h2 class="holding-market-title">
+      {{ group.market }}
+      <span class="section-sub">생존 종목 {{ "{:,}".format(group.survivor_count) }}개 중 상위 {{ group.rows | length }}개</span>
+    </h2>
+    <div class="table-wrap">
+      <table class="data-table holding-table">
+        <thead>
+          <tr>
+            <th>구간 내 등수</th>
+            <th>종목</th>
+            <th>QIP4 종합</th>
+            <th>생존 종목 중</th>
+            {% for f in holding_filters[1:] %}
+            <th data-col="{{ f.key }}">{{ f.label }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in group.rows %}
+          {% set stock = row.entry.stock %}
+          <tr{% for f in holding_filters %} data-rank-{{ f.key }}="{{ row.ranks[f.key] or '' }}"{% endfor %}>
+            <td class="holding-rank" data-rank-cell>{{ row.ranks['total'] or missing }}<small> / {{ group.rows | length }}</small></td>
+            <td>
+              <a href="{{ root }}/stocks/{{ stock.ticker | urlencode }}.html">
+                <span class="cell-name">{{ stock.name or stock.ticker }}</span>
+                {% if row.selected %}<span class="score-tier tier-top">선별</span>{% endif %}
+                <div class="cell-sub">{{ stock.ticker }}{% if stock.sector and not stock.sector.isdigit() %} · {{ stock.sector }}{% endif %}</div>
+              </a>
+            </td>
+            <td data-col="total"><strong>{{ stock.qip4_score | score }}</strong></td>
+            <td>{{ "{:,}".format(row.entry.survivor_count) }}개 중 <strong>{{ "{:,}".format(row.entry.survivor_rank) }}등</strong></td>
+            {% for f in holding_filters[1:] %}
+            <td data-col="{{ f.key }}">{{ row.scores[f.key] | score }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+</section>
+{% else %}
+<div class="placeholder-card">QIP4 점수가 아직 계산되지 않아 보유 판단 목록을 만들 수 없습니다.</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ root }}/static/holdings.js" defer></script>
+{% endblock %}

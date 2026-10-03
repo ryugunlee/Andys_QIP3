@@ -18,11 +18,13 @@ import pandas as pd
 from presentation import config
 from presentation.models import (
     GroupScore,
+    HoldingEntry,
     SearchEntry,
     StockCharts,
     StockDetail,
     StockSummary,
 )
+from presentation.holding_ranks import attach_holding_ranks
 from presentation.repository import row_mapping as rows
 from presentation.score_ranks import attach_score_ranks
 
@@ -61,7 +63,9 @@ class CsvStockRepository:
 
     def _all(self) -> pd.DataFrame:
         if self._all_stocks is None:
-            self._all_stocks = attach_score_ranks(self._load_markets(_STOCKDATA_PATH))
+            self._all_stocks = attach_holding_ranks(
+                attach_score_ranks(self._load_markets(_STOCKDATA_PATH))
+            )
         return self._all_stocks
 
     def _good(self) -> pd.DataFrame:
@@ -86,6 +90,10 @@ class CsvStockRepository:
 
     def qip4_stocks(self, limit: int | None = None) -> list[StockSummary]:
         """CSV 폴백에는 QIP4 점수가 없다 — 사이트가 해당 섹션을 숨긴다."""
+        return []
+
+    def holding_stocks(self) -> list[HoldingEntry]:
+        """CSV 폴백에는 QIP4 점수가 없다 — 보유 판단 페이지가 빈 안내를 보인다."""
         return []
 
     def top_by_market_cap(self, region: str, limit: int) -> list[StockSummary]:

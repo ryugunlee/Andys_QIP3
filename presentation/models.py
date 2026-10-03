@@ -27,6 +27,23 @@ class StockSummary:
 
 
 @dataclass(frozen=True)
+class HoldingEntry:
+    """보유 판단 목록의 한 행 — 생존 종목 중 QIP4 상위 20%에 든 종목.
+
+    필터(정렬 기준)를 바꿔 보기 위해 축 점수를 함께 든다. 안정성은 QIP4에 점수가 없어
+    (관문 Pass/Fail) QIP3 안정성 점수를 빌려 쓴다.
+    """
+
+    stock: StockSummary
+    survivor_rank: int  # 시장 내 생존 종목 중 QIP4 종합점수 등수
+    survivor_count: int  # 시장 내 생존 종목 수
+    value_score: float | None
+    growth_score: float | None
+    momentum_score: float | None
+    stability_score: float | None  # QIP3 Stability
+
+
+@dataclass(frozen=True)
 class StockDetail:
     """종목 상세 페이지 하나를 그리는 데 필요한 전체 정보.
 

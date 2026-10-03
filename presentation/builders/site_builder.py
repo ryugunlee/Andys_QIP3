@@ -1,6 +1,6 @@
 """사이트 전체 생성 오케스트레이션.
 
-정적 자산 배치 → 접속 정보 → 메인 → 주식 분석 → 종목 상세 → 관리자 → 검색 인덱스 → PWA 순으로
+정적 자산 배치 → 접속 정보 → 메인 → 주식 분석 → 보유 판단 → 종목 상세 → 관리자 → 검색 인덱스 → PWA 순으로
 모든 빌더를 실행한다. 데이터 출처는 StockRepository 계약 뒤에 숨어 있어
 CSV가 DB로 바뀌어도 이 파일은 수정할 필요가 없다.
 
@@ -15,6 +15,7 @@ from presentation.builders.admin_page import build_admin_page
 from presentation.builders.assets import copy_static, write_nojekyll
 from presentation.builders.detail_pages import build_detail_pages
 from presentation.builders.environment import create_environment
+from presentation.builders.holdings_page import build_holdings_page
 from presentation.builders.index_page import build_index_page
 from presentation.builders.pwa import build_pwa
 from presentation.builders.search_index import build_search_index
@@ -56,6 +57,7 @@ def build_site(
     write_nojekyll(output_dir)
     build_index_page(repository, env, output_dir)
     build_stocks_page(repository, env, output_dir)
+    build_holdings_page(repository, env, output_dir)
     build_sectors_page(repository, env, output_dir)
     detail_count = build_detail_pages(repository, env, output_dir)
     build_admin_page(env, output_dir, repository.updated_date())

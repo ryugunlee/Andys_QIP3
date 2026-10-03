@@ -9,6 +9,7 @@ from typing import Iterator, Protocol
 
 from presentation.models import (
     GroupScore,
+    HoldingEntry,
     SearchEntry,
     StockCharts,
     StockDetail,
@@ -30,6 +31,13 @@ class StockRepository(Protocol):
 
     def qip4_stocks(self, limit: int | None = None) -> list[StockSummary]:
         """QIP4 선별 종목(get_goodstock3)을 QIP4 종합점수 내림차순으로 반환.
+
+        QIP4 점수가 없는 데이터(CSV 폴백·재점수 이전 DB)면 빈 리스트.
+        """
+        ...
+
+    def holding_stocks(self) -> list[HoldingEntry]:
+        """보유 판단 구간(시장별 생존 종목 중 QIP4 상위 20%) 종목을 시장·등수 순으로 반환.
 
         QIP4 점수가 없는 데이터(CSV 폴백·재점수 이전 DB)면 빈 리스트.
         """

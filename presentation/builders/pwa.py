@@ -32,6 +32,7 @@ _SHELL_PAGES: tuple[str, ...] = (
     "./index.html",
     f"./{OFFLINE_FILENAME}",
     "./stocks/index.html",
+    "./holdings/index.html",
     "./sectors/index.html",
     f"./{MANIFEST_FILENAME}",
 )

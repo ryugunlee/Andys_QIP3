@@ -1,4 +1,5 @@
-{# 점수 종합 섹션. 컨텍스트: score_panel (ScorePanelView 또는 None)
+{# 점수 종합 섹션. 컨텍스트: score_panel (ScorePanelView 또는 None),
+   holding_position (HoldingPositionView 또는 None — 생존 종목 중 위치)
    기존에는 종합 점수가 상세 지표 표 맨 아래에 QIP3·QIP4·기존 체계가 섞여 늘어서서,
    어느 숫자가 어느 기준인지 읽히지 않았다. 여기서는 QIP4를 위에 크게 세우고 같은
    시장·섹터 안에서의 위치를 함께 보여준 뒤, 세 체계 비교는 펼쳐 보게 둔다. #}
@@ -39,6 +40,15 @@
     </ul>
     {% else %}
     <p class="gate-note">순위를 낼 모집단이 너무 작아 위치는 표시하지 않습니다.</p>
+    {% endif %}
+    {% if holding_position %}
+    <div class="holding-position">
+      <span class="score-rank-pop">보유 판단</span>
+      <span class="score-tier {{ holding_position.status_class }}">{{ holding_position.status_label }}</span>
+      <strong>{{ holding_position.position_text }}</strong>
+      <p class="gate-note">{{ holding_position.note }}
+        <a href="{{ root }}/holdings/index.html">보유 판단 목록 보기</a></p>
+    </div>
     {% endif %}
     {% else %}
     <p class="score-missing">

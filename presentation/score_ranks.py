@@ -93,8 +93,9 @@ _TIER_BANDS: tuple[tuple[float, str, str], ...] = (
 )
 
 SELECTION_NOTE: str = (
-    f"세 체계 모두 시장별 상위 {SELECTED_TOP_PERCENT:.0f}%를 선별 컷으로 쓴다 — "
-    "'최상위'는 그 컷 안에 든다는 뜻이다(신뢰도·관문 조건은 별도로 본다)."
+    f"구간 칩은 시장 전체 종목 중 위치다 — '최상위'는 시장 상위 {SELECTED_TOP_PERCENT:.0f}% 안이라는 뜻이다. "
+    "QIP3·기존 종합은 이 컷으로 선별하지만, QIP4는 탈락 종목을 뺀 생존 종목 중 상위 "
+    f"{SELECTED_TOP_PERCENT:.0f}%를 선별하므로 QIP4의 선별·보유 여부는 위 '보유 판단'을 본다."
 )
 
 

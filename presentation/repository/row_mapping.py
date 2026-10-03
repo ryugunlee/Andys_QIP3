@@ -9,7 +9,12 @@ import pandas as pd
 
 from presentation.korean_names import display_name
 from presentation.metrics import DETAIL_VALUE_COLUMNS
-from presentation.models import SearchEntry, StockDetail, StockSummary
+from presentation.holding_ranks import (
+    HOLDING_VALUE_COLUMNS,
+    POSITION_COLUMN,
+    SURVIVOR_COUNT_COLUMN,
+)
+from presentation.models import HoldingEntry, SearchEntry, StockDetail, StockSummary
 from presentation.score_ranks import RANK_VALUE_COLUMNS
 
 # 분석 산출물의 원문 컬럼명
@@ -26,6 +31,10 @@ COL_RELIABILITY = "reliability"
 COL_QIP3_SCORE = "QIP3 Score"
 COL_QIP4_SCORE = "QIP4 Score"
 COL_QIP4_EXECUTION_RATE = "QIP4 Execution Rate"
+COL_QIP4_VALUE = "QIP4 Value"
+COL_QIP4_GROWTH = "QIP4 Growth"
+COL_QIP4_MOMENTUM = "QIP4 Momentum"
+COL_QIP3_STABILITY = "QIP3 Stability"
 
 # 시장 통합 시 구현체가 덧붙이는 컬럼 (산출물 원본에는 없음)
 COL_MARKET = "Market"
@@ -85,10 +94,10 @@ def summary_from_row(row: pd.Series) -> StockSummary:
 
 def detail_from_row(row: pd.Series) -> StockDetail:
     # 순위 컬럼은 저장 산출물에 없고 repository가 빌드 때 계산해 붙인다
-    # (presentation/score_ranks.py). 없으면 row_value가 None을 돌려준다.
+    # (presentation/score_ranks.py, holding_ranks.py). 없으면 row_value가 None을 돌려준다.
     values = {
         column: row_value(row, column)
-        for column in DETAIL_VALUE_COLUMNS + RANK_VALUE_COLUMNS
+        for column in DETAIL_VALUE_COLUMNS + RANK_VALUE_COLUMNS + HOLDING_VALUE_COLUMNS
     }
     return StockDetail(
         ticker=str(row[COL_TICKER]),
@@ -100,6 +109,19 @@ def detail_from_row(row: pd.Series) -> StockDetail:
         close=to_float(row_value(row, COL_CLOSE)),
         market_cap=to_float(row_value(row, COL_MARKET_CAP)),
         values=values,
+    )
+
+
+def holding_entry_from_row(row: pd.Series) -> HoldingEntry:
+    """보유 판단 구간에 든 행 → 목록 한 줄. 등수 컬럼은 holding_ranks가 채운 값이다."""
+    return HoldingEntry(
+        stock=summary_from_row(row),
+        survivor_rank=int(row[POSITION_COLUMN]),
+        survivor_count=int(row[SURVIVOR_COUNT_COLUMN]),
+        value_score=to_float(row_value(row, COL_QIP4_VALUE)),
+        growth_score=to_float(row_value(row, COL_QIP4_GROWTH)),
+        momentum_score=to_float(row_value(row, COL_QIP4_MOMENTUM)),
+        stability_score=to_float(row_value(row, COL_QIP3_STABILITY)),
     )
 
 

@@ -432,8 +432,11 @@ git에 커밋하지 않는다.
     (`Andys_QIP2.py`/`compute_scores.py`의 `snapshot_columns`).
 
 ## storage/qip4_selection.py
-- `get_goodstock3(conn, run_id)`: QIP4 선별. 관문 PASS + 효율성 승수 > 0 + 신뢰도 통과 후
-  `QIP4 Score` 상위 10%. QIP3와 달리 안정성이 **분위수 컷이 아니라 절대 기준**이라
+- `qip4_survivor_mask(df)`: 생존 판정(관문 PASS + 효율성 승수 > 0 + 신뢰도 > 50) 불리언 Series.
+  선별과 사이트 보유 판단 목록(`presentation/holding_ranks.py`)이 같은 정의를 쓰도록 한 곳에 둔다.
+- `get_goodstock3(conn, run_id)`: QIP4 선별. 생존 종목 중 `QIP4 Score` 상위 10%
+  (**분모가 생존 종목 수** — 2026-10-03 이전엔 시장 전체 종목 수였다. 보유 판단 구간과 모집단을
+  맞춰 선별 ⊂ 보유 구간을 보장한다). QIP3와 달리 안정성이 **분위수 컷이 아니라 절대 기준**이라
   시장이 전반적으로 부실해도 기준이 내려가지 않는다.
 
 ## storage/financial_repository.py
@@ -797,6 +800,31 @@ QIP4 정량 규칙(`.claude/투자 규칙.md`). QIP3와 **병행**하며 QIP3는
   "하위 N%"로 읽는다(`_position_text`).
 - **`QIP4 Score`는 퍼센타일·스탠다드 계열의 평균이라 그 값 자체가 백분위가 아니다**
   (`analysis/qip4_pipeline._attach_averages`). 그래서 점수를 백분위로 읽지 않고 실제 순위를 센다.
+
+## presentation/holding_ranks.py
+**보유 판단 구간** = 시장별 생존 종목 중 QIP4 종합점수 상위 20%(`analysis/qip4_weights.HOLDING_RATIO`).
+`score_ranks`가 시장 전체를 모집단으로 세는 것과 달리 여기선 **생존 종목**만 센다.
+- `attach_holding_ranks(df)` → `HOLDING_VALUE_COLUMNS` 6개(`QIP4 Survivor`/`Exclusion`/
+  `Placement Score`/`SurvivorPosition`/`SurvivorCount`/`HoldingCut`)를 붙인 사본. 두 repository의
+  `_all()`이 `attach_score_ranks` 다음에 호출한다. 생존 종목이 `MIN_GROUP_POPULATION` 미만인 시장은
+  순위를 비운다.
+  - `SurvivorPosition` = 같은 시장 생존 종목 중 자기보다 점수 높은 수 + 1. 생존 종목에겐 등수,
+    탈락 종목에겐 "이 등수 자리에 끼어든다"는 뜻.
+  - `_placement_scores`: 효율성 승수 0(종합점수 0)인 종목만 **승수 적용 전** 가치·성장 가중합으로
+    위치를 잡는다.
+- `holding_cut(count)` / `holding_zone_mask(df)`: 구간 마지막 등수 / 구간 안 행 판정.
+- `build_holding_position(values, market)` → `HoldingPositionView | None` — 상세 페이지 점수 카드의
+  "보유 판단" 줄(구간 안/밖, 또는 탈락 사유 + "N개 중 M등과 M+1등 사이").
+
+## presentation/builders/holdings_page.py + templates/holdings.html + static/holdings.js
+보유 판단 페이지(`docs/holdings/index.html`, 상단 메뉴 "보유 판단"). 보유 판단 구간 종목을 시장별
+표로 **빠짐없이** 나열한다.
+- `repository.holding_stocks()` → `list[HoldingEntry]`(models.py — 요약 + 생존 등수/수 + QIP4
+  가치·성장·모멘텀 + QIP3 안정성). CSV 폴백은 빈 리스트.
+- `HOLDING_FILTERS`: 정렬 기준(종합/가치/성장/모멘텀/안정성). `_zone_ranks`가 구간 안 등수를 기준마다
+  미리 계산해 행의 `data-rank-{key}`에 싣는다. QIP4 선별(10%)에도 든 종목은 "선별" 칩.
+- `holdings.js`: 시장 버튼으로 표 전환, 정렬 버튼으로 줄 순서·등수 칸·강조 열을 바꾼다.
+  JS가 없으면 전 시장 표가 종합 순으로 보인다. CSS는 `style.css`의 `.holding-*`.
 
 ## presentation/qip4_view.py
 - `build_gate_view(values, market=None)` → `GateView` — QIP4 관문·경보 **코드를 한국어 문구로**

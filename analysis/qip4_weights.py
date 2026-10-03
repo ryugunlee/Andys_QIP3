@@ -108,7 +108,11 @@ EXECUTION_RATE_BANDS: list[tuple[float, float]] = [
 ]
 
 # --- 선별 상수 ---
-SELECTION_RATIO: float = 0.10  # 시장별 상위 10%
+SELECTION_RATIO: float = 0.10  # 시장별 생존 종목(관문·효율성·신뢰도 통과) 중 상위 10%
+# 보유 판단 구간: 생존 종목(관문·효율성·신뢰도 통과) 중 종합점수 상위 20%.
+# 선별(매수 후보)보다 넓게 잡아, 선별 컷 밖으로 조금 밀렸다고 바로 매도 신호가 되지 않게 한다.
+# SELECTION_RATIO와 모집단(생존 종목)이 같아 선별은 항상 이 구간 안에 든다.
+HOLDING_RATIO: float = 0.20
 RELIABILITY_THRESHOLD: float = 50  # 결측 중립 50점 누적으로 위장 진입 방지(QIP3와 동일)
 
 # --- 상대강도·이익 모멘텀 조회 구간 ---

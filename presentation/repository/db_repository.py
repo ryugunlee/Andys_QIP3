@@ -17,8 +17,14 @@ import duckdb
 import pandas as pd
 
 from presentation import config
+from presentation.holding_ranks import (
+    POSITION_COLUMN,
+    attach_holding_ranks,
+    holding_zone_mask,
+)
 from presentation.models import (
     GroupScore,
+    HoldingEntry,
     PricePoint,
     SearchEntry,
     StockCharts,
@@ -104,7 +110,9 @@ class DuckDbStockRepository:
 
     def _all(self) -> pd.DataFrame:
         if self._all_stocks is None:
-            self._all_stocks = attach_score_ranks(self._load_runs(get_run_snapshot))
+            self._all_stocks = attach_holding_ranks(
+                attach_score_ranks(self._load_runs(get_run_snapshot))
+            )
         return self._all_stocks
 
     def _good(self) -> pd.DataFrame:
@@ -150,6 +158,12 @@ class DuckDbStockRepository:
         if limit is not None:
             qip4 = qip4.head(limit)
         return [rows.summary_from_row(row) for _, row in qip4.iterrows()]
+
+    def holding_stocks(self) -> list[HoldingEntry]:
+        stocks = self._all()
+        zone = stocks[holding_zone_mask(stocks)]
+        zone = zone.sort_values(by=[rows.COL_MARKET, POSITION_COLUMN])
+        return [rows.holding_entry_from_row(row) for _, row in zone.iterrows()]
 
     def chart_bundle(self, ticker: str, market: str) -> StockCharts | None:
         path = Path(

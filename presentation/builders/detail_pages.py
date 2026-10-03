@@ -28,6 +28,7 @@ from presentation.qip4_view import build_gate_view
 from presentation.qualitative_view import build_qualitative_card
 from presentation.models import AnnualFinancials, StockCharts, StockDetail
 from presentation.repository.base import StockRepository
+from presentation.holding_ranks import build_holding_position
 from presentation.score_ranks import build_score_panel
 
 # 티커는 원래 [A-Za-z0-9.\-]만 오지만(get_tickers 필터), 파일명 안전을 위해 방어한다.
@@ -183,6 +184,7 @@ def build_detail_pages(
             score_panel=build_score_panel(
                 detail.values, detail.market, detail.sector
             ),
+            holding_position=build_holding_position(detail.values, detail.market),
             qip4_gate=build_gate_view(detail.values, detail.market),
             qualitative=_qualitative_card(repository, detail),
             financial_table=_financial_table(charts, detail.market),
