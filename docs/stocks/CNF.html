@@ -22,6 +22,7 @@
     <nav class="main-nav" aria-label="주요 메뉴">
       <a href="../index.html">홈</a>
       <a href="../stocks/index.html" class="active" aria-current="page">주식 분석</a>
+      <a href="../holdings/index.html">보유 판단</a>
       <a href="../sectors/index.html">섹터·산업</a>
     </nav>
     <div class="search-box" data-root="..">
@@ -94,6 +95,13 @@
         <span class="score-rank-count">543개 중 420위</span>
       </li>
     </ul>
+    <div class="holding-position">
+      <span class="score-rank-pop">보유 판단</span>
+      <span class="score-tier tier-low">데이터 신뢰도 미달</span>
+      <strong>생존 종목 1,284개 중 984등과 985등 사이</strong>
+      <p class="gate-note">탈락 종목은 순위에 들지 않고, 점수로 치면 어디쯤인지만 보여준다. NYSE 보유 판단 구간은 생존 종목 상위 20%인 257등까지다.
+        <a href="../holdings/index.html">보유 판단 목록 보기</a></p>
+    </div>
   </div>
 
   <details class="reveal-block score-detail">
@@ -102,7 +110,7 @@
       <span class="reveal-hint">클릭하여 펼치기</span>
     </summary>
     <div class="reveal-body">
-      <p class="gate-note">세 체계 모두 시장별 상위 10%를 선별 컷으로 쓴다 — &#39;최상위&#39;는 그 컷 안에 든다는 뜻이다(신뢰도·관문 조건은 별도로 본다).</p>
+      <p class="gate-note">구간 칩은 시장 전체 종목 중 위치다 — &#39;최상위&#39;는 시장 상위 10% 안이라는 뜻이다. QIP3·기존 종합은 이 컷으로 선별하지만, QIP4는 탈락 종목을 뺀 생존 종목 중 상위 10%를 선별하므로 QIP4의 선별·보유 여부는 위 &#39;보유 판단&#39;을 본다.</p>
       <div class="table-scroll">
         <table class="fin-table score-table">
           <thead>
