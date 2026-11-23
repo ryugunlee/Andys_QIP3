@@ -14,7 +14,7 @@
 (function () {
   "use strict";
 
-  var CACHE_NAME = "qip-4802ff9017cc";
+  var CACHE_NAME = "qip-3c028f604324";
   /* 이 워커는 사이트 루트에 있으므로 self.location이 곧 사이트 루트다. */
   var OFFLINE_HREF = new URL("./offline.html", self.location.href).href;
   var MANIFEST_HREF = new URL("./manifest.webmanifest", self.location.href).href;
